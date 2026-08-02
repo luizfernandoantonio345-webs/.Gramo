@@ -1,0 +1,1039 @@
+// =============================================================================
+// REP-P - Schema Prisma (Fase 0)
+//
+// Principios inegociaveis refletidos aqui:
+//  1. MULTI-TENANT: toda tabela de dominio tem `empresaId`. O isolamento real
+//     e garantido por Row Level Security no Postgres (ver migrations/*_rls.sql),
+//     nao apenas pela aplicacao.
+//  2. IMUTABILIDADE DE PONTO: a tabela `pontos` e append-only. Correcao NUNCA
+//     altera/apaga o original -> cria-se um `PontoAjuste` vinculado. UPDATE/DELETE
+//     em `pontos` sao revogados no banco para a role da app (ver RLS SQL).
+//  3. NSR sequencial por ESTABELECIMENTO, sem furos -> atribuido no servidor
+//     (tabela `ContadorNsr` com incremento transacional). Nunca no client.
+//  4. TRILHA DE AUDITORIA: `LogAuditoria` append-only registra toda mutacao.
+//  5. LGPD: consentimento biometrico separado (`ConsentimentoLgpd`); a foto de
+//     referencia guarda apenas ponteiro para storage cifrado (AES-256), o blob
+//     nunca fica no banco.
+//
+// Convencao: nomes de modelo em PascalCase; @@map para snake_case no banco.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Runtime da API: role repp_app (NOSUPERUSER) -> RLS aplicado.
+  url = env("DATABASE_URL")
+  // Migrations/DDL: role repp_owner. Prisma Migrate usa directUrl quando presente.
+  directUrl = env("MIGRATION_DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// Enums (espelham packages/shared/src/enums.ts)
+// ----------------------------------------------------------------------------
+
+enum StatusEmpresa {
+  ATIVA
+  SUSPENSA
+  CANCELADA
+}
+
+enum PapelAdmin {
+  RH_MASTER
+  GESTOR_FILIAL
+  FINANCEIRO
+  AUDITORIA
+}
+
+enum StatusFuncionario {
+  PENDENTE_CADASTRO
+  ATIVO
+  AFASTADO
+  FERIAS
+  DESLIGADO
+}
+
+enum TipoMarcacao {
+  ENTRADA
+  INICIO_INTERVALO
+  FIM_INTERVALO
+  SAIDA
+}
+
+enum StatusValidacaoPonto {
+  VALIDO
+  PENDENTE_REGAP
+  PENDENTE_IDENTIDADE
+  PENDENTE_HORARIO
+}
+
+enum OrigemHora {
+  SERVIDOR
+  DISPOSITIVO
+}
+
+enum TipoSujeito {
+  ADMIN
+  FUNCIONARIO
+  SUPER_ADMIN
+  SISTEMA
+}
+
+enum EventoAcesso {
+  LOGIN_SUCESSO
+  LOGIN_FALHA
+  LOGOUT
+  TWO_FA_SUCESSO
+  TWO_FA_FALHA
+  PRIMEIRO_ACESSO
+  SENHA_REDEFINIDA
+  ACESSO_REVOGADO
+  BLOQUEIO_TENTATIVAS
+}
+
+enum TipoExcecao {
+  REGAP
+  HORARIO
+  IDENTIDADE
+  ESQUECIDO
+  SAIDA_ANTECIPADA
+  OUTRO
+}
+
+enum StatusExcecao {
+  PENDENTE
+  APROVADA
+  RECUSADA
+}
+
+enum TipoDocumento {
+  RG
+  CPF
+  COMPROVANTE_RESIDENCIA
+  CTPS
+  ASO
+  CONTRATO
+  OUTRO
+}
+
+enum StatusDocumento {
+  PENDENTE
+  EM_ANALISE
+  APROVADO
+  REJEITADO
+  VENCIDO
+}
+
+enum TipoDocAssinatura {
+  HOLERITE
+  COMUNICADO
+  ADVERTENCIA
+  ACORDO
+  OUTRO
+}
+
+enum StatusAssinatura {
+  ENVIADO
+  VISUALIZADO
+  ASSINADO
+  RECUSADO
+}
+
+enum MetodoAssinatura {
+  SENHA
+  PIN
+}
+
+enum TipoExportacao {
+  AFD
+  AEJ
+}
+
+enum StatusFatura {
+  PENDENTE
+  PAGA
+  CANCELADA
+}
+
+enum TipoFeriado {
+  NACIONAL
+  ESTADUAL
+  MUNICIPAL
+  FACULTATIVO
+}
+
+enum TipoAusencia {
+  FERIAS
+  AFASTAMENTO
+  LICENCA
+  ATESTADO
+  OUTRO
+}
+
+enum StatusAusencia {
+  PENDENTE
+  APROVADA
+  RECUSADA
+}
+
+enum StatusContestacao {
+  ABERTA
+  RESPONDIDA
+}
+
+enum PublicoComunicado {
+  TODOS
+  FILIAL
+  CARGO
+  FUNCIONARIO
+}
+
+enum TipoIntegracao {
+  FOLHA_PAGAMENTO
+  ESOCIAL
+}
+
+// ----------------------------------------------------------------------------
+// Plataforma / Tenant
+// ----------------------------------------------------------------------------
+
+/// Empresa-cliente (tenant). Raiz do isolamento multi-tenant.
+model Empresa {
+  id           String        @id @default(uuid()) @db.Uuid
+  razaoSocial  String        @map("razao_social")
+  cnpj         String        @unique
+  subdominio   String        @unique
+  plano        String        @default("piloto") // rotulo legado; usar planoId
+  planoId      String?       @map("plano_id") @db.Uuid
+  status       StatusEmpresa @default(ATIVA)
+  dataAtivacao DateTime      @default(now()) @map("data_ativacao")
+  criadoEm     DateTime      @default(now()) @map("criado_em")
+  atualizadoEm DateTime      @updatedAt @map("atualizado_em")
+
+  filiais          Filial[]
+  funcionarios     Funcionario[]
+  admins           UsuarioAdmin[]
+  adminFilialAcesso AdminFilialAcesso[]
+  regaps           Regap[]
+  pontos           Ponto[]
+  aprovacoes       AprovacaoExcecao[]
+  contadoresNsr    ContadorNsr[]
+  consentimentos   ConsentimentoLgpd[]
+  logs             LogAuditoria[]
+  convites         Convite[]
+  refreshTokens    RefreshToken[]
+  logsAcesso       LogAcesso[]
+  tokensRecuperacao TokenRecuperacao[]
+  documentos       Documento[]
+  documentosAssinatura DocumentoAssinatura[]
+  assinaturas          AssinaturaVirtual[]
+  exportacoes          ExportacaoAfdAej[]
+  planoRef             Plano?               @relation(fields: [planoId], references: [id])
+  faturas              Fatura[]
+  jornadas             Jornada[]
+  feriados             Feriado[]
+  ausencias            FeriasAfastamento[]
+  contestacoes         ContestacaoPonto[]
+  comunicados          Comunicado[]
+  comunicadoLeituras   ComunicadoLeitura[]
+  chavesApi            ChaveApi[]
+  integracoes          IntegracaoConfig[]
+
+  @@map("empresas")
+}
+
+/// Estabelecimento/filial. Unidade de referencia do NSR (por estabelecimento).
+model Filial {
+  id        String  @id @default(uuid()) @db.Uuid
+  empresaId String  @map("empresa_id") @db.Uuid
+  nome      String
+  cnpj      String?
+  timezone  String  @default("America/Sao_Paulo")
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  empresa       Empresa             @relation(fields: [empresaId], references: [id])
+  funcionarios  Funcionario[]
+  regaps        Regap[]
+  contadorNsr   ContadorNsr?
+  adminsAcesso  AdminFilialAcesso[]
+  feriados      Feriado[]
+
+  @@index([empresaId])
+  @@map("filiais")
+}
+
+// ----------------------------------------------------------------------------
+// Acesso / Pessoas
+// ----------------------------------------------------------------------------
+
+/// Administrador de RH/gestao. 2FA obrigatorio (ADM 1).
+model UsuarioAdmin {
+  id               String     @id @default(uuid()) @db.Uuid
+  empresaId        String     @map("empresa_id") @db.Uuid
+  nome             String
+  email            String
+  senhaHash        String     @map("senha_hash") // argon2
+  papel            PapelAdmin
+  totpSecret       String?    @map("totp_secret") // cifrado (AES-256); 2FA obrigatorio p/ admin
+  totpAtivado      Boolean    @default(false) @map("totp_ativado")
+  ativo            Boolean    @default(true)
+  // Lockout: 5 tentativas erradas -> bloqueio de 15 min.
+  tentativasFalhas Int        @default(0) @map("tentativas_falhas")
+  bloqueadoAte     DateTime?  @map("bloqueado_ate")
+  ultimoLoginEm    DateTime?  @map("ultimo_login_em")
+  criadoEm         DateTime   @default(now()) @map("criado_em")
+  atualizadoEm     DateTime   @updatedAt @map("atualizado_em")
+
+  empresa        Empresa             @relation(fields: [empresaId], references: [id])
+  filiaisAcesso  AdminFilialAcesso[]
+  convitesGerados Convite[]
+
+  // E-mail unico por empresa (tenant), nao global.
+  @@unique([empresaId, email])
+  @@index([empresaId])
+  @@map("usuarios_admin")
+}
+
+/// Escopo de filiais sob gestao de um admin (Gestor de Filial). RH Master
+/// ignora esse escopo (acesso total dentro da empresa).
+model AdminFilialAcesso {
+  id       String @id @default(uuid()) @db.Uuid
+  empresaId String @map("empresa_id") @db.Uuid
+  adminId  String @map("admin_id") @db.Uuid
+  filialId String @map("filial_id") @db.Uuid
+
+  empresa Empresa      @relation(fields: [empresaId], references: [id])
+  admin   UsuarioAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  filial  Filial       @relation(fields: [filialId], references: [id])
+
+  @@unique([adminId, filialId])
+  @@index([empresaId])
+  @@map("admin_filial_acesso")
+}
+
+/// Funcionario (colaborador). CPF unico POR EMPRESA, nao global.
+model Funcionario {
+  id                 String            @id @default(uuid()) @db.Uuid
+  empresaId          String            @map("empresa_id") @db.Uuid
+  filialId           String?           @map("filial_id") @db.Uuid
+  nome               String
+  cpf                String // apenas digitos; validado por @repp/shared antes de gravar
+  email              String? // contato cadastrado pelo RH (recuperacao/notificacao)
+  telefone           String?
+  cargo              String?
+  salarioBase        Decimal?          @map("salario_base") @db.Decimal(12, 2)
+  jornadaContratual  String?           @map("jornada_contratual") // rotulo livre (legado)
+  jornadaId          String?           @map("jornada_id") @db.Uuid
+  senhaHash          String?           @map("senha_hash") // argon2; nulo ate 1o acesso
+  status             StatusFuncionario @default(PENDENTE_CADASTRO)
+  /// Ponteiro para o blob cifrado (AES-256) no storage. NUNCA o binario aqui.
+  fotoReferenciaRef  String?           @map("foto_referencia_ref")
+  /// So o RH ativa a foto (ADM 2). Ate la, matching facial fica bloqueado.
+  fotoAprovada       Boolean           @default(false) @map("foto_aprovada")
+  // Lockout: 5 tentativas erradas -> bloqueio de 15 min.
+  tentativasFalhas   Int               @default(0) @map("tentativas_falhas")
+  bloqueadoAte       DateTime?         @map("bloqueado_ate")
+  ultimoLoginEm      DateTime?         @map("ultimo_login_em")
+  criadoEm           DateTime          @default(now()) @map("criado_em")
+  atualizadoEm       DateTime          @updatedAt @map("atualizado_em")
+  // Soft delete: desligar NUNCA apaga (guarda legal de 5 anos).
+  desativadoEm       DateTime?         @map("desativado_em")
+
+  empresa       Empresa             @relation(fields: [empresaId], references: [id])
+  filial        Filial?             @relation(fields: [filialId], references: [id])
+  jornada       Jornada?            @relation(fields: [jornadaId], references: [id])
+  pontos        Ponto[]
+  consentimentos ConsentimentoLgpd[]
+  convites      Convite[]
+  aprovacoes    AprovacaoExcecao[]
+  documentos    Documento[]
+  documentosAssinatura DocumentoAssinatura[]
+  assinaturas          AssinaturaVirtual[]
+  ausencias            FeriasAfastamento[]
+  contestacoes         ContestacaoPonto[]
+  comunicadoLeituras   ComunicadoLeitura[]
+
+  @@unique([empresaId, cpf])
+  @@index([empresaId, status])
+  @@map("funcionarios")
+}
+
+// ----------------------------------------------------------------------------
+// REGAP (area geografica autorizada)
+// ----------------------------------------------------------------------------
+
+model Regap {
+  id             String  @id @default(uuid()) @db.Uuid
+  empresaId      String  @map("empresa_id") @db.Uuid
+  filialId       String? @map("filial_id") @db.Uuid
+  nome           String
+  latitudeCentro Decimal @map("latitude_centro") @db.Decimal(10, 7)
+  longitudeCentro Decimal @map("longitude_centro") @db.Decimal(10, 7)
+  raioMetros     Int     @map("raio_metros")
+  ativo          Boolean @default(true)
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+  filial  Filial? @relation(fields: [filialId], references: [id])
+
+  @@index([empresaId])
+  @@map("regap")
+}
+
+// ----------------------------------------------------------------------------
+// PONTO (append-only) + NSR + AJUSTES
+// ----------------------------------------------------------------------------
+
+/// Contador de NSR por estabelecimento (filial). Incremento transacional
+/// garante sequencia sem furos. Uma linha por filial.
+model ContadorNsr {
+  id         String @id @default(uuid()) @db.Uuid
+  empresaId  String @map("empresa_id") @db.Uuid
+  filialId   String @unique @map("filial_id") @db.Uuid
+  ultimoNsr  BigInt @default(0) @map("ultimo_nsr")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+  filial  Filial  @relation(fields: [filialId], references: [id])
+
+  @@index([empresaId])
+  @@map("contadores_nsr")
+}
+
+/// Registro de ponto. APPEND-ONLY: nunca sofre UPDATE/DELETE (imutavel).
+/// Correcao = novo `PontoAjuste` vinculado. O botao nunca bloqueia: todo
+/// registro e aceito; `statusValidacao` sinaliza o que o RH valida depois.
+model Ponto {
+  id               String               @id @default(uuid()) @db.Uuid
+  empresaId        String               @map("empresa_id") @db.Uuid
+  filialId         String?              @map("filial_id") @db.Uuid
+  funcionarioId    String               @map("funcionario_id") @db.Uuid
+  /// NSR sequencial por filial, atribuido pelo servidor. Unico por filial.
+  nsr              BigInt
+  /// Idempotencia ponta-a-ponta (UUID gerado no client). Sync seguro.
+  uuidIdempotencia String               @map("uuid_idempotencia") @db.Uuid
+  tipo             TipoMarcacao
+  /// Hora oficial (servidor quando online; do aparelho quando offline).
+  registradoEm     DateTime             @map("registrado_em")
+  origemHora       OrigemHora           @map("origem_hora")
+  latitude         Decimal?             @db.Decimal(10, 7)
+  longitude        Decimal?             @db.Decimal(10, 7)
+  precisaoMetros   Int?                 @map("precisao_metros")
+  dentroRegap      Boolean              @map("dentro_regap")
+  statusValidacao  StatusValidacaoPonto @map("status_validacao")
+  justificativa    String?
+  /// Ponteiro para a foto da captura no storage cifrado.
+  fotoCapturaRef   String?              @map("foto_captura_ref")
+  /// Hash SHA-256 do conteudo canonico do registro (integridade/Portaria 671).
+  hashIntegridade  String               @map("hash_integridade")
+  criadoEm         DateTime             @default(now()) @map("criado_em")
+
+  empresa      Empresa            @relation(fields: [empresaId], references: [id])
+  funcionario  Funcionario        @relation(fields: [funcionarioId], references: [id])
+  ajustes      PontoAjuste[]
+  aprovacoes   AprovacaoExcecao[]
+  contestacoes ContestacaoPonto[]
+
+  // NSR unico por filial (sem furos e sem colisao).
+  @@unique([filialId, nsr])
+  // Idempotencia: mesmo UUID por empresa nunca duplica.
+  @@unique([empresaId, uuidIdempotencia])
+  @@index([empresaId, funcionarioId, registradoEm])
+  @@index([empresaId, statusValidacao])
+  @@map("pontos")
+}
+
+/// Ajuste/retificacao de um ponto. NUNCA sobrescreve o original -- registra o
+/// novo valor com autor, motivo e timestamp (ADM 4 - "ajuste manual").
+model PontoAjuste {
+  id             String   @id @default(uuid()) @db.Uuid
+  empresaId      String   @map("empresa_id") @db.Uuid
+  pontoOriginalId String  @map("ponto_original_id") @db.Uuid
+  autorAdminId   String   @map("autor_admin_id") @db.Uuid
+  motivo         String
+  /// Snapshot do novo valor proposto (JSON) -- o original permanece intacto.
+  novoValor      Json     @map("novo_valor")
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  pontoOriginal Ponto @relation(fields: [pontoOriginalId], references: [id])
+
+  @@index([empresaId, pontoOriginalId])
+  @@map("pontos_ajustes")
+}
+
+/// Fila de excecoes (ADM 4): quando um ponto e registrado fora da REGAP/horario,
+/// o RH valida aqui. NUNCA altera o ponto (imutavel) -- a decisao vive nesta
+/// tabela. O status "efetivo" de um ponto = ponto.statusValidacao + ultima
+/// aprovacao resolvida.
+model AprovacaoExcecao {
+  id             String        @id @default(uuid()) @db.Uuid
+  empresaId      String        @map("empresa_id") @db.Uuid
+  funcionarioId  String        @map("funcionario_id") @db.Uuid
+  pontoId        String        @map("ponto_id") @db.Uuid
+  tipo           TipoExcecao
+  /// Justificativa do funcionario no ato do registro (se houver).
+  motivo         String?
+  status         StatusExcecao @default(PENDENTE)
+  aprovadorId    String?       @map("aprovador_id") @db.Uuid
+  /// Justificativa OBRIGATORIA do aprovador ao decidir (trilha de auditoria).
+  motivoResposta String?       @map("motivo_resposta")
+  dataResposta   DateTime?     @map("data_resposta")
+  criadoEm       DateTime      @default(now()) @map("criado_em")
+
+  empresa     Empresa     @relation(fields: [empresaId], references: [id])
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+  ponto       Ponto       @relation(fields: [pontoId], references: [id])
+
+  @@index([empresaId, status])
+  @@index([empresaId, funcionarioId])
+  @@map("justificativas_autorizacoes")
+}
+
+// ----------------------------------------------------------------------------
+// LGPD / Consentimento
+// ----------------------------------------------------------------------------
+
+/// Consentimento LGPD especifico e separado (biometria facial e dado sensivel).
+/// Append-only: revogar gera nova linha, nao apaga o historico de consentimento.
+model ConsentimentoLgpd {
+  id            String   @id @default(uuid()) @db.Uuid
+  empresaId     String   @map("empresa_id") @db.Uuid
+  funcionarioId String   @map("funcionario_id") @db.Uuid
+  finalidade    String // ex: "biometria_facial"
+  versaoTermo   String   @map("versao_termo")
+  concedido     Boolean
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  registradoEm  DateTime @default(now()) @map("registrado_em")
+
+  empresa     Empresa     @relation(fields: [empresaId], references: [id])
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+
+  @@index([empresaId, funcionarioId, finalidade])
+  @@map("consentimentos_lgpd")
+}
+
+// ----------------------------------------------------------------------------
+// Auditoria (append-only)
+// ----------------------------------------------------------------------------
+
+/// Trilha de auditoria imutavel. Registra quem, o que, valor anterior/novo.
+/// UPDATE/DELETE revogados no banco (ver RLS SQL).
+model LogAuditoria {
+  id              String   @id @default(uuid()) @db.Uuid
+  empresaId       String   @map("empresa_id") @db.Uuid
+  usuarioId       String?  @map("usuario_id") @db.Uuid
+  usuarioTipo     String   @map("usuario_tipo") // "admin" | "funcionario" | "super_admin" | "sistema"
+  acao            String // ex: "ponto.criar", "funcionario.atualizar"
+  entidadeAfetada String   @map("entidade_afetada")
+  entidadeId      String?  @map("entidade_id") @db.Uuid
+  valorAnterior   Json?    @map("valor_anterior")
+  valorNovo       Json?    @map("valor_novo")
+  ip              String?
+  timestamp       DateTime @default(now())
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, timestamp])
+  @@index([empresaId, entidadeAfetada, entidadeId])
+  @@map("logs_auditoria")
+}
+
+// ----------------------------------------------------------------------------
+// Acesso: convite, tokens de sessao, log de acessos, recuperacao de senha
+// ----------------------------------------------------------------------------
+
+/// Convite de primeiro acesso do funcionario (gerado pelo RH). Guarda apenas o
+/// HASH do codigo (nunca o codigo em claro). Uso unico e com expiracao.
+model Convite {
+  id            String    @id @default(uuid()) @db.Uuid
+  empresaId     String    @map("empresa_id") @db.Uuid
+  funcionarioId String    @map("funcionario_id") @db.Uuid
+  codigoHash    String    @map("codigo_hash") // SHA-256 do codigo enviado
+  expiraEm      DateTime  @map("expira_em")
+  usadoEm       DateTime? @map("usado_em")
+  criadoPorAdminId String @map("criado_por_admin_id") @db.Uuid
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+
+  empresa     Empresa      @relation(fields: [empresaId], references: [id])
+  funcionario Funcionario  @relation(fields: [funcionarioId], references: [id])
+  criadoPor   UsuarioAdmin @relation(fields: [criadoPorAdminId], references: [id])
+
+  @@index([empresaId, funcionarioId])
+  @@map("convites")
+}
+
+/// Refresh token (rotacao). Guarda apenas o HASH. Revogar = preencher revogadoEm.
+model RefreshToken {
+  id          String      @id @default(uuid()) @db.Uuid
+  empresaId   String      @map("empresa_id") @db.Uuid
+  sujeitoId   String      @map("sujeito_id") @db.Uuid
+  sujeitoTipo TipoSujeito @map("sujeito_tipo")
+  tokenHash   String      @map("token_hash") // SHA-256 do refresh token
+  expiraEm    DateTime    @map("expira_em")
+  revogadoEm  DateTime?   @map("revogado_em")
+  ip          String?
+  userAgent   String?     @map("user_agent")
+  criadoEm    DateTime    @default(now()) @map("criado_em")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, sujeitoId, sujeitoTipo])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+/// Log de acessos (ADM 1): quem entrou/saiu, quando, de onde. Append-only.
+model LogAcesso {
+  id          String       @id @default(uuid()) @db.Uuid
+  empresaId   String       @map("empresa_id") @db.Uuid
+  sujeitoId   String?      @map("sujeito_id") @db.Uuid
+  sujeitoTipo TipoSujeito  @map("sujeito_tipo")
+  /// Identificador tentado (CPF/e-mail) mesmo quando o login falha.
+  identificador String?    @map("identificador")
+  evento      EventoAcesso
+  ip          String?
+  userAgent   String?      @map("user_agent")
+  timestamp   DateTime     @default(now())
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, timestamp])
+  @@index([empresaId, sujeitoId])
+  @@map("logs_acesso")
+}
+
+/// Token de recuperacao de senha ("esqueci minha senha"). Guarda apenas o HASH.
+model TokenRecuperacao {
+  id          String      @id @default(uuid()) @db.Uuid
+  empresaId   String      @map("empresa_id") @db.Uuid
+  sujeitoId   String      @map("sujeito_id") @db.Uuid
+  sujeitoTipo TipoSujeito @map("sujeito_tipo")
+  tokenHash   String      @map("token_hash")
+  expiraEm    DateTime    @map("expira_em")
+  usadoEm     DateTime?   @map("usado_em")
+  criadoEm    DateTime    @default(now()) @map("criado_em")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, sujeitoId])
+  @@map("tokens_recuperacao")
+}
+
+/// Documento do funcionario (Tela 4 / ADM 2). O arquivo em si e guardado cifrado
+/// no storage; aqui fica apenas a referencia opaca + metadados/status.
+model Documento {
+  id             String          @id @default(uuid()) @db.Uuid
+  empresaId      String          @map("empresa_id") @db.Uuid
+  funcionarioId  String          @map("funcionario_id") @db.Uuid
+  tipo           TipoDocumento
+  arquivoRef     String          @map("arquivo_ref") // referencia no storage cifrado
+  nomeArquivo    String?         @map("nome_arquivo")
+  mime           String?
+  status         StatusDocumento @default(EM_ANALISE)
+  motivoRejeicao String?         @map("motivo_rejeicao")
+  dataValidade   DateTime?       @map("data_validade")
+  revisadoPorId  String?         @map("revisado_por_id") @db.Uuid
+  criadoEm       DateTime        @default(now()) @map("criado_em")
+  atualizadoEm   DateTime        @updatedAt @map("atualizado_em")
+
+  empresa     Empresa     @relation(fields: [empresaId], references: [id])
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+
+  @@index([empresaId, funcionarioId])
+  @@index([empresaId, status])
+  @@index([empresaId, dataValidade])
+  @@map("documentos")
+}
+
+/// Documento enviado pelo RH para o funcionario assinar (holerite, comunicado,
+/// advertencia, acordo). O arquivo fica cifrado no storage; `hashDocumento` e o
+/// SHA-256 dos bytes originais -- base da integridade da assinatura.
+model DocumentoAssinatura {
+  id                            String            @id @default(uuid()) @db.Uuid
+  empresaId                     String            @map("empresa_id") @db.Uuid
+  funcionarioId                 String            @map("funcionario_id") @db.Uuid
+  tipo                          TipoDocAssinatura
+  titulo                        String
+  /// Competencia "YYYY-MM" (ex.: holerite). Nulo para documentos avulsos.
+  competencia                   String?
+  arquivoRef                    String            @map("arquivo_ref")
+  hashDocumento                 String            @map("hash_documento") // SHA-256 hex dos bytes
+  mime                          String?
+  tamanhoBytes                  Int               @map("tamanho_bytes")
+  status                        StatusAssinatura  @default(ENVIADO)
+  /// Se false, o funcionario so baixa o arquivo apos assinar (Tela 2).
+  permiteDownloadAntesAssinatura Boolean          @default(false) @map("permite_download_antes")
+  enviadoPorAdminId             String            @map("enviado_por_admin_id") @db.Uuid
+  motivoRecusa                  String?           @map("motivo_recusa")
+  visualizadoEm                 DateTime?         @map("visualizado_em")
+  recusadoEm                    DateTime?         @map("recusado_em")
+  criadoEm                      DateTime          @default(now()) @map("criado_em")
+  atualizadoEm                  DateTime          @updatedAt @map("atualizado_em")
+
+  empresa     Empresa            @relation(fields: [empresaId], references: [id])
+  funcionario Funcionario        @relation(fields: [funcionarioId], references: [id])
+  assinatura  AssinaturaVirtual?
+
+  @@index([empresaId, funcionarioId])
+  @@index([empresaId, status])
+  @@index([empresaId, competencia])
+  @@map("documentos_assinatura")
+}
+
+/// Registro IMUTAVEL da assinatura (append-only; UPDATE/DELETE revogados via RLS).
+/// Vincula o hash do documento, o hash do manifesto e a assinatura Ed25519 do
+/// servidor, com timestamp confiavel e IP/dispositivo -- validade juridica.
+model AssinaturaVirtual {
+  id                    String           @id @default(uuid()) @db.Uuid
+  empresaId             String           @map("empresa_id") @db.Uuid
+  documentoAssinaturaId String           @unique @map("documento_assinatura_id") @db.Uuid
+  funcionarioId         String           @map("funcionario_id") @db.Uuid
+  hashDocumento         String           @map("hash_documento") // snapshot do SHA-256 do documento
+  hashAssinatura        String           @map("hash_assinatura") // SHA-256 do manifesto canonico
+  /// Assinatura Ed25519 do manifesto pela chave do servidor (base64).
+  assinaturaServidor    String           @map("assinatura_servidor")
+  chaveServidorId       String           @map("chave_servidor_id") // fingerprint da chave publica
+  metodo                MetodoAssinatura
+  ip                    String?
+  userAgent             String?          @map("user_agent")
+  timestampAssinatura   DateTime         @map("timestamp_assinatura")
+  criadoEm              DateTime         @default(now()) @map("criado_em")
+
+  empresa     Empresa             @relation(fields: [empresaId], references: [id])
+  funcionario Funcionario         @relation(fields: [funcionarioId], references: [id])
+  documento   DocumentoAssinatura @relation(fields: [documentoAssinaturaId], references: [id])
+
+  @@index([empresaId, funcionarioId])
+  @@map("assinaturas_virtuais")
+}
+
+/// Registro IMUTAVEL de cada exportacao legal (AFD/AEJ) -- Portaria 671.
+/// Guarda hash SHA-256 do arquivo + assinatura Ed25519 do servidor + referencia
+/// do arquivo cifrado. Append-only (UPDATE/DELETE revogados via RLS).
+model ExportacaoAfdAej {
+  id                 String         @id @default(uuid()) @db.Uuid
+  empresaId          String         @map("empresa_id") @db.Uuid
+  tipoArquivo        TipoExportacao @map("tipo_arquivo")
+  /// Periodo de referencia (ex.: "2026-07" ou "2026-07-01_2026-07-31").
+  periodoReferencia  String         @map("periodo_referencia")
+  dataInicial        DateTime       @map("data_inicial")
+  dataFinal          DateTime       @map("data_final")
+  arquivoRef         String         @map("arquivo_ref")
+  hashArquivo        String         @map("hash_arquivo") // SHA-256 hex
+  assinaturaServidor String         @map("assinatura_servidor") // Ed25519 base64
+  chaveServidorId    String         @map("chave_servidor_id")
+  totalRegistros     Int            @map("total_registros")
+  geradoPorAdminId   String         @map("gerado_por_admin_id") @db.Uuid
+  criadoEm           DateTime       @default(now()) @map("criado_em")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, tipoArquivo, periodoReferencia])
+  @@map("exportacoes_afd_aej")
+}
+
+// ----------------------------------------------------------------------------
+// Plataforma / SaaS (ADM 0 - Super Admin). Tabelas NAO multi-tenant: acessadas
+// pela role repp_super, que tem privilegio REVOGADO nas tabelas operacionais
+// (biometria/ponto/documentos). Ver prisma/sql/rls-policies.sql.
+// ----------------------------------------------------------------------------
+
+/// Administrador da PLATAFORMA (equipe dona do software). Acima de qualquer RH.
+/// Nao pertence a nenhuma empresa. 2FA obrigatorio.
+model SuperAdmin {
+  id               String    @id @default(uuid()) @db.Uuid
+  nome             String
+  email            String    @unique
+  senhaHash        String    @map("senha_hash")
+  totpSecret       String?   @map("totp_secret")
+  totpAtivado      Boolean   @default(false) @map("totp_ativado")
+  ativo            Boolean   @default(true)
+  tentativasFalhas Int       @default(0) @map("tentativas_falhas")
+  bloqueadoAte     DateTime? @map("bloqueado_ate")
+  ultimoLoginEm    DateTime? @map("ultimo_login_em")
+  criadoEm         DateTime  @default(now()) @map("criado_em")
+  atualizadoEm     DateTime  @updatedAt @map("atualizado_em")
+
+  @@map("super_admins")
+}
+
+/// Refresh token do Super Admin (rotacionado; guarda so o hash).
+model SuperRefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  superAdminId String    @map("super_admin_id") @db.Uuid
+  tokenHash    String    @map("token_hash")
+  expiraEm     DateTime  @map("expira_em")
+  revogadoEm   DateTime? @map("revogado_em")
+  ip           String?
+  userAgent    String?   @map("user_agent")
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+
+  @@index([tokenHash])
+  @@map("super_refresh_tokens")
+}
+
+/// Plano comercial (SaaS). Valores em centavos.
+model Plano {
+  id                    String    @id @default(uuid()) @db.Uuid
+  nome                  String    @unique
+  precoMensalCentavos   Int       @map("preco_mensal_centavos")
+  limiteFuncionarios    Int?      @map("limite_funcionarios")
+  limiteArmazenamentoMb Int?      @map("limite_armazenamento_mb")
+  ativo                 Boolean   @default(true)
+  criadoEm              DateTime  @default(now()) @map("criado_em")
+
+  empresas Empresa[]
+
+  @@map("planos")
+}
+
+/// Fatura (cobranca) por empresa. Integracao com gateway externo e registrada
+/// em `gatewayRef` (a chamada ao gateway em si e infra externa).
+model Fatura {
+  id            String       @id @default(uuid()) @db.Uuid
+  empresaId     String       @map("empresa_id") @db.Uuid
+  competencia   String // "YYYY-MM"
+  valorCentavos Int          @map("valor_centavos")
+  status        StatusFatura @default(PENDENTE)
+  vencimento    DateTime
+  gatewayRef    String?      @map("gateway_ref")
+  pagoEm        DateTime?    @map("pago_em")
+  criadoEm      DateTime     @default(now()) @map("criado_em")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, competencia])
+  @@map("faturas")
+}
+
+/// Auditoria propria do Super Admin (append-only). Inclusive ele nao escapa da
+/// trilha. Nao e multi-tenant (acao de plataforma).
+model LogSuperAdmin {
+  id              String   @id @default(uuid()) @db.Uuid
+  superAdminId    String?  @map("super_admin_id") @db.Uuid
+  acao            String
+  entidadeAfetada String   @map("entidade_afetada")
+  entidadeId      String?  @map("entidade_id") @db.Uuid
+  valorNovo       Json?    @map("valor_novo")
+  ip              String?
+  timestamp       DateTime @default(now())
+
+  @@index([timestamp])
+  @@map("logs_super_admin")
+}
+
+// ----------------------------------------------------------------------------
+// Configuracoes (ADM 7): jornadas padrao e calendario de feriados.
+// ----------------------------------------------------------------------------
+
+/// Jornada padrao (por cargo/setor). Base para classificar PENDENTE_HORARIO no
+/// registro de ponto (atraso/saida antecipada/dia fora de escala).
+model Jornada {
+  id               String   @id @default(uuid()) @db.Uuid
+  empresaId        String   @map("empresa_id") @db.Uuid
+  nome             String
+  horaEntrada      String   @map("hora_entrada") // "HH:MM"
+  horaSaida        String   @map("hora_saida") // "HH:MM"
+  toleranciaMinutos Int     @default(10) @map("tolerancia_minutos")
+  /// Carga diaria esperada (minutos liquidos) para o banco de horas. Nulo = sem saldo.
+  cargaDiariaMinutos Int?   @map("carga_diaria_minutos")
+  /// Dias de escala (0=domingo ... 6=sabado).
+  diasSemana       Int[]    @map("dias_semana")
+  /// Regime de horas extras: compensacao mensal, banco anual (CLT) ou hora extra direta.
+  regimeHoras      RegimeHoras @default(COMPENSACAO_MENSAL) @map("regime_horas")
+  /// Limite legal de horas extras por dia (min) para alerta (CLT: 2h = 120min).
+  limiteExtraDiariaMin Int  @default(120) @map("limite_extra_diaria_min")
+  ativo            Boolean  @default(true)
+  criadoEm         DateTime @default(now()) @map("criado_em")
+
+  empresa      Empresa       @relation(fields: [empresaId], references: [id])
+  funcionarios Funcionario[]
+
+  @@index([empresaId])
+  @@map("jornadas")
+}
+
+/// Regimes de tratamento do saldo de horas (configuravel por jornada/empresa).
+enum RegimeHoras {
+  /// Saldo credita/debita no mes e deve compensar ate o mes seguinte.
+  COMPENSACAO_MENSAL
+  /// Banco de horas acumula ate 12 meses (acordo coletivo, limite CLT).
+  BANCO_ANUAL
+  /// Nada acumula: excedente vira hora extra paga; falta vira desconto.
+  HORA_EXTRA
+}
+
+enum TipoAjusteBanco {
+  /// Compensacao (folga/saida) que consome saldo positivo.
+  COMPENSACAO
+  /// Credito manual lancado pelo RH (ex.: acordo, correcao).
+  CREDITO_MANUAL
+  /// Debito manual lancado pelo RH.
+  DEBITO_MANUAL
+  /// Pagamento do excedente em folha (zera parte do saldo).
+  PAGAMENTO_EXTRA
+}
+
+/// Razao (ledger) do banco de horas: lancamentos manuais/compensacoes do RH.
+/// O saldo automatico vem das marcacoes (pontos); estes ajustes somam-se a ele.
+/// Append-only (imutavel): correcoes sao novos lancamentos, nunca edicao.
+model AjusteBancoHoras {
+  id               String          @id @default(uuid()) @db.Uuid
+  empresaId        String          @map("empresa_id") @db.Uuid
+  funcionarioId    String          @map("funcionario_id") @db.Uuid
+  /// Minutos: positivo credita, negativo debita o saldo.
+  minutos          Int
+  tipo             TipoAjusteBanco
+  motivo           String
+  /// Competencia "AAAA-MM" a que o ajuste se refere (opcional).
+  competencia      String?
+  criadoPorAdminId String          @map("criado_por_admin_id") @db.Uuid
+  criadoEm         DateTime        @default(now()) @map("criado_em")
+
+  @@index([empresaId, funcionarioId])
+  @@index([empresaId, competencia])
+  @@map("ajustes_banco_horas")
+}
+
+/// Feriado / ponto facultativo. `filialId` nulo = vale para toda a empresa.
+model Feriado {
+  id        String      @id @default(uuid()) @db.Uuid
+  empresaId String      @map("empresa_id") @db.Uuid
+  filialId  String?     @map("filial_id") @db.Uuid
+  data      DateTime    @db.Date
+  nome      String
+  tipo      TipoFeriado
+  criadoEm  DateTime    @default(now()) @map("criado_em")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+  filial  Filial? @relation(fields: [filialId], references: [id])
+
+  @@index([empresaId, data])
+  @@map("feriados")
+}
+
+// ----------------------------------------------------------------------------
+// ADM 10 -- Ferias e Afastamentos. ADM 11 -- Contestacao de ponto.
+// ----------------------------------------------------------------------------
+
+/// Solicitacao de ausencia (ferias/afastamento). Dias aprovados abonam o horario
+/// (nao geram PENDENTE_HORARIO) e nao geram cobranca de falta.
+model FeriasAfastamento {
+  id             String         @id @default(uuid()) @db.Uuid
+  empresaId      String         @map("empresa_id") @db.Uuid
+  funcionarioId  String         @map("funcionario_id") @db.Uuid
+  tipo           TipoAusencia
+  dataInicio     DateTime       @map("data_inicio") @db.Date
+  dataFim        DateTime       @map("data_fim") @db.Date
+  motivo         String?
+  status         StatusAusencia @default(PENDENTE)
+  aprovadorId    String?        @map("aprovador_id") @db.Uuid
+  motivoResposta String?        @map("motivo_resposta")
+  dataResposta   DateTime?      @map("data_resposta")
+  criadoEm       DateTime       @default(now()) @map("criado_em")
+
+  empresa     Empresa     @relation(fields: [empresaId], references: [id])
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+
+  @@index([empresaId, status])
+  @@index([empresaId, funcionarioId])
+  @@map("ferias_afastamentos")
+}
+
+/// Contestacao formal de uma marcacao pelo funcionario (ADM 11). O ponto e
+/// imutavel -- a contestacao e a resposta ficam registradas e auditadas.
+model ContestacaoPonto {
+  id              String            @id @default(uuid()) @db.Uuid
+  empresaId       String            @map("empresa_id") @db.Uuid
+  funcionarioId   String            @map("funcionario_id") @db.Uuid
+  pontoId         String            @map("ponto_id") @db.Uuid
+  motivo          String
+  status          StatusContestacao @default(ABERTA)
+  resposta        String?
+  respondidoPorId String?           @map("respondido_por_id") @db.Uuid
+  dataResposta    DateTime?         @map("data_resposta")
+  criadoEm        DateTime          @default(now()) @map("criado_em")
+
+  empresa     Empresa     @relation(fields: [empresaId], references: [id])
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+  ponto       Ponto       @relation(fields: [pontoId], references: [id])
+
+  @@index([empresaId, status])
+  @@map("contestacoes_ponto")
+}
+
+// ----------------------------------------------------------------------------
+// ADM 8 -- Comunicados e Notificacoes. ADM 9 -- Integracoes.
+// ----------------------------------------------------------------------------
+
+/// Comunicado da empresa para funcionarios (com publico-alvo).
+model Comunicado {
+  id              String            @id @default(uuid()) @db.Uuid
+  empresaId       String            @map("empresa_id") @db.Uuid
+  titulo          String
+  mensagem        String
+  publicoTipo     PublicoComunicado @map("publico_tipo")
+  /// Valor do publico (filialId, cargo ou funcionarioId) quando aplicavel.
+  publicoValor    String?           @map("publico_valor")
+  criadoPorAdminId String           @map("criado_por_admin_id") @db.Uuid
+  criadoEm        DateTime          @default(now()) @map("criado_em")
+
+  empresa  Empresa              @relation(fields: [empresaId], references: [id])
+  leituras ComunicadoLeitura[]
+
+  @@index([empresaId, criadoEm])
+  @@map("comunicados")
+}
+
+/// Marca a leitura de um comunicado por um funcionario (taxa de visualizacao).
+model ComunicadoLeitura {
+  id            String   @id @default(uuid()) @db.Uuid
+  empresaId     String   @map("empresa_id") @db.Uuid
+  comunicadoId  String   @map("comunicado_id") @db.Uuid
+  funcionarioId String   @map("funcionario_id") @db.Uuid
+  lidoEm        DateTime @default(now()) @map("lido_em")
+
+  empresa     Empresa     @relation(fields: [empresaId], references: [id])
+  comunicado  Comunicado  @relation(fields: [comunicadoId], references: [id])
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id])
+
+  @@unique([comunicadoId, funcionarioId])
+  @@index([empresaId])
+  @@map("comunicados_leitura")
+}
+
+/// Chave de API para integracao externa (ADM 9). Guarda apenas o hash do token.
+model ChaveApi {
+  id               String    @id @default(uuid()) @db.Uuid
+  empresaId        String    @map("empresa_id") @db.Uuid
+  nome             String
+  prefixo          String // primeiros chars, para exibicao
+  tokenHash        String    @map("token_hash")
+  escopo           String    @default("leitura")
+  revogadaEm       DateTime? @map("revogada_em")
+  criadoPorAdminId String    @map("criado_por_admin_id") @db.Uuid
+  criadoEm         DateTime  @default(now()) @map("criado_em")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId])
+  @@map("chaves_api")
+}
+
+/// Configuracao de integracao (folha/eSocial). A transmissao em si e infra externa.
+model IntegracaoConfig {
+  id           String         @id @default(uuid()) @db.Uuid
+  empresaId    String         @map("empresa_id") @db.Uuid
+  tipo         TipoIntegracao
+  ativo        Boolean        @default(false)
+  config       Json?
+  atualizadoEm DateTime       @updatedAt @map("atualizado_em")
+  criadoEm     DateTime       @default(now()) @map("criado_em")
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, tipo])
+  @@map("integracoes_config")
+}

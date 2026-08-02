@@ -1,0 +1,390 @@
+import { formatarCpf, isCpfValido, normalizarCpf } from '@repp/shared';
+import { useCallback, useEffect, useState } from 'react';
+import { Badge, Botao, Campo, Cartao, Selecao } from '../design-system/components';
+import { apiGet, apiPost } from '../lib/api';
+
+interface OpcaoRef {
+  id: string;
+  nome: string;
+}
+
+interface Funcionario {
+  id: string;
+  nome: string;
+  cpf: string;
+  cargo: string | null;
+  status: string;
+  fotoAprovada: boolean;
+}
+
+interface Documento {
+  id: string;
+  tipo: string;
+  status: string;
+  nomeArquivo: string | null;
+  motivoRejeicao: string | null;
+}
+
+/** ADM 2 -- Gestao de Funcionarios. */
+export function GestaoFuncionarios() {
+  const [lista, setLista] = useState<Funcionario[]>([]);
+  const [busca, setBusca] = useState('');
+  const [sel, setSel] = useState<Funcionario | null>(null);
+  const [docs, setDocs] = useState<Documento[]>([]);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    try {
+      const q = busca ? `?busca=${encodeURIComponent(busca)}` : '';
+      setLista(await apiGet<Funcionario[]>(`/admin/funcionarios${q}`));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar.');
+    }
+  }, [busca]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  async function abrir(f: Funcionario) {
+    setSel(f);
+    setDocs(await apiGet<Documento[]>(`/admin/funcionarios/${f.id}/documentos`));
+  }
+
+  async function decidirDoc(id: string, aprovar: boolean) {
+    const motivo = aprovar ? undefined : window.prompt('Motivo da rejeicao:') ?? undefined;
+    if (!aprovar && !motivo) return;
+    await apiPost(`/admin/documentos/${id}/decidir`, { aprovar, motivo }, true);
+    if (sel) await abrir(sel);
+  }
+
+  async function aprovarFoto(f: Funcionario) {
+    await apiPost(`/admin/funcionarios/${f.id}/foto/aprovar`, {}, true);
+    await carregar();
+    setSel({ ...f, fotoAprovada: true });
+  }
+
+  return (
+    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'var(--space-4)' }}>
+      <h1 style={{ font: '700 24px var(--font-display)' }}>Gestao de Funcionarios</h1>
+      {erro && <Badge cor="var(--color-red-alert)">{erro}</Badge>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+        <div>
+          <NovoFuncionario onCriado={carregar} />
+          <div style={{ height: 'var(--space-3)' }} />
+          <Cartao>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+              <input
+                placeholder="Buscar por nome ou CPF"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                style={{ flex: 1, padding: 'var(--space-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+              />
+            </div>
+            {lista.map((f) => (
+              <div
+                key={f.id}
+                onClick={() => abrir(f)}
+                style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
+              >
+                <span>{f.nome}</span>
+                <span style={{ font: '12px var(--font-mono)' }}>{f.cpf}</span>
+                <Badge cor={f.status === 'ATIVO' ? 'var(--color-teal-success)' : 'var(--color-border)'}>{f.status}</Badge>
+              </div>
+            ))}
+          </Cartao>
+        </div>
+
+        <div>
+          {sel ? (
+            <Cartao>
+              <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>{sel.nome}</h2>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+                <Badge cor={sel.fotoAprovada ? 'var(--color-teal-success)' : 'var(--color-amber-warning)'}>
+                  {sel.fotoAprovada ? 'Foto aprovada' : 'Foto pendente'}
+                </Badge>
+                {!sel.fotoAprovada && (
+                  <button onClick={() => aprovarFoto(sel)} style={acao('var(--color-accent)')}>
+                    Aprovar foto
+                  </button>
+                )}
+              </div>
+              <h3 style={{ font: '600 14px var(--font-body)' }}>Documentos</h3>
+              {docs.length === 0 && <p style={{ color: '#5b6472' }}>Nenhum documento enviado.</p>}
+              {docs.map((d) => (
+                <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border)' }}>
+                  <span>{d.tipo}</span>
+                  <Badge cor={d.status === 'APROVADO' ? 'var(--color-teal-success)' : d.status === 'REJEITADO' ? 'var(--color-red-alert)' : 'var(--color-amber-warning)'}>
+                    {d.status}
+                  </Badge>
+                  {d.status === 'EM_ANALISE' && (
+                    <span style={{ display: 'flex', gap: 'var(--space-1)' }}>
+                      <button onClick={() => decidirDoc(d.id, true)} style={acao('var(--color-teal-success)')}>Aprovar</button>
+                      <button onClick={() => decidirDoc(d.id, false)} style={acao('var(--color-red-alert)')}>Rejeitar</button>
+                    </span>
+                  )}
+                </div>
+              ))}
+              <FechamentoMensal funcionarioId={sel.id} />
+              <BancoHoras funcionarioId={sel.id} />
+            </Cartao>
+          ) : (
+            <Cartao>
+              <p style={{ color: '#5b6472' }}>Selecione um funcionario para ver documentos.</p>
+            </Cartao>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
+  const [nome, setNome] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [cargo, setCargo] = useState('');
+  const [email, setEmail] = useState('');
+  const [filialId, setFilialId] = useState('');
+  const [jornadaId, setJornadaId] = useState('');
+  const [filiais, setFiliais] = useState<OpcaoRef[]>([]);
+  const [jornadas, setJornadas] = useState<OpcaoRef[]>([]);
+  const [erro, setErro] = useState<string | null>(null);
+  const [codigo, setCodigo] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        setFiliais(await apiGet<OpcaoRef[]>('/admin/configuracoes/filiais'));
+        setJornadas(await apiGet<OpcaoRef[]>('/admin/configuracoes/jornadas'));
+      } catch {
+        /* mantem vazio; a validacao abaixo orienta */
+      }
+    })();
+  }, []);
+
+  const cpfValido = isCpfValido(cpf);
+
+  async function criar() {
+    setErro(null);
+    setCodigo(null);
+    if (!cpfValido) return setErro('CPF invalido (digito verificador).');
+    if (!filialId) return setErro('Selecione a filial (obrigatorio para o funcionario bater ponto).');
+    try {
+      // /convites cria o funcionario E gera o codigo de primeiro acesso de uma vez.
+      const r = await apiPost<{ codigo: string; expiraEm: string }>(
+        '/convites',
+        {
+          nome,
+          cpf: normalizarCpf(cpf),
+          cargo: cargo || undefined,
+          email: email || undefined,
+          filialId,
+          jornadaId: jornadaId || undefined,
+        },
+        true,
+      );
+      setCodigo(r.codigo);
+      setNome('');
+      setCpf('');
+      setCargo('');
+      setEmail('');
+      setJornadaId('');
+      onCriado();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao cadastrar.');
+    }
+  }
+
+  return (
+    <Cartao>
+      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Novo funcionario</h2>
+      <Campo label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+      <Campo
+        label="CPF"
+        inputMode="numeric"
+        value={cpf.length ? formatarCpf(cpf) : ''}
+        onChange={(e) => setCpf(normalizarCpf(e.target.value))}
+        erro={cpf.length >= 11 && !cpfValido ? 'Digito verificador invalido' : undefined}
+        placeholder="000.000.000-00"
+      />
+      <Campo label="Cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} />
+      <Campo
+        label="E-mail (recebe o convite / recuperacao)"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="opcional"
+      />
+      <Selecao label="Filial" value={filialId} onChange={(e) => setFilialId(e.target.value)}>
+        <option value="">Selecione...</option>
+        {filiais.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.nome}
+          </option>
+        ))}
+      </Selecao>
+      {filiais.length === 0 && (
+        <p style={{ font: '400 12px var(--font-body)', color: 'var(--color-amber-warning)', marginTop: '-8px' }}>
+          Nenhuma filial cadastrada. Crie uma em Configuracoes &gt; Filiais.
+        </p>
+      )}
+      <Selecao label="Jornada (opcional)" value={jornadaId} onChange={(e) => setJornadaId(e.target.value)}>
+        <option value="">Sem jornada definida</option>
+        {jornadas.map((j) => (
+          <option key={j.id} value={j.id}>
+            {j.nome}
+          </option>
+        ))}
+      </Selecao>
+      {erro && <Badge cor="var(--color-red-alert)">{erro}</Badge>}
+      {codigo && (
+        <div style={{ margin: 'var(--space-2) 0' }}>
+          <Badge cor="var(--color-teal-success)">
+            Codigo de 1o acesso: {codigo} (informe ao funcionario; tambem enviado por e-mail)
+          </Badge>
+        </div>
+      )}
+      <Botao onClick={criar} disabled={!nome || !cpf || !filialId}>
+        Cadastrar e gerar convite
+      </Botao>
+    </Cartao>
+  );
+}
+
+function FechamentoMensal({ funcionarioId }: { funcionarioId: string }) {
+  const agora = new Date();
+  const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+  const [competencia, setCompetencia] = useState(mesAtual);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function gerar() {
+    setMsg(null);
+    setErro(null);
+    try {
+      const r = await apiPost<{ titulo: string }>(
+        '/admin/fechamentos',
+        { funcionarioId, competencia },
+        true,
+      );
+      setMsg(`${r.titulo} gerado e enviado para assinatura do funcionario.`);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar fechamento.');
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
+      <h3 style={{ font: '600 14px var(--font-body)', marginTop: 0 }}>Fechamento mensal (espelho de ponto)</h3>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
+        <div style={{ flex: 1 }}>
+          <Campo label="Competencia" type="month" value={competencia} onChange={(e) => setCompetencia(e.target.value)} />
+        </div>
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <Botao onClick={gerar} disabled={!competencia}>Gerar espelho</Botao>
+        </div>
+      </div>
+      {msg && <Badge cor="var(--color-teal-success)">{msg}</Badge>}
+      {erro && <Badge cor="var(--color-red-alert)">{erro}</Badge>}
+    </div>
+  );
+}
+
+interface Consolidado {
+  regime: string;
+  saldoFormatado: string | null;
+  extrasMin: number;
+  faltasMin: number;
+  ajustesMin: number;
+  observacao: string;
+  alertas: string[];
+}
+
+function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
+  const hoje = new Date();
+  const ini = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`;
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+  const fimStr = `${fim.getFullYear()}-${String(fim.getMonth() + 1).padStart(2, '0')}-${String(fim.getDate()).padStart(2, '0')}`;
+  const comp = ini.slice(0, 7);
+  const [dados, setDados] = useState<Consolidado | null>(null);
+  const [min, setMin] = useState('');
+  const [motivo, setMotivo] = useState('');
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    setErro(null);
+    try {
+      setDados(
+        await apiGet<Consolidado>(
+          `/admin/banco-horas/${funcionarioId}?inicio=${ini}T00:00:00Z&fim=${fimStr}T23:59:59Z&competencia=${comp}`,
+        ),
+      );
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar banco de horas.');
+    }
+  }, [funcionarioId, ini, fimStr, comp]);
+
+  useEffect(() => {
+    void carregar();
+  }, [carregar]);
+
+  async function lancar() {
+    setErro(null);
+    const m = Number(min);
+    if (!Number.isInteger(m) || m === 0) return setErro('Informe minutos (+credita / -debita).');
+    if (motivo.trim().length < 3) return setErro('Descreva o motivo.');
+    try {
+      await apiPost(
+        '/admin/banco-horas/ajuste',
+        { funcionarioId, minutos: m, tipo: m > 0 ? 'CREDITO_MANUAL' : 'DEBITO_MANUAL', motivo, competencia: comp },
+        true,
+      );
+      setMin('');
+      setMotivo('');
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao lancar ajuste.');
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
+      <h3 style={{ font: '600 14px var(--font-body)', marginTop: 0 }}>Banco de horas ({comp})</h3>
+      {dados && (
+        <div style={{ font: '13px var(--font-body)', marginBottom: 'var(--space-2)' }}>
+          <div>Regime: <strong>{dados.regime}</strong></div>
+          <div>Saldo: <strong>{dados.saldoFormatado ?? '--'}</strong> · extras {dados.extrasMin}min · faltas {dados.faltasMin}min · ajustes {dados.ajustesMin}min</div>
+          <div style={{ color: '#5b6472', font: '12px var(--font-body)' }}>{dados.observacao}</div>
+          {dados.alertas.map((a, i) => (
+            <div key={i} style={{ marginTop: 4 }}><Badge cor="var(--color-amber-warning)">{a}</Badge></div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
+        <div style={{ width: 120 }}>
+          <Campo label="Ajuste (min)" inputMode="numeric" value={min} onChange={(e) => setMin(e.target.value)} placeholder="+/- min" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Campo label="Motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="ex.: compensacao acordada" />
+        </div>
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <Botao onClick={lancar} disabled={!min || !motivo}>Lancar</Botao>
+        </div>
+      </div>
+      {erro && <Badge cor="var(--color-red-alert)">{erro}</Badge>}
+    </div>
+  );
+}
+
+function acao(cor: string) {
+  return {
+    padding: '4px 10px',
+    borderRadius: 'var(--radius-sm)',
+    border: 'none',
+    background: cor,
+    color: '#fff',
+    cursor: 'pointer',
+    font: '500 12px var(--font-body)',
+  } as const;
+}

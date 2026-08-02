@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Env / secrets (NUNCA versionar segredos ou chaves de biometria)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Prisma
+apps/api/prisma/*.db
+
+# Coverage / testes
+coverage/
+.vitest/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editores / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# PWA / uploads locais (dados sensiveis nunca no repo)
+apps/web/dev-dist/
+uploads/
+storage/
+
+# Banco de desenvolvimento local (PostgreSQL embarcado)
+.devdb/

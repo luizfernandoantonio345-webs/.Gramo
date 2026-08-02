@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Cancela execucoes antigas do mesmo ref (economia de minutos).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npm run prisma:generate -w @repp/api
+
+      - name: Build (shared -> api -> web)
+        run: |
+          npm run build -w @repp/shared
+          npm run build -w @repp/api
+          npm run build -w @repp/web
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Checagem de formatacao
+        run: npm run format:check
+
+      - name: Testes (unidade)
+        run: npm test
+
+      - name: Validar schema Prisma
+        run: npx prisma validate --schema apps/api/prisma/schema.prisma
+
+      # e2e com Postgres real embarcado (RLS, concorrencia do NSR, imutabilidade).
+      - name: Testes e2e (Postgres embarcado)
+        run: npm run test:e2e -w @repp/api

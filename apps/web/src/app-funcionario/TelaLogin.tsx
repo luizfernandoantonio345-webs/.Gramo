@@ -1,0 +1,118 @@
+import { formatarCpf, isCpfValido, normalizarCpf, validarSenha } from '@repp/shared';
+import { useState } from 'react';
+import { Badge, Botao, Campo, Cartao } from '../design-system/components';
+import { apiPost, type ParTokens } from '../lib/api';
+
+type Modo = 'login' | 'primeiro-acesso';
+
+/**
+ * Tela 1 -- Login / Cadastrar (funcionario). Login com CPF+senha; primeiro
+ * acesso via codigo de convite + aceite LGPD. Login exige internet.
+ */
+export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => void }) {
+  const [modo, setModo] = useState<Modo>('login');
+  const [cpf, setCpf] = useState('');
+  const [senha, setSenha] = useState('');
+  const [codigo, setCodigo] = useState('');
+  const [aceite, setAceite] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(false);
+
+  const cpfValido = isCpfValido(cpf);
+  const senhaCheck = validarSenha(senha);
+
+  async function enviar() {
+    setErro(null);
+    if (!cpfValido) return setErro('CPF invalido.');
+    if (modo === 'primeiro-acesso') {
+      if (!senhaCheck.valido) return setErro(senhaCheck.erros.join(' '));
+      if (!aceite) return setErro('E preciso aceitar o termo de consentimento LGPD.');
+    }
+    setCarregando(true);
+    try {
+      if (modo === 'login') {
+        const t = await apiPost<ParTokens>('/auth/funcionario/login', {
+          cpf: normalizarCpf(cpf),
+          senha,
+        });
+        onAutenticado(t);
+      } else {
+        const t = await apiPost<ParTokens>('/auth/funcionario/primeiro-acesso', {
+          codigo: codigo.toUpperCase(),
+          cpf: normalizarCpf(cpf),
+          senha,
+          aceiteTermos: aceite,
+        });
+        onAutenticado(t);
+      }
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao autenticar.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
+      <h1 style={{ font: '700 26px var(--font-display)', color: 'var(--color-navy-900)' }}>REP-P</h1>
+      <p style={{ color: '#5b6472', marginTop: 0 }}>
+        {modo === 'login' ? 'Acesse sua conta' : 'Primeiro acesso com codigo do RH'}
+      </p>
+
+      <Cartao>
+        {modo === 'primeiro-acesso' && (
+          <Campo
+            label="Codigo de convite"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+            placeholder="8 caracteres"
+            maxLength={8}
+          />
+        )}
+        <Campo
+          label="CPF"
+          inputMode="numeric"
+          value={cpf.length ? formatarCpf(cpf) : ''}
+          onChange={(e) => setCpf(normalizarCpf(e.target.value))}
+          erro={cpf.length >= 11 && !cpfValido ? 'Digito verificador invalido' : undefined}
+          placeholder="000.000.000-00"
+        />
+        <Campo
+          label="Senha"
+          type="password"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          erro={modo === 'primeiro-acesso' && senha.length > 0 && !senhaCheck.valido ? senhaCheck.erros[0] : undefined}
+          placeholder="minimo 8 caracteres, letra + numero"
+        />
+
+        {modo === 'primeiro-acesso' && (
+          <label style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)', font: '400 13px var(--font-body)' }}>
+            <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
+            Aceito o termo de uso e o <strong>consentimento LGPD</strong> para biometria facial.
+          </label>
+        )}
+
+        {erro && (
+          <div style={{ marginBottom: 'var(--space-3)' }}>
+            <Badge cor="var(--color-red-alert)">{erro}</Badge>
+          </div>
+        )}
+
+        <Botao onClick={enviar} disabled={carregando}>
+          {carregando ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Cadastrar'}
+        </Botao>
+      </Cartao>
+
+      <button
+        onClick={() => {
+          setModo(modo === 'login' ? 'primeiro-acesso' : 'login');
+          setErro(null);
+        }}
+        style={{ marginTop: 'var(--space-3)', background: 'none', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', font: '500 14px var(--font-body)' }}
+      >
+        {modo === 'login' ? 'Primeiro acesso? Cadastre-se com o codigo do RH' : 'Ja tenho conta - fazer login'}
+      </button>
+    </div>
+  );
+}

@@ -1,0 +1,52 @@
+/*
+ * Design System REP-P (Especificacao_Frontend). Tokens como CSS custom props.
+ * Cores de status sao FUNCIONAIS, nunca decorativas. Badges = cor + texto
+ * (nunca so cor) por acessibilidade/daltonismo.
+ */
+:root {
+  /* Paleta institucional */
+  --color-navy-900: #14213d; /* fundo institucional, sidebar admin, texto forte */
+  --color-accent: #2f6fed; /* acoes primarias, links, foco */
+  --color-teal-success: #1e8a6e; /* aprovado, dentro da REGAP, sucesso */
+  --color-amber-warning: #c98a2c; /* pendente, fora da area -- sinaliza, nao bloqueia */
+  --color-red-alert: #c13b3b; /* erro, recusado, vencido */
+  --color-neutral-bg: #f5f7fa; /* fundo padrao das telas */
+  --color-surface: #ffffff; /* cartoes */
+  --color-border: #e2e8f0;
+
+  /* Tipografia */
+  --font-display: 'Sora', system-ui, sans-serif; /* titulos, KPIs */
+  --font-body: 'Inter', system-ui, sans-serif; /* leitura, labels, botoes */
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace; /* horarios, CPF, hashes */
+
+  /* Espacamento */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+
+  /* Raios */
+  --radius-sm: 8px; /* botoes secundarios, badges */
+  --radius-md: 12px; /* cartoes, inputs */
+  --radius-lg: 22px; /* botao principal, moldura */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--color-neutral-bg);
+  color: var(--color-navy-900);
+}
+
+/* Foco visivel em Accent Blue para todo elemento interativo (acessibilidade). */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
