@@ -1,6 +1,6 @@
 import { formatarCpf, isCpfValido, normalizarCpf, validarSenha } from '@repp/shared';
 import { useState } from 'react';
-import { Badge, Botao, Campo, Cartao } from '../design-system/components';
+import { Botao, Campo, Cartao, Feedback } from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Modo = 'login' | 'primeiro-acesso';
@@ -54,7 +54,9 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
 
   return (
     <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
-      <h1 style={{ font: '700 26px var(--font-display)', color: 'var(--color-navy-900)' }}>REP-P</h1>
+      <h1 style={{ font: '700 26px var(--font-display)', color: 'var(--color-navy-900)' }}>
+        REP-P
+      </h1>
       <p style={{ color: '#5b6472', marginTop: 0 }}>
         {modo === 'login' ? 'Acesse sua conta' : 'Primeiro acesso com codigo do RH'}
       </p>
@@ -82,25 +84,45 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
           type="password"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          erro={modo === 'primeiro-acesso' && senha.length > 0 && !senhaCheck.valido ? senhaCheck.erros[0] : undefined}
+          erro={
+            modo === 'primeiro-acesso' && senha.length > 0 && !senhaCheck.valido
+              ? senhaCheck.erros[0]
+              : undefined
+          }
           placeholder="minimo 8 caracteres, letra + numero"
         />
 
         {modo === 'primeiro-acesso' && (
-          <label style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)', font: '400 13px var(--font-body)' }}>
-            <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
-            Aceito o termo de uso e o <strong>consentimento LGPD</strong> para biometria facial.
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              minHeight: 44,
+              marginBottom: 'var(--space-3)',
+              font: '400 13px var(--font-body)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={aceite}
+              onChange={(e) => setAceite(e.target.checked)}
+              style={{ width: 20, height: 20, flex: '0 0 auto' }}
+            />
+            <span>
+              Aceito o termo de uso e o <strong>consentimento LGPD</strong> para biometria facial.
+            </span>
           </label>
         )}
 
         {erro && (
           <div style={{ marginBottom: 'var(--space-3)' }}>
-            <Badge cor="var(--color-red-alert)">{erro}</Badge>
+            <Feedback tom="erro">{erro}</Feedback>
           </div>
         )}
 
         <Botao onClick={enviar} disabled={carregando}>
-          {carregando ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Cadastrar'}
+          {carregando ? 'Aguarde…' : modo === 'login' ? 'Entrar' : 'Cadastrar'}
         </Botao>
       </Cartao>
 
@@ -109,9 +131,19 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
           setModo(modo === 'login' ? 'primeiro-acesso' : 'login');
           setErro(null);
         }}
-        style={{ marginTop: 'var(--space-3)', background: 'none', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', font: '500 14px var(--font-body)' }}
+        style={{
+          marginTop: 'var(--space-3)',
+          minHeight: 44,
+          background: 'none',
+          border: 'none',
+          color: 'var(--color-accent)',
+          cursor: 'pointer',
+          font: '500 14px var(--font-body)',
+        }}
       >
-        {modo === 'login' ? 'Primeiro acesso? Cadastre-se com o codigo do RH' : 'Ja tenho conta - fazer login'}
+        {modo === 'login'
+          ? 'Primeiro acesso? Cadastre-se com o código do RH'
+          : 'Já tenho conta — fazer login'}
       </button>
     </div>
   );

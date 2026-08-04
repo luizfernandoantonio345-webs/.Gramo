@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge, Botao, Campo, Cartao } from '../design-system/components';
+import { Botao, Campo, Cartao, Feedback } from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa' | 'cadastro';
@@ -65,16 +65,37 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
       <Cartao>
         {etapa === 'credenciais' && (
           <>
-            <Campo label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <Campo label="Senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+            <Campo
+              label="E-mail"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Campo
+              label="Senha"
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+            />
             <Botao onClick={login} disabled={carregando || !email || !senha}>
               {carregando ? 'Aguarde...' : 'Continuar'}
             </Botao>
             <button
-              onClick={() => { setErro(null); setEtapa('cadastro'); }}
-              style={{ marginTop: 'var(--space-3)', background: 'none', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', font: '500 14px var(--font-body)' }}
+              onClick={() => {
+                setErro(null);
+                setEtapa('cadastro');
+              }}
+              style={{
+                marginTop: 'var(--space-3)',
+                minHeight: 44,
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-accent)',
+                cursor: 'pointer',
+                font: '500 14px var(--font-body)',
+              }}
             >
-              Nao tem conta? Cadastrar minha empresa
+              Não tem conta? Cadastrar minha empresa
             </button>
           </>
         )}
@@ -86,9 +107,14 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
               setEtapa('credenciais');
               setEmail('');
               setSenha('');
-              window.alert(`Empresa cadastrada! Subdominio: ${sub}. Faca login como administrador.`);
+              window.alert(
+                `Empresa cadastrada! Subdominio: ${sub}. Faca login como administrador.`,
+              );
             }}
-            onVoltar={() => { setErro(null); setEtapa('credenciais'); }}
+            onVoltar={() => {
+              setErro(null);
+              setEtapa('credenciais');
+            }}
           />
         )}
 
@@ -111,7 +137,13 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
             >
               {otpauth}
             </code>
-            <Campo label="Codigo do autenticador" inputMode="numeric" maxLength={6} value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+            <Campo
+              label="Codigo do autenticador"
+              inputMode="numeric"
+              maxLength={6}
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+            />
             <Botao onClick={verificar} disabled={carregando || codigo.length !== 6}>
               Ativar e entrar
             </Botao>
@@ -120,8 +152,16 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
 
         {etapa === 'verificar-2fa' && (
           <>
-            <p style={{ font: '400 14px var(--font-body)' }}>Informe o codigo do seu autenticador.</p>
-            <Campo label="Codigo 2FA" inputMode="numeric" maxLength={6} value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+            <p style={{ font: '400 14px var(--font-body)' }}>
+              Informe o codigo do seu autenticador.
+            </p>
+            <Campo
+              label="Codigo 2FA"
+              inputMode="numeric"
+              maxLength={6}
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+            />
             <Botao onClick={verificar} disabled={carregando || codigo.length !== 6}>
               Entrar
             </Botao>
@@ -130,7 +170,7 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
 
         {erro && etapa !== 'cadastro' && (
           <div style={{ marginTop: 'var(--space-3)' }}>
-            <Badge cor="var(--color-red-alert)">{erro}</Badge>
+            <Feedback tom="erro">{erro}</Feedback>
           </div>
         )}
       </Cartao>
@@ -155,7 +195,8 @@ function CadastroEmpresa({
   });
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) =>
+    setF({ ...f, [k]: e.target.value });
 
   async function cadastrar() {
     setErro(null);
@@ -182,17 +223,38 @@ function CadastroEmpresa({
     <>
       <p style={{ font: '400 14px var(--font-body)' }}>Cadastre sua empresa (teste gratuito):</p>
       <Campo label="Razao social" value={f.razaoSocial} onChange={set('razaoSocial')} />
-      <Campo label="CNPJ (somente numeros)" inputMode="numeric" value={f.cnpj} onChange={set('cnpj')} />
-      <Campo label="Subdominio (ex.: minhaempresa)" value={f.subdominio} onChange={set('subdominio')} placeholder="minusculas, sem espaco" />
+      <Campo
+        label="CNPJ (somente numeros)"
+        inputMode="numeric"
+        value={f.cnpj}
+        onChange={set('cnpj')}
+      />
+      <Campo
+        label="Subdominio (ex.: minhaempresa)"
+        value={f.subdominio}
+        onChange={set('subdominio')}
+        placeholder="minusculas, sem espaco"
+      />
       <Campo label="Seu nome (admin)" value={f.adminNome} onChange={set('adminNome')} />
       <Campo label="Seu e-mail" type="email" value={f.adminEmail} onChange={set('adminEmail')} />
-      <Campo label="Senha (min 8, letra + numero)" type="password" value={f.adminSenha} onChange={set('adminSenha')} />
-      {erro && <Badge cor="var(--color-red-alert)">{erro}</Badge>}
+      <Campo
+        label="Senha (min 8, letra + numero)"
+        type="password"
+        value={f.adminSenha}
+        onChange={set('adminSenha')}
+      />
+      {erro && (
+        <div style={{ marginBottom: 'var(--space-2)' }}>
+          <Feedback tom="erro">{erro}</Feedback>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
         <Botao onClick={cadastrar} disabled={carregando || !ok}>
-          {carregando ? 'Cadastrando...' : 'Cadastrar empresa'}
+          {carregando ? 'Cadastrando…' : 'Cadastrar empresa'}
         </Botao>
-        <Botao variante="secundario" onClick={onVoltar}>Voltar</Botao>
+        <Botao variante="secundario" onClick={onVoltar}>
+          Voltar
+        </Botao>
       </div>
     </>
   );

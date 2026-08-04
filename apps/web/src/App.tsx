@@ -105,7 +105,15 @@ export function App(): JSX.Element {
           };
     return (
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-2) var(--space-3)', borderBottom: '1px solid var(--color-border)' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: 'var(--space-2) var(--space-3)',
+            borderBottom: '1px solid var(--color-border)',
+          }}
+        >
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
             {abas.map((a) => (
               <TabBtn key={a.id} ativo={secao === a.id} onClick={() => setSecao(a.id)}>
@@ -113,7 +121,15 @@ export function App(): JSX.Element {
               </TabBtn>
             ))}
           </div>
-          <button onClick={sair} style={{ background: 'none', border: 'none', color: 'var(--color-accent)', cursor: 'pointer' }}>
+          <button
+            onClick={sair}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-accent)',
+              cursor: 'pointer',
+            }}
+          >
             Sair
           </button>
         </div>
@@ -124,7 +140,14 @@ export function App(): JSX.Element {
 
   return (
     <>
-      <nav style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-3)', justifyContent: 'center' }}>
+      <nav
+        style={{
+          display: 'flex',
+          gap: 'var(--space-2)',
+          padding: 'var(--space-3)',
+          justifyContent: 'center',
+        }}
+      >
         <TabBtn ativo={contexto === 'funcionario'} onClick={() => setContexto('funcionario')}>
           Funcionario
         </TabBtn>
@@ -146,7 +169,15 @@ export function App(): JSX.Element {
   );
 }
 
-function TabBtn({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: string }) {
+function TabBtn({
+  ativo,
+  onClick,
+  children,
+}: {
+  ativo: boolean;
+  onClick: () => void;
+  children: string;
+}) {
   return (
     <button
       onClick={onClick}

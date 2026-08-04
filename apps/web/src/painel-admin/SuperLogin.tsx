@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge, Botao, Campo, Cartao } from '../design-system/components';
+import { Botao, Campo, Cartao, Feedback } from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa';
@@ -17,10 +17,15 @@ export function SuperLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) =>
   async function login() {
     setErro(null);
     try {
-      const r = await apiPost<{ desafioToken: string; setup2fa: boolean }>('/super/auth/login', { email, senha });
+      const r = await apiPost<{ desafioToken: string; setup2fa: boolean }>('/super/auth/login', {
+        email,
+        senha,
+      });
       setDesafioToken(r.desafioToken);
       if (r.setup2fa) {
-        const s = await apiPost<{ otpauthUrl: string }>('/super/auth/2fa/setup', { desafioToken: r.desafioToken });
+        const s = await apiPost<{ otpauthUrl: string }>('/super/auth/2fa/setup', {
+          desafioToken: r.desafioToken,
+        });
         setOtpauth(s.otpauthUrl);
         setEtapa('setup-2fa');
       } else {
@@ -43,35 +48,84 @@ export function SuperLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) =>
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-navy-900)', paddingTop: 60 }}>
       <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
-        <div style={{ color: '#8fb0ef', font: '700 12px var(--font-mono)', letterSpacing: '0.15em', marginBottom: 'var(--space-2)' }}>
+        <div
+          style={{
+            color: '#8fb0ef',
+            font: '700 12px var(--font-mono)',
+            letterSpacing: '0.15em',
+            marginBottom: 'var(--space-2)',
+          }}
+        >
           SUPER ADMIN · PLATAFORMA
         </div>
         <h1 style={{ font: '700 24px var(--font-display)', color: '#fff', marginTop: 0 }}>REP-P</h1>
         <Cartao>
           {etapa === 'credenciais' && (
             <>
-              <Campo label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <Campo label="Senha" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} />
-              <Botao onClick={login} disabled={!email || !senha}>Continuar</Botao>
+              <Campo
+                label="E-mail"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <Campo
+                label="Senha"
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+              />
+              <Botao onClick={login} disabled={!email || !senha}>
+                Continuar
+              </Botao>
             </>
           )}
           {etapa === 'setup-2fa' && (
             <>
               <p style={{ font: '400 13px var(--font-body)' }}>Configure o 2FA (otpauth):</p>
-              <code style={{ display: 'block', wordBreak: 'break-all', background: 'var(--color-neutral-bg)', padding: 'var(--space-2)', borderRadius: 'var(--radius-sm)', font: '11px var(--font-mono)', marginBottom: 'var(--space-3)' }}>
+              <code
+                style={{
+                  display: 'block',
+                  wordBreak: 'break-all',
+                  background: 'var(--color-neutral-bg)',
+                  padding: 'var(--space-2)',
+                  borderRadius: 'var(--radius-sm)',
+                  font: '11px var(--font-mono)',
+                  marginBottom: 'var(--space-3)',
+                }}
+              >
                 {otpauth}
               </code>
-              <Campo label="Codigo" inputMode="numeric" maxLength={6} value={codigo} onChange={(e) => setCodigo(e.target.value)} />
-              <Botao onClick={verificar} disabled={codigo.length !== 6}>Ativar e entrar</Botao>
+              <Campo
+                label="Codigo"
+                inputMode="numeric"
+                maxLength={6}
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+              />
+              <Botao onClick={verificar} disabled={codigo.length !== 6}>
+                Ativar e entrar
+              </Botao>
             </>
           )}
           {etapa === 'verificar-2fa' && (
             <>
-              <Campo label="Codigo 2FA" inputMode="numeric" maxLength={6} value={codigo} onChange={(e) => setCodigo(e.target.value)} />
-              <Botao onClick={verificar} disabled={codigo.length !== 6}>Entrar</Botao>
+              <Campo
+                label="Codigo 2FA"
+                inputMode="numeric"
+                maxLength={6}
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+              />
+              <Botao onClick={verificar} disabled={codigo.length !== 6}>
+                Entrar
+              </Botao>
             </>
           )}
-          {erro && <div style={{ marginTop: 'var(--space-3)' }}><Badge cor="var(--color-red-alert)">{erro}</Badge></div>}
+          {erro && (
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <Feedback tom="erro">{erro}</Feedback>
+            </div>
+          )}
         </Cartao>
       </div>
     </div>
