@@ -669,6 +669,10 @@ model DocumentoAssinatura {
   motivoRecusa                  String?           @map("motivo_recusa")
   visualizadoEm                 DateTime?         @map("visualizado_em")
   recusadoEm                    DateTime?         @map("recusado_em")
+  // Contra-assinatura do RH (homologacao do fechamento apos o funcionario assinar).
+  homologadoPorAdminId          String?           @map("homologado_por_admin_id") @db.Uuid
+  homologadoEm                  DateTime?         @map("homologado_em")
+  assinaturaRh                  String?           @map("assinatura_rh")
   criadoEm                      DateTime          @default(now()) @map("criado_em")
   atualizadoEm                  DateTime          @updatedAt @map("atualizado_em")
 

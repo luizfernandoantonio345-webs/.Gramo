@@ -7,16 +7,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { MetodoAssinatura, StatusAssinatura } from '@prisma/client';
-import { montarManifestoAssinatura } from '@repp/shared';
+import { detectarTipoArquivo, montarManifestoAssinatura } from '@repp/shared';
+import { EscopoFilialService } from '../common/authz/escopo-filial.service';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { verificarSenha } from '../common/crypto/password';
 import { TenantContext } from '../common/tenant/tenant-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
-import type {
-  EnviarAssinaturaDto,
-  FilaAssinaturaQuery,
-} from './dto/assinatura.dto';
+import type { EnviarAssinaturaDto, FilaAssinaturaQuery } from './dto/assinatura.dto';
 import { SignatureService } from './signature.service';
 
 interface Ctx {
@@ -33,6 +31,7 @@ export class AssinaturaService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly signature: SignatureService,
+    private readonly escopo: EscopoFilialService,
   ) {}
 
   // =================== ADM 3 (RH) ===================
@@ -43,6 +42,15 @@ export class AssinaturaService {
     if (bytes.length > MAX_BYTES) throw new BadRequestException('Arquivo excede 15MB.');
     if (dto.mime && !MIMES_ACEITOS.includes(dto.mime)) {
       throw new BadRequestException('Formato invalido. Aceitos: PDF, JPG, PNG.');
+    }
+    // S3 (auditoria): valida o conteudo REAL por magic bytes -- o cliente pode
+    // mentir o `mime`, mas nao o cabecalho do arquivo. Fecha o R2 do SECURITY-REVIEW.
+    const tipoReal = detectarTipoArquivo(bytes);
+    if (!tipoReal) {
+      throw new BadRequestException('Formato de arquivo nao reconhecido. Aceitos: PDF, JPG, PNG.');
+    }
+    if (dto.mime && dto.mime !== tipoReal) {
+      throw new BadRequestException('Conteudo do arquivo nao corresponde ao formato declarado.');
     }
     const empresaId = TenantContext.requireEmpresaId();
 
@@ -82,7 +90,8 @@ export class AssinaturaService {
   }
 
   async enviarLote(itens: EnviarAssinaturaDto[], autor: UsuarioAutenticado) {
-    const resultados: Array<{ funcionarioId: string; titulo: string; ok: boolean; erro?: string }> = [];
+    const resultados: Array<{ funcionarioId: string; titulo: string; ok: boolean; erro?: string }> =
+      [];
     for (const item of itens) {
       try {
         await this.enviar(item, autor);
@@ -99,10 +108,16 @@ export class AssinaturaService {
     return { total: itens.length, enviados: resultados.filter((r) => r.ok).length, resultados };
   }
 
-  async fila(q: FilaAssinaturaQuery) {
+  async fila(q: FilaAssinaturaQuery, autor: UsuarioAutenticado) {
+    const filtroFilial = await this.filtroFilial(autor);
     return this.prisma.forTenant((tx) =>
       tx.documentoAssinatura.findMany({
-        where: { status: q.status, competencia: q.competencia, funcionarioId: q.funcionarioId },
+        where: {
+          status: q.status,
+          competencia: q.competencia,
+          funcionarioId: q.funcionarioId,
+          ...filtroFilial,
+        },
         orderBy: { criadoEm: 'desc' },
         select: {
           id: true,
@@ -119,10 +134,11 @@ export class AssinaturaService {
   }
 
   /** Detalhe da assinatura (ADM 3): hash, timestamp, IP/dispositivo. */
-  async detalhe(id: string) {
+  async detalhe(id: string, autor: UsuarioAutenticado) {
+    const filtroFilial = await this.filtroFilial(autor);
     const doc = await this.prisma.forTenant((tx) =>
       tx.documentoAssinatura.findFirst({
-        where: { id },
+        where: { id, ...filtroFilial },
         include: { assinatura: true, funcionario: { select: { nome: true, cpf: true } } },
       }),
     );
@@ -164,7 +180,8 @@ export class AssinaturaService {
       return d;
     });
     const bytes = await this.storage.lerImagem(doc.arquivoRef); // decifra
-    const podeBaixar = doc.permiteDownloadAntesAssinatura || doc.status === StatusAssinatura.ASSINADO;
+    const podeBaixar =
+      doc.permiteDownloadAntesAssinatura || doc.status === StatusAssinatura.ASSINADO;
     return {
       id: doc.id,
       titulo: doc.titulo,
@@ -254,6 +271,47 @@ export class AssinaturaService {
     });
   }
 
+  /**
+   * Contra-assinatura do RH (homologacao): apos o funcionario assinar o
+   * fechamento/espelho, o RH homologa. Grava uma assinatura Ed25519 do servidor
+   * sobre um manifesto {documento, hash, admin, timestamp} -- imutavel.
+   */
+  async homologar(id: string, autor: UsuarioAutenticado, ctx: Ctx) {
+    const empresaId = TenantContext.requireEmpresaId();
+    const filtroFilial = await this.filtroFilial(autor);
+    const doc = await this.prisma.forTenant((tx) =>
+      tx.documentoAssinatura.findFirst({ where: { id, ...filtroFilial } }),
+    );
+    if (!doc) throw new NotFoundException('Documento nao encontrado.');
+    if (doc.status !== StatusAssinatura.ASSINADO) {
+      throw new ConflictException('So e possivel homologar apos o funcionario assinar.');
+    }
+    if (doc.homologadoEm) throw new ConflictException('Documento ja homologado.');
+
+    const timestamp = new Date();
+    const manifesto = JSON.stringify({
+      tipo: 'repp-homologacao-v1',
+      documentoId: doc.id,
+      hashDocumento: doc.hashDocumento,
+      adminId: autor.sub,
+      timestamp: timestamp.toISOString(),
+      ip: ctx.ip ?? null,
+    });
+    const assinaturaRh = this.signature.assinar(manifesto);
+
+    return this.prisma.forTenant(async (tx) => {
+      const atualizado = await tx.documentoAssinatura.update({
+        where: { id: doc.id },
+        data: { homologadoPorAdminId: autor.sub, homologadoEm: timestamp, assinaturaRh },
+        select: { id: true, homologadoEm: true },
+      });
+      await this.audit(tx, empresaId, autor.sub, 'fechamento.homologar', doc.id, {
+        chaveServidorId: this.signature.chaveId,
+      });
+      return { ...atualizado, homologado: true, chaveServidorId: this.signature.chaveId };
+    });
+  }
+
   async recusar(funcionarioId: string, id: string, motivo: string, ctx: Ctx) {
     const empresaId = TenantContext.requireEmpresaId();
     return this.prisma.forTenant(async (tx) => {
@@ -267,7 +325,10 @@ export class AssinaturaService {
         data: { status: StatusAssinatura.RECUSADO, motivoRecusa: motivo, recusadoEm: new Date() },
       });
       // Notificacao ao RH: registrada no log (push e infra, fora do escopo da fase).
-      await this.audit(tx, empresaId, funcionarioId, 'assinatura.recusar', id, { motivo, ip: ctx.ip });
+      await this.audit(tx, empresaId, funcionarioId, 'assinatura.recusar', id, {
+        motivo,
+        ip: ctx.ip,
+      });
       return { status: StatusAssinatura.RECUSADO };
     });
   }
@@ -296,12 +357,15 @@ export class AssinaturaService {
   /**
    * @param funcionarioId quando informado (acesso do funcionario), restringe ao
    *   DONO do documento -- evita IDOR intra-tenant. Admin (ADM 3) passa undefined.
+   * @param autor quando informado (acesso admin), restringe o GESTOR_FILIAL as
+   *   suas filiais (autorizacao intra-tenant).
    */
-  async comprovante(id: string, funcionarioId?: string) {
+  async comprovante(id: string, funcionarioId?: string, autor?: UsuarioAutenticado) {
     const empresaId = TenantContext.requireEmpresaId();
+    const filtroFilial = autor ? await this.filtroFilial(autor) : {};
     const doc = await this.prisma.forTenant((tx) =>
       tx.documentoAssinatura.findFirst({
-        where: { id, ...(funcionarioId ? { funcionarioId } : {}) },
+        where: { id, ...(funcionarioId ? { funcionarioId } : {}), ...filtroFilial },
         include: { assinatura: true, funcionario: { select: { cpf: true, nome: true } } },
       }),
     );
@@ -357,6 +421,19 @@ export class AssinaturaService {
 
   // ---- helpers ----
 
+  /**
+   * Escopo por filial (autorizacao intra-tenant) para as rotas ADM. A RLS ja
+   * isola por EMPRESA; este filtro restringe o GESTOR_FILIAL aos documentos de
+   * funcionarios das suas filiais (AdminFilialAcesso). RH_MASTER/FINANCEIRO/
+   * AUDITORIA veem a empresa inteira (retorna {} = sem restricao).
+   */
+  private async filtroFilial(
+    autor: UsuarioAutenticado,
+  ): Promise<{ funcionario?: { filialId: { in: string[] } } }> {
+    const filiais = await this.escopo.filiaisPermitidas(autor);
+    return filiais === null ? {} : { funcionario: { filialId: { in: filiais } } };
+  }
+
   private decodificar(base64OuDataUrl: string): Buffer {
     const b64 = base64OuDataUrl.includes(',')
       ? base64OuDataUrl.slice(base64OuDataUrl.indexOf(',') + 1)
@@ -376,7 +453,8 @@ export class AssinaturaService {
       data: {
         empresaId,
         usuarioId,
-        usuarioTipo: acao === 'assinatura.assinar' || acao === 'assinatura.recusar' ? 'funcionario' : 'admin',
+        usuarioTipo:
+          acao === 'assinatura.assinar' || acao === 'assinatura.recusar' ? 'funcionario' : 'admin',
         acao,
         entidadeAfetada: 'documentos_assinatura',
         entidadeId,

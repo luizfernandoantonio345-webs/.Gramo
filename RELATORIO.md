@@ -115,68 +115,68 @@ em `pontos/funcionarios/documentos/...`).
 
 ## 3. Decisões técnicas e trade-offs
 
-| Decisão | Por quê / trade-off |
-| --- | --- |
-| **npm workspaces** em vez de pnpm | pnpm via corepack é bloqueado no ambiente (EPERM em `Program Files`). npm workspaces dá o mesmo monorepo sem binário externo. Baixo custo de troca. |
-| **RLS no Postgres** (não só na app) | Isolamento de tenant é requisito de segurança; app-level erra por omissão de `WHERE`. Custo: plumbing de `SET LOCAL` por transação + modelo de duas roles. |
-| **Duas roles** (`repp_owner`/`repp_app`) | Superuser ignora RLS. A app precisa de role comum. Prisma `url`(app) + `directUrl`(migrations) separa naturalmente. |
-| **NSR server-side** | Sequência sem furos é impossível de coordenar entre devices offline. O client usa só o UUID de idempotência; o NSR pertence ao REP (servidor). |
-| **Falha facial nunca bloqueia** _(decidido com o dono)_ | Grava o ponto como `PENDENTE_IDENTIDADE` para o RH validar, em vez de travar (regra legal nº 1). |
-| **CommonJS no `shared`** | A API (NestJS) é CommonJS; alinhar evita dor de interop ESM/CJS. O PWA importa o **source** do shared via alias do Vite (evita interop CJS no bundle). |
-| **Sem stubs de fases futuras** | "Nada de código morto": módulos de auth/ponto/etc. entram quando forem implementados. |
-| **`@node-rs/argon2` no lugar de `argon2`** (Fase 1) | Mesmo Argon2id, mas binários pré-compilados — sem `node-gyp`/toolchain nativo (essencial no ambiente Windows). |
-| **Enums do `@prisma/client` no backend** (Fase 1) | O backend usa os enums gerados pelo Prisma (fonte da verdade no banco); o `shared` mantém enums só para o front e a lógica pura. Evita conflito de tipos nominais. |
-| **2FA em duas etapas com desafio** (Fase 1) | Login nunca emite token sem 2FA; um `desafioToken` curto (5 min) liga a etapa de senha à de TOTP, cobrindo setup no 1º acesso e verificação nas próximas. |
-| **Tokens guardados como hash** | Tokens (refresh, convite, recuperação) só como SHA-256 no banco; segredo TOTP cifrado com AES-256-GCM. |
-| **NSR atômico via `INSERT … ON CONFLICT`** (Fase 2) | Um comando incrementa e retorna o NSR; o banco serializa no conflito de chave única → sem furos e sem corrida entre marcações concorrentes. |
-| **Imutabilidade do status de exceção** (Fase 2) | O ponto é append-only; a decisão do RH não altera o ponto — vive em `AprovacaoExcecao`. Status "efetivo" = registro + última decisão. Preserva a prova legal. |
-| **Foto como evidência, sem matching** (Fase 2, com o dono) | Captura + storage cifrado; identidade = sessão autenticada. Evita custo/risco LGPD de biometria de terceiro antes da hora. |
-| **Enums do `shared` como const-object + union** (Fase 2) | Estruturalmente compatíveis com os enums do Prisma → elimina o atrito de tipos nominais entre back e a lógica pura compartilhada, sem casts. |
-| **PostgreSQL embarcado para e2e** (Fase 3) | `embedded-postgres` (binário portátil) roda um Postgres real sem Docker/admin → e2e de RLS/NSR/imutabilidade local e no CI. O ambiente de dev não tinha Docker. |
-| **Importação CSV tudo-ou-nada** (Fase 3) | Valida todas as linhas (CPF, duplicidade no arquivo e no banco) antes de gravar; qualquer erro aborta tudo e devolve relatório linha+campo. Evita base inconsistente (spec §4.3). |
-| **Status de documento efetivo calculado** (Fase 3) | `VENCIDO` é derivado de `APROVADO` + `dataValidade < agora` na leitura, não persistido — evita job de expiração e mantém uma fonte de verdade. |
-| **Assinatura Ed25519 do servidor** (Fase 4) | Além do hash+timestamp, o servidor assina o manifesto → não-repúdio + verificação pública do comprovante. Base evidencial que o PAdES (Fase 5) embarca no PDF. |
-| **Re-autenticação para assinar** (Fase 4) | Assinar exige a senha do funcionário (não um checkbox) — prova de intenção/identidade no ato, alinhado a assinatura eletrônica avançada (Lei 14.063/2020). |
-| **Chave de assinatura via HKDF** (Fase 4) | A chave Ed25519 é derivada por HKDF de `DATA_ENCRYPTION_KEY` com `info` próprio (separação de chave: assinar ≠ cifrar), ou de `ASSINATURA_SEED`. Determinística → chave pública estável/publicável. |
-| **Decisão de exceção/assinatura fora do artefato imutável** (Fases 2/4) | `pontos` e `assinaturas_virtuais` são append-only (revoke + e2e); o workflow mutável (status) vive em tabela separada. Preserva a prova. |
-| **Layout AFD/AEJ centralizado + honestidade de homologação** (Fase 5) | Toda a formatação fixed-width vive em `@repp/shared/afd` (uma fonte da verdade, testada). Marcado como "pendente de homologação gov.br" — não fingimos conformidade byte-perfect de memória. |
-| **Exportações imutáveis, assinadas e verificáveis** (Fase 5) | Cada AFD/AEJ é cifrado, tem SHA-256 + assinatura Ed25519 e registro append-only; o download reconfere integridade (re-hash) e assinatura. |
-| **PAdES-B real com certificado plugável** (Fase 5, com o dono) | Assinatura CMS embarcada no PDF (@signpdf + node-forge); dev usa cert autoassinado, produção pluga A1/A3 ICP-Brasil via `.p12`. Pipeline validado por teste. |
-| **`useObjectStreams: false` no pdf-lib** (Fase 5) | O @signpdf exige xref clássico; forçamos isso ao salvar o PDF para o placeholder de assinatura funcionar. |
-| **Terceira role `repp_super`** (Fase 6) | Super Admin isolado no banco: acesso a tabelas de plataforma, **REVOKE** nas operacionais, policy própria em `empresas`. Cumpre "isolamento no nível do banco" da spec — não só na app. |
-| **Métricas de uso via SECURITY DEFINER** (Fase 6) | O super obtém agregados (funcionários ativos, marcações/mês) sem SELECT nas tabelas de dados — "apenas metadados de uso", como manda a spec. |
-| **`PrismaSuperService` (conexão própria)** (Fase 6) | Requisições de plataforma conectam como `repp_super` (`SUPER_DATABASE_URL`); tenant nunca entra no contexto. Fallback p/ `DATABASE_URL` em dev. |
-| **Migration escrita à mão** (Fase 6) | O `prisma migrate dev` deu OOM (máquina ~500MB livres). A migration foi escrita seguindo as convenções do Prisma e **validada contra Postgres real no e2e**. |
-| **Hardening: helmet + rate limiting** (Fase 6) | Cabeçalhos de segurança e throttling global fecham o débito de brute-force. |
+| Decisão                                                                 | Por quê / trade-off                                                                                                                                                                                 |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **npm workspaces** em vez de pnpm                                       | pnpm via corepack é bloqueado no ambiente (EPERM em `Program Files`). npm workspaces dá o mesmo monorepo sem binário externo. Baixo custo de troca.                                                 |
+| **RLS no Postgres** (não só na app)                                     | Isolamento de tenant é requisito de segurança; app-level erra por omissão de `WHERE`. Custo: plumbing de `SET LOCAL` por transação + modelo de duas roles.                                          |
+| **Duas roles** (`repp_owner`/`repp_app`)                                | Superuser ignora RLS. A app precisa de role comum. Prisma `url`(app) + `directUrl`(migrations) separa naturalmente.                                                                                 |
+| **NSR server-side**                                                     | Sequência sem furos é impossível de coordenar entre devices offline. O client usa só o UUID de idempotência; o NSR pertence ao REP (servidor).                                                      |
+| **Falha facial nunca bloqueia** _(decidido com o dono)_                 | Grava o ponto como `PENDENTE_IDENTIDADE` para o RH validar, em vez de travar (regra legal nº 1).                                                                                                    |
+| **CommonJS no `shared`**                                                | A API (NestJS) é CommonJS; alinhar evita dor de interop ESM/CJS. O PWA importa o **source** do shared via alias do Vite (evita interop CJS no bundle).                                              |
+| **Sem stubs de fases futuras**                                          | "Nada de código morto": módulos de auth/ponto/etc. entram quando forem implementados.                                                                                                               |
+| **`@node-rs/argon2` no lugar de `argon2`** (Fase 1)                     | Mesmo Argon2id, mas binários pré-compilados — sem `node-gyp`/toolchain nativo (essencial no ambiente Windows).                                                                                      |
+| **Enums do `@prisma/client` no backend** (Fase 1)                       | O backend usa os enums gerados pelo Prisma (fonte da verdade no banco); o `shared` mantém enums só para o front e a lógica pura. Evita conflito de tipos nominais.                                  |
+| **2FA em duas etapas com desafio** (Fase 1)                             | Login nunca emite token sem 2FA; um `desafioToken` curto (5 min) liga a etapa de senha à de TOTP, cobrindo setup no 1º acesso e verificação nas próximas.                                           |
+| **Tokens guardados como hash**                                          | Tokens (refresh, convite, recuperação) só como SHA-256 no banco; segredo TOTP cifrado com AES-256-GCM.                                                                                              |
+| **NSR atômico via `INSERT … ON CONFLICT`** (Fase 2)                     | Um comando incrementa e retorna o NSR; o banco serializa no conflito de chave única → sem furos e sem corrida entre marcações concorrentes.                                                         |
+| **Imutabilidade do status de exceção** (Fase 2)                         | O ponto é append-only; a decisão do RH não altera o ponto — vive em `AprovacaoExcecao`. Status "efetivo" = registro + última decisão. Preserva a prova legal.                                       |
+| **Foto como evidência, sem matching** (Fase 2, com o dono)              | Captura + storage cifrado; identidade = sessão autenticada. Evita custo/risco LGPD de biometria de terceiro antes da hora.                                                                          |
+| **Enums do `shared` como const-object + union** (Fase 2)                | Estruturalmente compatíveis com os enums do Prisma → elimina o atrito de tipos nominais entre back e a lógica pura compartilhada, sem casts.                                                        |
+| **PostgreSQL embarcado para e2e** (Fase 3)                              | `embedded-postgres` (binário portátil) roda um Postgres real sem Docker/admin → e2e de RLS/NSR/imutabilidade local e no CI. O ambiente de dev não tinha Docker.                                     |
+| **Importação CSV tudo-ou-nada** (Fase 3)                                | Valida todas as linhas (CPF, duplicidade no arquivo e no banco) antes de gravar; qualquer erro aborta tudo e devolve relatório linha+campo. Evita base inconsistente (spec §4.3).                   |
+| **Status de documento efetivo calculado** (Fase 3)                      | `VENCIDO` é derivado de `APROVADO` + `dataValidade < agora` na leitura, não persistido — evita job de expiração e mantém uma fonte de verdade.                                                      |
+| **Assinatura Ed25519 do servidor** (Fase 4)                             | Além do hash+timestamp, o servidor assina o manifesto → não-repúdio + verificação pública do comprovante. Base evidencial que o PAdES (Fase 5) embarca no PDF.                                      |
+| **Re-autenticação para assinar** (Fase 4)                               | Assinar exige a senha do funcionário (não um checkbox) — prova de intenção/identidade no ato, alinhado a assinatura eletrônica avançada (Lei 14.063/2020).                                          |
+| **Chave de assinatura via HKDF** (Fase 4)                               | A chave Ed25519 é derivada por HKDF de `DATA_ENCRYPTION_KEY` com `info` próprio (separação de chave: assinar ≠ cifrar), ou de `ASSINATURA_SEED`. Determinística → chave pública estável/publicável. |
+| **Decisão de exceção/assinatura fora do artefato imutável** (Fases 2/4) | `pontos` e `assinaturas_virtuais` são append-only (revoke + e2e); o workflow mutável (status) vive em tabela separada. Preserva a prova.                                                            |
+| **Layout AFD/AEJ centralizado + honestidade de homologação** (Fase 5)   | Toda a formatação fixed-width vive em `@repp/shared/afd` (uma fonte da verdade, testada). Marcado como "pendente de homologação gov.br" — não fingimos conformidade byte-perfect de memória.        |
+| **Exportações imutáveis, assinadas e verificáveis** (Fase 5)            | Cada AFD/AEJ é cifrado, tem SHA-256 + assinatura Ed25519 e registro append-only; o download reconfere integridade (re-hash) e assinatura.                                                           |
+| **PAdES-B real com certificado plugável** (Fase 5, com o dono)          | Assinatura CMS embarcada no PDF (@signpdf + node-forge); dev usa cert autoassinado, produção pluga A1/A3 ICP-Brasil via `.p12`. Pipeline validado por teste.                                        |
+| **`useObjectStreams: false` no pdf-lib** (Fase 5)                       | O @signpdf exige xref clássico; forçamos isso ao salvar o PDF para o placeholder de assinatura funcionar.                                                                                           |
+| **Terceira role `repp_super`** (Fase 6)                                 | Super Admin isolado no banco: acesso a tabelas de plataforma, **REVOKE** nas operacionais, policy própria em `empresas`. Cumpre "isolamento no nível do banco" da spec — não só na app.             |
+| **Métricas de uso via SECURITY DEFINER** (Fase 6)                       | O super obtém agregados (funcionários ativos, marcações/mês) sem SELECT nas tabelas de dados — "apenas metadados de uso", como manda a spec.                                                        |
+| **`PrismaSuperService` (conexão própria)** (Fase 6)                     | Requisições de plataforma conectam como `repp_super` (`SUPER_DATABASE_URL`); tenant nunca entra no contexto. Fallback p/ `DATABASE_URL` em dev.                                                     |
+| **Migration escrita à mão** (Fase 6)                                    | O `prisma migrate dev` deu OOM (máquina ~500MB livres). A migration foi escrita seguindo as convenções do Prisma e **validada contra Postgres real no e2e**.                                        |
+| **Hardening: helmet + rate limiting** (Fase 6)                          | Cabeçalhos de segurança e throttling global fecham o débito de brute-force.                                                                                                                         |
 
 ## 4. Estado por fase
 
-| Fase | Escopo | Estado |
-| --- | --- | --- |
-| **0 — Fundação** | Monorepo, schema+RLS, scaffold API/PWA, lint/test/CI/Docker | ✅ Concluída |
-| **1 — Cadastro/login/acesso** | auth admin+2FA, auth funcionário+convite, lockout, refresh, log de acesso, Tela 1 + ADM 1 | ✅ Concluída |
-| **2 — Ponto** | registro+REGAP+NSR+hash, imutabilidade, offline-first (fila+sync), Tela 3 + ADM 4 | ✅ Concluída |
-| **3 — Funcionário/documentos** | ADM 2 (cadastro, foto, docs, vencimento, CSV, soft delete) + Tela 4; e2e + migrations | ✅ Concluída |
-| **4 — Folha/assinatura** | ADM 3 (envio lote, fila, comprovante) + Tela 2 (assinar/recusar); Ed25519 + hash + timestamp | ✅ Concluída |
-| **5 — Compliance 671** | AFD/AEJ (hash+assinatura+imutável), comprovante PAdES-B, pacote de fiscalização, ADM 6 | ✅ Concluída |
-| **6 — Plataforma/SaaS** | ADM 0 (Super Admin, empresas, uso, planos, faturas) + isolamento `repp_super` + hardening | ✅ **Concluída** (aguardando aprovação) |
+| Fase                           | Escopo                                                                                       | Estado                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **0 — Fundação**               | Monorepo, schema+RLS, scaffold API/PWA, lint/test/CI/Docker                                  | ✅ Concluída                            |
+| **1 — Cadastro/login/acesso**  | auth admin+2FA, auth funcionário+convite, lockout, refresh, log de acesso, Tela 1 + ADM 1    | ✅ Concluída                            |
+| **2 — Ponto**                  | registro+REGAP+NSR+hash, imutabilidade, offline-first (fila+sync), Tela 3 + ADM 4            | ✅ Concluída                            |
+| **3 — Funcionário/documentos** | ADM 2 (cadastro, foto, docs, vencimento, CSV, soft delete) + Tela 4; e2e + migrations        | ✅ Concluída                            |
+| **4 — Folha/assinatura**       | ADM 3 (envio lote, fila, comprovante) + Tela 2 (assinar/recusar); Ed25519 + hash + timestamp | ✅ Concluída                            |
+| **5 — Compliance 671**         | AFD/AEJ (hash+assinatura+imutável), comprovante PAdES-B, pacote de fiscalização, ADM 6       | ✅ Concluída                            |
+| **6 — Plataforma/SaaS**        | ADM 0 (Super Admin, empresas, uso, planos, faturas) + isolamento `repp_super` + hardening    | ✅ **Concluída** (aguardando aprovação) |
 
 **Roadmap 0–6 completo.** Próximo é go-live (homologação + certificado), não novas fases.
 
 **Incrementos pós-roadmap (seguindo os documentos de especificação):**
 
-| Item | Escopo | Estado |
-| --- | --- | --- |
-| Revisão de segurança | Auditoria das 6 fases + correções (ver `SECURITY-REVIEW.md`) | ✅ |
-| Authz por filial (R1) | `GESTOR_FILIAL` restrito às suas filiais (ADM 2/ADM 4) | ✅ |
-| **ADM 6 — Auditoria** | Trilha de auditoria + log de acessos + relatório de aprovações (RH Master/Auditoria) | ✅ |
-| **ADM 7 — Configurações** | Jornadas (horário/tolerância/dias) + feriados; **`PENDENTE_HORARIO`** avaliado no ponto (fuso da filial, feriado, escala) | ✅ |
-| **ADM 10 — Férias/Afastamentos** | Solicitar (funcionário) + aprovar/recusar + calendário; **abono** (dia aprovado não gera `PENDENTE_HORARIO`) | ✅ |
-| **ADM 11 — Contestação de ponto** | Funcionário contesta marcação própria; RH responde (obrigatório) + trilha de auditoria | ✅ |
-| **ADM 5 — Dashboard Geral** | KPIs consolidados, alertas prioritários (>48h), presença 7 dias | ✅ |
-| **ADM 8 — Comunicados** | Envio com público-alvo (todos/filial/cargo/funcionário) + taxa de visualização + leitura no app | ✅ |
-| **ADM 9 — Integrações** | Chaves de API (token só uma vez, hash no banco, revogação) + config folha/eSocial | ✅ |
-| **Banco de horas** | Horas trabalhadas/dia + saldo vs. carga da jornada (fuso da filial) | ✅ |
+| Item                              | Escopo                                                                                                                    | Estado |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Revisão de segurança              | Auditoria das 6 fases + correções (ver `SECURITY-REVIEW.md`)                                                              | ✅     |
+| Authz por filial (R1)             | `GESTOR_FILIAL` restrito às suas filiais (ADM 2/ADM 4)                                                                    | ✅     |
+| **ADM 6 — Auditoria**             | Trilha de auditoria + log de acessos + relatório de aprovações (RH Master/Auditoria)                                      | ✅     |
+| **ADM 7 — Configurações**         | Jornadas (horário/tolerância/dias) + feriados; **`PENDENTE_HORARIO`** avaliado no ponto (fuso da filial, feriado, escala) | ✅     |
+| **ADM 10 — Férias/Afastamentos**  | Solicitar (funcionário) + aprovar/recusar + calendário; **abono** (dia aprovado não gera `PENDENTE_HORARIO`)              | ✅     |
+| **ADM 11 — Contestação de ponto** | Funcionário contesta marcação própria; RH responde (obrigatório) + trilha de auditoria                                    | ✅     |
+| **ADM 5 — Dashboard Geral**       | KPIs consolidados, alertas prioritários (>48h), presença 7 dias                                                           | ✅     |
+| **ADM 8 — Comunicados**           | Envio com público-alvo (todos/filial/cargo/funcionário) + taxa de visualização + leitura no app                           | ✅     |
+| **ADM 9 — Integrações**           | Chaves de API (token só uma vez, hash no banco, revogação) + config folha/eSocial                                         | ✅     |
+| **Banco de horas**                | Horas trabalhadas/dia + saldo vs. carga da jornada (fuso da filial)                                                       | ✅     |
 
 **Backlog da spec 100% coberto** (Telas 1–4 do funcionário; ADM 0–11; compliance
 671; plataforma SaaS). Transmissão real ao eSocial/gateway de folha e homologação
@@ -251,21 +251,21 @@ e `calcularHorasDia`/`saldoDia` (banco de horas).
 
 ## 7. Checklist de conformidade — Portaria 671
 
-| Item | Estado | Observação |
-| --- | --- | --- |
-| Imutabilidade dos registros | 🟢 Atende | `pontos` append-only (revoke + trigger); correção via `pontos_ajustes`; exceção via `AprovacaoExcecao`. A API de gravação respeita isso. |
-| NSR sem furos por estabelecimento | 🟢 Atende | `NsrService` (INSERT … ON CONFLICT atômico). Falta o teste de concorrência com banco real. |
-| Hash de integridade (SHA-256) | 🟢 Atende | Calculado no registro sobre o conteúdo canônico. Hash-chain (encadeado) previsto p/ Fase 5 (AFD). |
-| Trilha de auditoria | 🟢 Atende | `logs_auditoria` cobre ponto/exceção/ajuste/REGAP + `logs_acesso`, append-only. |
-| Registro nunca bloqueado | 🟢 Atende | Implementado: fora da REGAP/sem GPS → aceito como `PENDENTE_REGAP`. |
-| Assinatura com hash + timestamp | 🟢 Atende | SHA-256 do documento + manifesto + **Ed25519 do servidor** + timestamp + IP; registro imutável; comprovante verificável (autoria + integridade). |
-| Comprovante PDF PAdES | 🟡 Parcial | **PAdES-B implementado** (CMS embarcado no PDF, testado). Falta o certificado **ICP-Brasil** (hoje autoassinado em dev). |
-| Geração AFD | 🟡 Parcial | **Implementada** (texto fixed-width, hash, assinatura, imutável). Falta **homologar o leiaute** no validador gov.br. |
-| Geração AEJ | 🟡 Parcial | **Implementada** (estrutura JSON v1). Falta homologar o leiaute oficial. |
-| Registro INPI | ⚪ Externo | Ato externo; sistema preparado (código versionado, hashes/assinaturas). |
-| Pacote de fiscalização | 🟢 Atende | ADM 6 gera AFD + AEJ + contagem da trilha (auditoria/acesso), com hashes. |
-| Guarda 5 anos / soft delete | 🟢 Atende | Desligamento = `status=DESLIGADO` + `desativadoEm` (ADM 2), sem hard delete; histórico preservado. |
-| Acesso do colaborador aos registros | 🟡 Parcial | Espelho do dia (Tela 3) pronto; espelho por período/banco de horas pendente. |
+| Item                                | Estado     | Observação                                                                                                                                       |
+| ----------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Imutabilidade dos registros         | 🟢 Atende  | `pontos` append-only (revoke + trigger); correção via `pontos_ajustes`; exceção via `AprovacaoExcecao`. A API de gravação respeita isso.         |
+| NSR sem furos por estabelecimento   | 🟢 Atende  | `NsrService` (INSERT … ON CONFLICT atômico). Falta o teste de concorrência com banco real.                                                       |
+| Hash de integridade (SHA-256)       | 🟢 Atende  | Calculado no registro sobre o conteúdo canônico. Hash-chain (encadeado) previsto p/ Fase 5 (AFD).                                                |
+| Trilha de auditoria                 | 🟢 Atende  | `logs_auditoria` cobre ponto/exceção/ajuste/REGAP + `logs_acesso`, append-only.                                                                  |
+| Registro nunca bloqueado            | 🟢 Atende  | Implementado: fora da REGAP/sem GPS → aceito como `PENDENTE_REGAP`.                                                                              |
+| Assinatura com hash + timestamp     | 🟢 Atende  | SHA-256 do documento + manifesto + **Ed25519 do servidor** + timestamp + IP; registro imutável; comprovante verificável (autoria + integridade). |
+| Comprovante PDF PAdES               | 🟡 Parcial | **PAdES-B implementado** (CMS embarcado no PDF, testado). Falta o certificado **ICP-Brasil** (hoje autoassinado em dev).                         |
+| Geração AFD                         | 🟡 Parcial | **Implementada** (texto fixed-width, hash, assinatura, imutável). Falta **homologar o leiaute** no validador gov.br.                             |
+| Geração AEJ                         | 🟡 Parcial | **Implementada** (estrutura JSON v1). Falta homologar o leiaute oficial.                                                                         |
+| Registro INPI                       | ⚪ Externo | Ato externo; sistema preparado (código versionado, hashes/assinaturas).                                                                          |
+| Pacote de fiscalização              | 🟢 Atende  | ADM 6 gera AFD + AEJ + contagem da trilha (auditoria/acesso), com hashes.                                                                        |
+| Guarda 5 anos / soft delete         | 🟢 Atende  | Desligamento = `status=DESLIGADO` + `desativadoEm` (ADM 2), sem hard delete; histórico preservado.                                               |
+| Acesso do colaborador aos registros | 🟡 Parcial | Espelho do dia (Tela 3) pronto; espelho por período/banco de horas pendente.                                                                     |
 
 Legenda: 🟢 atende · 🟡 parcial · 🔴 falta · ⚪ fora do escopo de código.
 
@@ -336,7 +336,8 @@ Legenda: 🟢 atende · 🟡 parcial · 🔴 falta · ⚪ fora do escopo de cód
 ## 10. Próximos passos recomendados
 
 **Roadmap 0–6 concluído.** Daqui em diante é caminho de **go-live** (atos externos
-+ infra), não novas fases de produto:
+
+- infra), não novas fases de produto:
 
 1. **Aprovar a Fase 6** (este entregável).
 2. **Homologação legal:** validar AFD/AEJ no verificador oficial gov.br; instalar
@@ -349,3 +350,35 @@ Legenda: 🟢 atende · 🟡 parcial · 🔴 falta · ⚪ fora do escopo de cód
    férias/afastamentos, contestação, integrações eSocial).
 5. **Jurídico:** revisão do fluxo da Tela 3/ADM 4 e da assinatura por advogado
    trabalhista antes do lançamento.
+
+## 11. Auditoria de continuidade + Fase B (2026-08-04)
+
+Ao reassumir o projeto, fiz uma **auditoria independente** (`AUDITORIA.md`) e um
+primeiro bloco de **estabilização (Fase B)**. Decisões e trade-offs:
+
+- **S2 — escopo de filial em assinaturas (authz):** as rotas ADM de assinatura
+  não restringiam o `GESTOR_FILIAL` às suas filiais (mesma classe do R1 já
+  corrigido em outros módulos). **Decisão:** aplicar o `EscopoFilialService`
+  também em `AssinaturaService` (`fila`/`detalhe`/`comprovante`/`homologar`), com
+  teste unit dedicado. A nova rota `homologar` (contra-assinatura do RH) já nasce
+  com o escopo aplicado.
+- **S4 — `SUPER_DATABASE_URL`:** passou a ser **fail-fast em produção** (o boot
+  cai se faltar a role `repp_super`). Dev mantém o fallback com aviso.
+- **S1 — deps:** `nodemailer` **6 → 9** (elimina os highs de SSRF/leitura de
+  arquivo — único no nosso caminho de código). **Trade-off registrado:** o vuln
+  de `qs`/`express` **não** foi corrigido porque `express@4.22.1` fixa `qs` em
+  `~6.14.0` (sem versão segura no range) — o fix real é migrar para **NestJS 11
+  (major)**. Optei por **não** forçar isso na estabilização; fica como migração
+  planejada, com a suíte e2e como rede de segurança. Idem highs transitivos
+  (`multer`/`js-yaml`/`lodash`) e os vulns **dev-only** (vitest/vite/cli).
+- **S3 — magic bytes:** o upload de assinatura passou a **verificar o conteúdo
+  real** (cabeçalho do arquivo) contra o tipo aceito, além do MIME declarado —
+  novo módulo puro `@repp/shared/arquivo` com teste. Fecha o R2 do
+  `SECURITY-REVIEW`. Anti-drift de migration no CI foi avaliado e **não** incluído
+  (exige shadow DB, não verificável aqui; o e2e já aplica todas as migrations).
+- **Honestidade:** validado por **99 testes unit verdes** (shared 67 + api 32),
+  lint/Prettier limpos e compilação SWC. O **e2e foi executado** ao fim (mesmo
+  com ~185MB de RAM livre) e passou: RLS, concorrência do NSR, imutabilidade e
+  boundary do Super Admin. Ressalva: o e2e prova as garantias **de banco**, não o
+  novo escopo de filial (S2) nem o magic-bytes (S3) — esses são authz/validação
+  de aplicação, cobertos por testes unit. Nada foi commitado.

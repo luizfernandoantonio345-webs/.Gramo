@@ -7,13 +7,21 @@ import { PrismaClient } from '@prisma/client';
  * banco (ver rls-policies.sql). NAO usa TenantContext (opera acima dos tenants).
  *
  * Usa SUPER_DATABASE_URL; se ausente (dev com um unico banco), cai para
- * DATABASE_URL com aviso -- em producao, defina a role dedicada.
+ * DATABASE_URL com aviso. Em PRODUCAO isso e proibido (fail-fast): a plataforma
+ * exige a role dedicada `repp_super` -- ver S4 na auditoria/SECURITY-REVIEW.
  */
 @Injectable()
 export class PrismaSuperService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaSuperService.name);
 
   constructor() {
+    // Fail-fast em producao: sem a role dedicada, o super cairia para repp_app
+    // (sem acesso a plataforma) -- melhor derrubar o boot do que rodar quebrado.
+    if (!process.env.SUPER_DATABASE_URL && process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'SUPER_DATABASE_URL e obrigatorio em producao (role repp_super da plataforma).',
+      );
+    }
     super({ datasourceUrl: process.env.SUPER_DATABASE_URL ?? process.env.DATABASE_URL });
     if (!process.env.SUPER_DATABASE_URL) {
       this.logger.warn(

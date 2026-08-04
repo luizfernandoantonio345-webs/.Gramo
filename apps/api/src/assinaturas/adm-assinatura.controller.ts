@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PapelAdmin } from '@prisma/client';
+import type { Request } from 'express';
 import { CurrentUser } from '../common/auth/current-user.decorator';
+import { extrairCtx } from '../common/http/request-ctx';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { JwtAuthGuard } from '../common/auth/jwt-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
@@ -42,21 +44,28 @@ export class AdmAssinaturaController {
   @Get()
   @Roles(...LEITURA)
   @ApiOperation({ summary: 'Fila de status (enviado/visualizado/assinado/recusado).' })
-  fila(@Query() q: FilaAssinaturaQuery) {
-    return this.service.fila(q);
+  fila(@Query() q: FilaAssinaturaQuery, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.fila(q, user);
   }
 
   @Get(':id')
   @Roles(...LEITURA)
   @ApiOperation({ summary: 'Detalhe da assinatura (hash, timestamp, IP/dispositivo).' })
-  detalhe(@Param('id') id: string) {
-    return this.service.detalhe(id);
+  detalhe(@Param('id') id: string, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.detalhe(id, user);
   }
 
   @Get(':id/comprovante')
   @Roles(...LEITURA)
   @ApiOperation({ summary: 'Comprovante verificavel.' })
-  comprovante(@Param('id') id: string) {
-    return this.service.comprovante(id);
+  comprovante(@Param('id') id: string, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.comprovante(id, undefined, user);
+  }
+
+  @Post(':id/homologar')
+  @Roles(PapelAdmin.RH_MASTER, PapelAdmin.GESTOR_FILIAL)
+  @ApiOperation({ summary: 'Contra-assinatura do RH (homologa o fechamento assinado).' })
+  homologar(@Param('id') id: string, @CurrentUser() user: UsuarioAutenticado, @Req() req: Request) {
+    return this.service.homologar(id, user, extrairCtx(req));
   }
 }
