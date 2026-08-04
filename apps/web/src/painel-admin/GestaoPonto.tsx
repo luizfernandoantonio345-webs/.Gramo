@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
-import { Badge, Botao, Campo, Cartao } from '../design-system/components';
+import {
+  Badge,
+  Botao,
+  CabecalhoPagina,
+  Campo,
+  Cartao,
+  EstadoVazio,
+  Feedback,
+  Kpi,
+} from '../design-system/components';
 import { apiGet, apiPost } from '../lib/api';
 
 interface Dashboard {
@@ -30,6 +39,7 @@ export function GestaoPonto() {
   const [excecoes, setExcecoes] = useState<ItemExcecao[]>([]);
   const [regaps, setRegaps] = useState<Regap[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(true);
 
   const carregar = useCallback(async () => {
     try {
@@ -41,8 +51,11 @@ export function GestaoPonto() {
       setDash(d);
       setExcecoes(e);
       setRegaps(r);
+      setErro(null);
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Falha ao carregar.');
+    } finally {
+      setCarregando(false);
     }
   }, []);
 
@@ -52,7 +65,7 @@ export function GestaoPonto() {
 
   async function decidir(id: string, aprovar: boolean) {
     const motivoResposta = window.prompt(
-      aprovar ? 'Justificativa da aprovacao:' : 'Justificativa da recusa:',
+      aprovar ? 'Justificativa da aprovação:' : 'Justificativa da recusa:',
     );
     if (!motivoResposta) return;
     try {
@@ -65,72 +78,140 @@ export function GestaoPonto() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-4)' }}>
-      <h1 style={{ font: '700 24px var(--font-display)' }}>Gestao de Ponto</h1>
-      {erro && <Badge cor="var(--color-red-alert)">{erro}</Badge>}
+      <CabecalhoPagina
+        titulo="Gestão de ponto"
+        subtitulo="Fila de exceções, presença do dia e áreas REGAP"
+      />
+
+      {erro && (
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <Feedback tom="erro">{erro}</Feedback>
+        </div>
+      )}
 
       {/* Indicadores do dia */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)', margin: 'var(--space-3) 0' }}>
-        <Kpi titulo="Presentes" valor={dash?.funcionariosPresentes} />
-        <Kpi titulo="Marcacoes hoje" valor={dash?.marcacoesHoje} />
-        <Kpi titulo="Fora da REGAP" valor={dash?.foraRegapHoje} cor="var(--color-amber-warning)" />
-        <Kpi titulo="Pendencias" valor={dash?.excecoesPendentes} cor="var(--color-red-alert)" />
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: 'var(--space-3)',
+          margin: '0 0 var(--space-4)',
+        }}
+      >
+        <Kpi rotulo="Presentes" valor={dash?.funcionariosPresentes ?? '—'} />
+        <Kpi rotulo="Marcações hoje" valor={dash?.marcacoesHoje ?? '—'} />
+        <Kpi
+          rotulo="Fora da REGAP"
+          valor={dash?.foraRegapHoje ?? '—'}
+          tom={dash && dash.foraRegapHoje > 0 ? 'aviso' : 'neutro'}
+        />
+        <Kpi
+          rotulo="Pendências"
+          valor={dash?.excecoesPendentes ?? '—'}
+          tom={dash && dash.excecoesPendentes > 0 ? 'alerta' : 'ok'}
+        />
       </div>
 
-      {/* Fila de excecoes */}
+      {/* Fila de excecoes -- superficie de decisao principal do RH */}
       <Cartao>
-        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Fila de excecoes</h2>
-        {excecoes.length === 0 && <p style={{ color: '#5b6472' }}>Nenhuma pendencia.</p>}
-        {excecoes.map((e) => (
-          <div
-            key={e.id}
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border)' }}
-          >
-            <div>
-              <strong>{e.funcionario.nome}</strong>{' '}
-              <Badge cor="var(--color-amber-warning)">{e.tipo}</Badge>
-              <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
-                NSR {e.ponto.nsr} · {new Date(e.ponto.registradoEm).toLocaleString('pt-BR')}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-              <button onClick={() => decidir(e.id, true)} style={botaoAcao('var(--color-teal-success)')}>
-                Aprovar
-              </button>
-              <button onClick={() => decidir(e.id, false)} style={botaoAcao('var(--color-red-alert)')}>
-                Recusar
-              </button>
-            </div>
-          </div>
-        ))}
+        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Fila de exceções</h2>
+        {carregando ? (
+          <EstadoVazio>Carregando…</EstadoVazio>
+        ) : excecoes.length === 0 ? (
+          <EstadoVazio>Nenhuma pendência — exceções em dia.</EstadoVazio>
+        ) : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {excecoes.map((e) => (
+              <li
+                key={e.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 'var(--space-3)',
+                  padding: 'var(--space-3) 0',
+                  borderBottom: '1px solid var(--color-border)',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--space-2)',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <strong style={{ font: '600 15px var(--font-body)' }}>
+                      {e.funcionario.nome}
+                    </strong>
+                    <Badge cor="var(--color-amber-warning)">{e.tipo}</Badge>
+                  </div>
+                  <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                    NSR {e.ponto.nsr} · {new Date(e.ponto.registradoEm).toLocaleString('pt-BR')}
+                    {e.ponto.dentroRegap ? '' : ' · fora da área'}
+                  </div>
+                  {e.motivo && (
+                    <div style={{ font: '400 13px var(--font-body)', color: '#5b6472' }}>
+                      “{e.motivo}”
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 'var(--space-2)', flex: '0 0 auto' }}>
+                  <button
+                    onClick={() => decidir(e.id, true)}
+                    style={botaoAcao('var(--color-teal-success)')}
+                  >
+                    Aprovar
+                  </button>
+                  <button
+                    onClick={() => decidir(e.id, false)}
+                    style={botaoAcao('var(--color-red-alert)')}
+                  >
+                    Recusar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </Cartao>
 
-      <div style={{ height: 'var(--space-3)' }} />
+      <div style={{ height: 'var(--space-4)' }} />
 
       {/* REGAP */}
       <NovaRegap onCriada={carregar} />
+      <div style={{ height: 'var(--space-3)' }} />
       <Cartao>
-        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Areas (REGAP)</h2>
-        {regaps.map((r) => (
-          <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-2) 0' }}>
-            <span>{r.nome}</span>
-            <span style={{ font: '13px var(--font-mono)' }}>raio {r.raioMetros} m</span>
-            <Badge cor={r.ativo ? 'var(--color-teal-success)' : 'var(--color-border)'}>
-              {r.ativo ? 'ativa' : 'inativa'}
-            </Badge>
-          </div>
-        ))}
+        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Áreas (REGAP)</h2>
+        {regaps.length === 0 ? (
+          <EstadoVazio>Nenhuma área cadastrada.</EstadoVazio>
+        ) : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {regaps.map((r) => (
+              <li
+                key={r.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 'var(--space-2)',
+                  padding: 'var(--space-2) 0',
+                  borderBottom: '1px solid var(--color-border)',
+                }}
+              >
+                <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>{r.nome}</span>
+                <span style={{ font: '13px var(--font-mono)', color: '#5b6472' }}>
+                  raio {r.raioMetros} m
+                </span>
+                <Badge cor={r.ativo ? 'var(--color-teal-success)' : 'var(--color-border)'}>
+                  {r.ativo ? 'ativa' : 'inativa'}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
       </Cartao>
-    </div>
-  );
-}
-
-function Kpi({ titulo, valor, cor }: { titulo: string; valor?: number; cor?: string }) {
-  return (
-    <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)' }}>
-      <div style={{ font: '700 28px var(--font-display)', color: cor ?? 'var(--color-navy-900)' }}>
-        {valor ?? '--'}
-      </div>
-      <div style={{ font: '400 13px var(--font-body)', color: '#5b6472' }}>{titulo}</div>
     </div>
   );
 }
@@ -141,9 +222,11 @@ function NovaRegap({ onCriada }: { onCriada: () => void }) {
   const [lng, setLng] = useState('');
   const [raio, setRaio] = useState('150');
   const [erro, setErro] = useState<string | null>(null);
+  const [criando, setCriando] = useState(false);
 
   async function criar() {
     setErro(null);
+    setCriando(true);
     try {
       await apiPost(
         '/admin/regaps',
@@ -161,21 +244,29 @@ function NovaRegap({ onCriada }: { onCriada: () => void }) {
       onCriada();
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao criar REGAP.');
+    } finally {
+      setCriando(false);
     }
   }
 
   return (
     <Cartao>
-      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Nova area (REGAP)</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 'var(--space-2)' }}>
+      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Nova área (REGAP)</h2>
+      <div
+        style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 'var(--space-2)' }}
+      >
         <Campo label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
         <Campo label="Latitude" value={lat} onChange={(e) => setLat(e.target.value)} />
         <Campo label="Longitude" value={lng} onChange={(e) => setLng(e.target.value)} />
         <Campo label="Raio (m)" value={raio} onChange={(e) => setRaio(e.target.value)} />
       </div>
-      {erro && <Badge cor="var(--color-red-alert)">{erro}</Badge>}
-      <Botao onClick={criar} disabled={!nome || !lat || !lng}>
-        Criar area
+      {erro && (
+        <div style={{ marginBottom: 'var(--space-2)' }}>
+          <Feedback tom="erro">{erro}</Feedback>
+        </div>
+      )}
+      <Botao onClick={criar} disabled={!nome || !lat || !lng || criando}>
+        {criando ? 'Criando…' : 'Criar área'}
       </Botao>
     </Cartao>
   );
@@ -183,12 +274,13 @@ function NovaRegap({ onCriada }: { onCriada: () => void }) {
 
 function botaoAcao(cor: string): CSSProperties {
   return {
-    padding: 'var(--space-2) var(--space-3)',
+    minHeight: 44,
+    padding: '0 var(--space-3)',
     borderRadius: 'var(--radius-sm)',
     border: 'none',
     background: cor,
     color: '#fff',
     cursor: 'pointer',
-    font: '500 13px var(--font-body)',
+    font: '600 13px var(--font-body)',
   };
 }

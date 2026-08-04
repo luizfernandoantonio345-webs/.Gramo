@@ -36,6 +36,7 @@ const COR: Record<string, string> = {
 export function PainelAssinaturas() {
   const [fila, setFila] = useState<ItemFila[]>([]);
   const [detalhe, setDetalhe] = useState<Detalhe | null>(null);
+  const [abertoId, setAbertoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
@@ -51,7 +52,20 @@ export function PainelAssinaturas() {
   }, [carregar]);
 
   async function abrir(id: string) {
+    setAbertoId(id);
     setDetalhe(await apiGet<Detalhe>(`/admin/assinaturas/${id}`));
+  }
+
+  async function homologar() {
+    if (!abertoId) return;
+    try {
+      await apiPost(`/admin/assinaturas/${abertoId}/homologar`, {}, true);
+      setErro(null);
+      await abrir(abertoId);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao homologar.');
+    }
   }
 
   return (
@@ -66,27 +80,57 @@ export function PainelAssinaturas() {
           <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Fila de status</h2>
           {fila.length === 0 && <p style={{ color: '#5b6472' }}>Nenhum documento.</p>}
           {fila.map((d) => (
-            <div key={d.id} onClick={() => abrir(d.id)} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}>
+            <div
+              key={d.id}
+              onClick={() => abrir(d.id)}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: 'var(--space-2) 0',
+                borderBottom: '1px solid var(--color-border)',
+                cursor: 'pointer',
+              }}
+            >
               <span>{d.funcionario.nome}</span>
               <span style={{ font: '13px var(--font-body)' }}>{d.titulo}</span>
               <Badge cor={COR[d.status] ?? 'var(--color-border)'}>{d.status}</Badge>
             </div>
           ))}
           {detalhe && (
-            <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--color-neutral-bg)', borderRadius: 'var(--radius-sm)' }}>
+            <div
+              style={{
+                marginTop: 'var(--space-3)',
+                padding: 'var(--space-3)',
+                background: 'var(--color-neutral-bg)',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
               <div style={{ font: '600 13px var(--font-body)' }}>Detalhe da assinatura</div>
               <div style={{ font: '11px var(--font-mono)', wordBreak: 'break-all' }}>
                 hash doc: {detalhe.hashDocumento.slice(0, 24)}...
                 {detalhe.assinatura ? (
                   <>
-                    <br />hash assinatura: {detalhe.assinatura.hashAssinatura.slice(0, 24)}...
-                    <br />timestamp: {new Date(detalhe.assinatura.timestampAssinatura).toLocaleString('pt-BR')}
-                    <br />IP: {detalhe.assinatura.ip ?? '-'} · chave: {detalhe.assinatura.chaveServidorId.slice(0, 12)}
+                    <br />
+                    hash assinatura: {detalhe.assinatura.hashAssinatura.slice(0, 24)}...
+                    <br />
+                    timestamp:{' '}
+                    {new Date(detalhe.assinatura.timestampAssinatura).toLocaleString('pt-BR')}
+                    <br />
+                    IP: {detalhe.assinatura.ip ?? '-'} · chave:{' '}
+                    {detalhe.assinatura.chaveServidorId.slice(0, 12)}
                   </>
                 ) : (
-                  <><br />ainda nao assinado</>
+                  <>
+                    <br />
+                    ainda nao assinado
+                  </>
                 )}
               </div>
+              {detalhe.status === 'ASSINADO' && (
+                <div style={{ marginTop: 'var(--space-2)' }}>
+                  <Botao onClick={homologar}>Homologar (contra-assinatura do RH)</Botao>
+                </div>
+              )}
             </div>
           )}
         </Cartao>
@@ -104,7 +148,9 @@ function Enviar({ onEnviado }: { onEnviado: () => void }) {
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    void apiGet<Funcionario[]>('/admin/funcionarios').then(setFuncs).catch(() => {});
+    void apiGet<Funcionario[]>('/admin/funcionarios')
+      .then(setFuncs)
+      .catch(() => {});
   }, []);
 
   async function enviar() {
@@ -135,17 +181,49 @@ function Enviar({ onEnviado }: { onEnviado: () => void }) {
 
   return (
     <Cartao>
-      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Enviar holerite/documento</h2>
-      <label style={{ display: 'block', font: '500 13px var(--font-body)', marginBottom: 'var(--space-1)' }}>Funcionario</label>
-      <select value={funcionarioId} onChange={(e) => setFuncionarioId(e.target.value)} style={{ width: '100%', padding: 'var(--space-2)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-3)' }}>
+      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>
+        Enviar holerite/documento
+      </h2>
+      <label
+        style={{
+          display: 'block',
+          font: '500 13px var(--font-body)',
+          marginBottom: 'var(--space-1)',
+        }}
+      >
+        Funcionario
+      </label>
+      <select
+        value={funcionarioId}
+        onChange={(e) => setFuncionarioId(e.target.value)}
+        style={{
+          width: '100%',
+          padding: 'var(--space-2)',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--color-border)',
+          marginBottom: 'var(--space-3)',
+        }}
+      >
         <option value="">Selecione...</option>
         {funcs.map((f) => (
-          <option key={f.id} value={f.id}>{f.nome}</option>
+          <option key={f.id} value={f.id}>
+            {f.nome}
+          </option>
         ))}
       </select>
       <Campo label="Titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
-      <Campo label="Competencia (YYYY-MM)" value={competencia} onChange={(e) => setCompetencia(e.target.value)} placeholder="2026-07" />
-      <input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} style={{ marginBottom: 'var(--space-3)' }} />
+      <Campo
+        label="Competencia (YYYY-MM)"
+        value={competencia}
+        onChange={(e) => setCompetencia(e.target.value)}
+        placeholder="2026-07"
+      />
+      <input
+        type="file"
+        accept="application/pdf,image/jpeg,image/png"
+        onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+        style={{ marginBottom: 'var(--space-3)' }}
+      />
       {msg && <Badge cor="var(--color-accent)">{msg}</Badge>}
       <Botao onClick={enviar} disabled={!funcionarioId || !titulo || !arquivo}>
         Enviar

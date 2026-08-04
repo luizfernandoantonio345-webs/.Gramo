@@ -1,11 +1,12 @@
 import { proximoTipoMarcacao, TipoMarcacao } from '@repp/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Badge, Botao, Cartao } from '../design-system/components';
+import { Badge, Botao, Cartao, EstadoVazio, Feedback } from '../design-system/components';
 import { apiGet, apiPost } from '../lib/api';
 import { contarPendentes, enfileirar } from '../offline/fila-ponto';
 import { sincronizarFila } from '../offline/sync';
 
 type StatusAnel = 'dentro' | 'fora' | 'desconhecido';
+type TomFeedback = 'sucesso' | 'erro' | 'aviso' | 'info';
 
 interface PontoResumo {
   id: string;
@@ -17,35 +18,47 @@ interface PontoResumo {
 }
 
 /**
- * Tela 3 -- Bater Ponto. O "Anel de Presenca" mostra o status de REGAP em tempo
- * real (teal dentro / ambar fora). O botao NUNCA bloqueia: sem rede, a marcacao
- * vai para a fila offline (Dexie) e sincroniza depois.
+ * Tela 3 -- Bater Ponto (app do funcionario). Prioridade de UX: UMA acao clara,
+ * grande, para uso em campo (sol, pouca luz, pressa). O "Anel de Presenca" mostra
+ * a REGAP em tempo real (teal dentro / ambar fora). O botao NUNCA bloqueia: sem
+ * rede, a marcacao vai para a fila offline (Dexie) e sincroniza depois. Estados
+ * tratados: carregando, vazio, erro de carga, offline, sucesso e pendente.
  */
 export function BaterPonto() {
-  const [coords, setCoords] = useState<{ lat: number; lng: number; prec: number | null } | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number; prec: number | null } | null>(
+    null,
+  );
   const [anel, setAnel] = useState<StatusAnel>('desconhecido');
   const [online, setOnline] = useState<boolean>(navigator.onLine);
   const [espelho, setEspelho] = useState<PontoResumo[]>([]);
   const [pendentes, setPendentes] = useState<number>(0);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ tom: TomFeedback; texto: string } | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarga, setErroCarga] = useState(false);
+  const [cameraLigada, setCameraLigada] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const carregarEspelho = useCallback(async () => {
     try {
       setEspelho(await apiGet<PontoResumo[]>('/pontos/hoje'));
+      setErroCarga(false);
     } catch {
-      /* offline: mantem o que tem */
+      // offline ou falha: mantem o que tem e sinaliza (nao apaga o espelho local).
+      setErroCarga(true);
+    } finally {
+      setPendentes(await contarPendentes());
+      setCarregando(false);
     }
-    setPendentes(await contarPendentes());
   }, []);
 
   // Geolocalizacao em tempo real.
   useEffect(() => {
     if (!navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
-      (p) => setCoords({ lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy }),
+      (p) =>
+        setCoords({ lat: p.coords.latitude, lng: p.coords.longitude, prec: p.coords.accuracy }),
       () => setAnel('desconhecido'),
       { enableHighAccuracy: true, maximumAge: 10000 },
     );
@@ -56,7 +69,9 @@ export function BaterPonto() {
   useEffect(() => {
     if (!coords || !online) return;
     let cancelado = false;
-    apiGet<{ dentro: boolean }>(`/pontos/regap-status?latitude=${coords.lat}&longitude=${coords.lng}`)
+    apiGet<{ dentro: boolean }>(
+      `/pontos/regap-status?latitude=${coords.lat}&longitude=${coords.lng}`,
+    )
       .then((r) => !cancelado && setAnel(r.dentro ? 'dentro' : 'fora'))
       .catch(() => !cancelado && setAnel('desconhecido'));
     return () => {
@@ -103,7 +118,10 @@ export function BaterPonto() {
     // Camera exige contexto seguro (HTTPS) -- so localhost e excecao. Em HTTP
     // (ex.: acesso por IP na LAN) navigator.mediaDevices nem existe.
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      setMsg('Camera exige HTTPS. Abra pelo link seguro (https). A marcacao funciona sem foto.');
+      setFeedback({
+        tom: 'aviso',
+        texto: 'A câmera exige HTTPS. Abra pelo link seguro (https). A marcação funciona sem foto.',
+      });
       return;
     }
     // Desliga um stream anterior antes de abrir outro (evita streams empilhados).
@@ -112,8 +130,12 @@ export function BaterPonto() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
+      setCameraLigada(true);
     } catch {
-      setMsg('Camera indisponivel -- a marcacao segue normalmente sem foto.');
+      setFeedback({
+        tom: 'aviso',
+        texto: 'Câmera indisponível — a marcação segue normalmente sem foto.',
+      });
     }
   }
 
@@ -127,7 +149,7 @@ export function BaterPonto() {
 
   async function baterPonto() {
     setEnviando(true);
-    setMsg(null);
+    setFeedback(null);
     const foto = await capturarFoto();
     const item = {
       uuidIdempotencia: crypto.randomUUID(),
@@ -154,27 +176,33 @@ export function BaterPonto() {
         true,
       );
       const hora = new Date(r.registradoEm).toLocaleTimeString('pt-BR');
-      setMsg(
-        `Registrado as ${hora} (NSR ${r.nsr})` +
-          (r.statusValidacao === 'VALIDO' ? '' : ' -- pendente de validacao do RH.'),
-      );
+      const ok = r.statusValidacao === 'VALIDO';
+      setFeedback({
+        tom: ok ? 'sucesso' : 'aviso',
+        texto: ok
+          ? `${rotulo(tipoSugerido)} registrada às ${hora} (NSR ${r.nsr}).`
+          : `${rotulo(tipoSugerido)} registrada às ${hora} (NSR ${r.nsr}) — pendente de validação do RH.`,
+      });
     } catch {
       // Sem rede (ou falha): enfileira. O registro NUNCA e perdido nem bloqueado.
       await enfileirar(item);
-      setMsg('Sem conexao: marcacao salva no aparelho e sera sincronizada depois.');
+      setFeedback({
+        tom: 'aviso',
+        texto: 'Sem conexão: marcação salva no aparelho e será sincronizada automaticamente.',
+      });
     }
     await carregarEspelho();
     setEnviando(false);
   }
 
   async function contestar(pontoId: string) {
-    const motivo = window.prompt('Motivo da contestacao desta marcacao:');
+    const motivo = window.prompt('Motivo da contestação desta marcação:');
     if (!motivo) return;
     try {
       await apiPost('/contestacoes', { pontoId, motivo }, true);
-      setMsg('Contestacao registrada. O RH ira responder.');
+      setFeedback({ tom: 'sucesso', texto: 'Contestação registrada. O RH irá responder.' });
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : 'Falha ao contestar.');
+      setFeedback({ tom: 'erro', texto: e instanceof Error ? e.message : 'Falha ao contestar.' });
     }
   }
 
@@ -184,85 +212,183 @@ export function BaterPonto() {
       : anel === 'fora'
         ? 'var(--color-amber-warning)'
         : 'var(--color-border)';
+  const textoAnel =
+    anel === 'dentro'
+      ? 'Dentro da área (REGAP)'
+      : anel === 'fora'
+        ? 'Fora da área — registro permitido'
+        : 'Localização indisponível';
 
   return (
-    <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ font: '700 22px var(--font-display)' }}>Bater Ponto</h1>
+    <div style={{ maxWidth: 440, margin: '0 auto', padding: 'var(--space-4)' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ font: '700 24px var(--font-display)', margin: 0 }}>Bater ponto</h1>
         <Badge cor={online ? 'var(--color-teal-success)' : 'var(--color-amber-warning)'}>
           {online ? 'online' : 'offline'}
         </Badge>
-      </div>
+      </header>
 
       {/* Anel de Presenca ao redor da captura facial */}
-      <div style={{ display: 'flex', justifyContent: 'center', margin: 'var(--space-4) 0' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          margin: 'var(--space-4) 0 var(--space-3)',
+        }}
+      >
         <div
           style={{
-            width: 220,
-            height: 220,
+            position: 'relative',
+            width: 232,
+            height: 232,
             borderRadius: '50%',
             border: `10px solid ${corAnel}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
-            background: '#000',
+            background: '#0b1220',
+            transition: 'border-color 0.2s ease',
           }}
         >
-          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
-      </div>
-
-      <div style={{ textAlign: 'center', marginBottom: 'var(--space-3)' }}>
-        <Badge cor={corAnel}>
-          {anel === 'dentro' ? 'Dentro da area (REGAP)' : anel === 'fora' ? 'Fora da area -- registro permitido' : 'Localizacao indisponivel'}
-        </Badge>
-      </div>
-
-      <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
-        <Botao variante="secundario" onClick={ligarCamera}>
-          Ligar camera
-        </Botao>
-        <Botao onClick={baterPonto} disabled={enviando}>
-          {enviando ? 'Registrando...' : `Bater ${rotulo(tipoSugerido)}`}
-        </Botao>
-      </div>
-
-      {msg && (
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <Badge cor="var(--color-accent)">{msg}</Badge>
-        </div>
-      )}
-      {pendentes > 0 && (
-        <p style={{ font: '400 13px var(--font-body)', color: 'var(--color-amber-warning)' }}>
-          {pendentes} marcacao(oes) aguardando sincronizacao.
-        </p>
-      )}
-
-      <Cartao>
-        <h2 style={{ font: '600 15px var(--font-display)', marginTop: 0 }}>Marcacoes de hoje</h2>
-        {espelho.length === 0 && <p style={{ color: '#5b6472' }}>Nenhuma marcacao ainda.</p>}
-        {espelho.map((p) => (
-          <div
-            key={p.id}
-            style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border)' }}
-          >
-            <span style={{ font: '500 14px var(--font-body)' }}>{rotulo(p.tipo as TipoMarcacao)}</span>
-            <span style={{ font: '13px var(--font-mono)' }}>
-              {new Date(p.registradoEm).toLocaleTimeString('pt-BR')}
-            </span>
-            <Badge cor={p.statusValidacao === 'VALIDO' ? 'var(--color-teal-success)' : 'var(--color-amber-warning)'}>
-              {p.statusValidacao === 'VALIDO' ? 'valido' : 'pendente'}
-            </Badge>
-            <button
-              onClick={() => contestar(p.id)}
-              style={{ background: 'none', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', font: '400 12px var(--font-body)' }}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          {!cameraLigada && (
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                color: '#c7d2e3',
+                font: '500 13px var(--font-body)',
+                textAlign: 'center',
+                padding: '0 var(--space-3)',
+              }}
             >
-              contestar
-            </button>
+              Câmera desligada
+              <br />
+              (opcional)
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div
+        style={{ textAlign: 'center', marginBottom: 'var(--space-4)' }}
+        role="status"
+        aria-live="polite"
+      >
+        <Badge cor={corAnel}>{textoAnel}</Badge>
+      </div>
+
+      {/* Acao principal: grande, alvo de toque generoso. Nunca bloqueia. */}
+      <Botao grande onClick={baterPonto} disabled={enviando}>
+        {enviando ? 'Registrando…' : `Bater ${rotulo(tipoSugerido)}`}
+      </Botao>
+      <div style={{ marginTop: 'var(--space-2)' }}>
+        <Botao variante="secundario" onClick={ligarCamera}>
+          {cameraLigada ? 'Trocar câmera' : 'Ligar câmera (opcional)'}
+        </Botao>
+      </div>
+
+      {/* Feedback da acao (sucesso/erro/aviso), com aria-live no componente. */}
+      {feedback && (
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <Feedback tom={feedback.tom}>{feedback.texto}</Feedback>
+        </div>
+      )}
+
+      {/* Status de sincronizacao offline em destaque (promessa do offline-first). */}
+      {pendentes > 0 && (
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <Feedback tom="aviso">
+            {pendentes === 1
+              ? '1 marcação aguardando sincronização.'
+              : `${pendentes} marcações aguardando sincronização.`}{' '}
+            {online ? 'Enviando…' : 'Será enviada quando a conexão voltar.'}
+          </Feedback>
+        </div>
+      )}
+
+      <div style={{ marginTop: 'var(--space-4)' }}>
+        <Cartao>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              marginBottom: 'var(--space-2)',
+            }}
+          >
+            <h2 style={{ font: '600 16px var(--font-display)', margin: 0 }}>Marcações de hoje</h2>
+            {erroCarga && !carregando && (
+              <span
+                style={{ font: '400 12px var(--font-body)', color: 'var(--color-amber-warning)' }}
+              >
+                não atualizado
+              </span>
+            )}
           </div>
-        ))}
-      </Cartao>
+
+          {carregando ? (
+            <EstadoVazio>Carregando marcações…</EstadoVazio>
+          ) : espelho.length === 0 ? (
+            <EstadoVazio>Nenhuma marcação hoje. Toque em “Bater entrada” para começar.</EstadoVazio>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {espelho.map((p) => {
+                const valido = p.statusValidacao === 'VALIDO';
+                return (
+                  <li
+                    key={p.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--space-2)',
+                      padding: 'var(--space-3) 0',
+                      borderBottom: '1px solid var(--color-border)',
+                    }}
+                  >
+                    <span style={{ font: '500 14px var(--font-body)', flex: 1 }}>
+                      {rotulo(p.tipo as TipoMarcacao)}
+                    </span>
+                    <span style={{ font: '14px var(--font-mono)' }}>
+                      {new Date(p.registradoEm).toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                    <Badge
+                      cor={valido ? 'var(--color-teal-success)' : 'var(--color-amber-warning)'}
+                    >
+                      {valido ? 'válido' : 'pendente'}
+                    </Badge>
+                    <button
+                      onClick={() => contestar(p.id)}
+                      aria-label={`Contestar marcação de ${rotulo(p.tipo as TipoMarcacao)}`}
+                      style={{
+                        minHeight: 44,
+                        padding: '0 var(--space-2)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-accent)',
+                        cursor: 'pointer',
+                        font: '500 13px var(--font-body)',
+                      }}
+                    >
+                      contestar
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Cartao>
+      </div>
     </div>
   );
 }
@@ -272,11 +398,11 @@ function rotulo(t: TipoMarcacao | string): string {
     case TipoMarcacao.ENTRADA:
       return 'Entrada';
     case TipoMarcacao.INICIO_INTERVALO:
-      return 'Inicio intervalo';
+      return 'Início intervalo';
     case TipoMarcacao.FIM_INTERVALO:
       return 'Fim intervalo';
     case TipoMarcacao.SAIDA:
-      return 'Saida';
+      return 'Saída';
     default:
       return String(t);
   }
