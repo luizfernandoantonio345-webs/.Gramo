@@ -382,3 +382,34 @@ primeiro bloco de **estabilização (Fase B)**. Decisões e trade-offs:
   boundary do Super Admin. Ressalva: o e2e prova as garantias **de banco**, não o
   novo escopo de filial (S2) nem o magic-bytes (S3) — esses são authz/validação
   de aplicação, cobertos por testes unit. Nada foi commitado.
+
+## 12. Fase C (frontend) + Fase D (backend/confiabilidade) — 2026-08-04
+
+**Fase C — elevação do frontend (16 telas):** design system elevado de forma
+**aditiva/retrocompatível** (novos `Feedback` com `aria-live`, `EstadoVazio`,
+`CabecalhoPagina`, `Kpi`; `Botao` com toque ≥44px e `grande`). Padrão aplicado em
+todas as telas: feedback com **cor + texto + ícone** (nunca só cor), estados
+carregando/vazio/erro/offline/sucesso, alvos de toque ≥44px, `aria-*`. Dois
+mundos separados: app do funcionário (simples, 1 ação) × painel admin (denso,
+dashboard). **Lógica testada intacta** — só a camada visual mudou. Validado por
+ESLint + Prettier em todo `apps/web`. **Ressalva honesta:** não consegui rodar o
+Vite nesta máquina (RAM) para revisão visual ao vivo nem `tsc` completo — a
+revisão tela a tela fica por conta do dono (via `git diff` ou execução no CI).
+
+**Fase D — confiabilidade do backend** (o essencial já existia; foco nos gaps):
+
+- **D1 — resiliência de processo:** `main.ts` ganhou `unhandledRejection` (loga e
+  segue) e `uncaughtException` (loga fatal e encerra gracioso), mais
+  `enableShutdownHooks` (Prisma `$disconnect` no SIGTERM/SIGINT). Validado nos
+  dois cenários: boot limpo com banco no ar; e falha de banco capturada pelo
+  guard sem crash. Trade-off registrado: excecão verdadeiramente não capturada
+  **encerra** (estado incerto é inaceitável num sistema de ponto).
+- **D2 — auditoria:** cobertura já ampla (super-admin audita via `auth.log`; 17+
+  serviços via `LogAuditoria`). Único gap real: **upload de documento** passou a
+  registrar `LogAuditoria` (ator = funcionário) na mesma transação. +teste unit.
+- **Já existente (sem retrabalho):** `AllExceptionsFilter` global (Prisma→HTTP,
+  requestId, sem stack em prod), `/health/live` + `/health/ready` (ping ao banco),
+  Swagger dev-only. **Não** reconstruí nada disso.
+- **Validação:** 100 testes unit verdes (shared 67 + api 33), SWC compila, API
+  sobe e `/health/ready` = `{db:up}`. e2e **não** reexecutado (mudanças são
+  boot-level + 1 insert auditado; RLS/NSR/imutabilidade inalterados).

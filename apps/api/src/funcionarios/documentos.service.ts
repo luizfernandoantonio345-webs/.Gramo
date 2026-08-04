@@ -47,8 +47,8 @@ export class DocumentosService {
 
     const arquivoRef = await this.storage.salvarArquivo(dto.arquivoBase64, 'documento');
     const empresaId = TenantContext.requireEmpresaId();
-    return this.prisma.forTenant((tx) =>
-      tx.documento.create({
+    return this.prisma.forTenant(async (tx) => {
+      const doc = await tx.documento.create({
         data: {
           empresaId,
           funcionarioId,
@@ -60,8 +60,22 @@ export class DocumentosService {
           dataValidade: dto.dataValidade ? new Date(dto.dataValidade) : null,
         },
         select: { id: true, tipo: true, status: true },
-      }),
-    );
+      });
+      // Trilha de auditoria: toda escrita de negocio deixa rastro (quem/quando/o
+      // que). O ator do upload e o proprio funcionario.
+      await tx.logAuditoria.create({
+        data: {
+          empresaId,
+          usuarioId: funcionarioId,
+          usuarioTipo: 'funcionario',
+          acao: 'documento.enviar',
+          entidadeAfetada: 'documentos',
+          entidadeId: doc.id,
+          valorNovo: { tipo: dto.tipo, nomeArquivo: dto.nomeArquivo ?? null },
+        },
+      });
+      return doc;
+    });
   }
 
   private statusEfetivo(

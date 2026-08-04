@@ -32,6 +32,24 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('bootstrap');
   const producao = process.env.NODE_ENV === 'production';
 
+  // Resiliencia de processo: erros FORA do ciclo de request (promise orfa,
+  // excecao nao capturada) nao passam pelo AllExceptionsFilter. Sem tratamento,
+  // uma promise rejeitada derruba o processo (Node >= 15). Politica:
+  //  - unhandledRejection: registra e SEGUE (nao derrubar o servidor por um
+  //    await esquecido; o request associado ja falhou isoladamente).
+  //  - uncaughtException: registra como FATAL e encerra graciosamente. Continuar
+  //    apos uma excecao verdadeiramente nao capturada deixa o processo em estado
+  //    incerto -- inaceitavel num sistema de ponto; melhor sair e deixar o
+  //    orquestrador reiniciar limpo.
+  const fmtErro = (e: unknown): string => (e instanceof Error ? (e.stack ?? e.message) : String(e));
+  process.on('unhandledRejection', (motivo) => {
+    logger.error(`unhandledRejection (servidor segue): ${fmtErro(motivo)}`);
+  });
+  process.on('uncaughtException', (erro) => {
+    logger.error(`uncaughtException (fatal, encerrando): ${fmtErro(erro)}`);
+    void app.close().finally(() => process.exit(1));
+  });
+
   // Hardening: cabecalhos de seguranca (CSP/HSTS/etc.).
   app.use(helmet());
   app.use(json({ limit: LIMITE_BODY }));
@@ -39,7 +57,10 @@ async function bootstrap(): Promise<void> {
 
   // CORS restrito por env (CORS_ORIGINS = lista separada por virgula). Sem a var,
   // em producao nega cross-origin; em dev libera localhost.
-  const origins = (process.env.CORS_ORIGINS ?? '').split(',').map((o) => o.trim()).filter(Boolean);
+  const origins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
     origin: origins.length > 0 ? origins : producao ? false : /localhost:\d+$/,
     credentials: true,
@@ -68,6 +89,10 @@ async function bootstrap(): Promise<void> {
       .build();
     SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
   }
+
+  // Shutdown gracioso: SIGTERM/SIGINT disparam onModuleDestroy (Prisma
+  // $disconnect) antes de encerrar -- sem conexoes penduradas no Postgres.
+  app.enableShutdownHooks();
 
   const port = process.env.API_PORT ? Number(process.env.API_PORT) : 3000;
   await app.listen(port);
