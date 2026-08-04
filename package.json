@@ -39,5 +39,11 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0"
+  },
+  "overrides": {
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/common": "^11.1.28",
+    "crypto-js": "^4.2.0",
+    "js-yaml": "^4.1.0"
   }
 }
