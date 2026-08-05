@@ -31,11 +31,13 @@ RAM livre, ou build no CI).
 
 ---
 
-## 2. Pronto para integrar (código existe, falta plugar)
+## 2. Integrado / pronto para integrar
 
-- **Adicional noturno** (`@repp/shared/noturno`) → conectar no `FechamentoService`/
-  `banco-horas` para compor o holerite. Esforço: baixo. Falta: somar `resumoNoturno`
-  por dia trabalhado e expor no espelho.
+- **Adicional noturno** → ✅ **integrado** no `BancoHorasService.consolidado`
+  (commit `47dfa32`): `noturno {relogioMin, legalMin com hora reduzida, adicionalMin
+20%}` + `noturnoMin` por dia + alerta + linha no card do RH. Caveat honesto: turno
+  que cruza a meia-noite é par em dias distintos no modelo atual (noturno contado por
+  janela dentro do dia) — melhoria futura = pareamento cross-midnight.
 - **Presença em tempo real** → já no Dashboard; opção futura: telão dedicado
   (rota `/presenca` full-screen) reusando o mesmo endpoint.
 
