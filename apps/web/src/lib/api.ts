@@ -150,6 +150,35 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return tratar<T>(await requisitar(path, { method: 'PATCH', body: JSON.stringify(body) }, true));
 }
 
+// --- Quiosque (autenticacao por token de dispositivo, sem JWT) --------------
+
+const K_KIOSK = 'repp_kiosk_token';
+
+export function definirTokenKiosk(token: string): void {
+  localStorage.setItem(K_KIOSK, token.trim());
+}
+export function tokenKioskAtual(): string | null {
+  return localStorage.getItem(K_KIOSK);
+}
+export function limparTokenKiosk(): void {
+  localStorage.removeItem(K_KIOSK);
+}
+
+/** POST no quiosque: envia o token do dispositivo (X-Kiosk-Token), sem Bearer. */
+export async function kioskPost<T>(path: string, body: unknown): Promise<T> {
+  const token = tokenKioskAtual();
+  const resp = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Tenant-Subdominio': subdominioAtual(),
+      ...(token ? { 'X-Kiosk-Token': token } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  return tratar<T>(resp);
+}
+
 /** Le um File como data URL (base64) para upload. */
 export function lerArquivoBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

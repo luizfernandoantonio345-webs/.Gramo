@@ -15,9 +15,11 @@ import { PainelComunicados } from './painel-admin/PainelComunicados';
 import { PainelConfiguracoes } from './painel-admin/PainelConfiguracoes';
 import { PainelDashboard } from './painel-admin/PainelDashboard';
 import { PainelIntegracoes } from './painel-admin/PainelIntegracoes';
+import { PainelQuiosque } from './painel-admin/PainelQuiosque';
 import { PainelRelatorios } from './painel-admin/PainelRelatorios';
 import { SuperLogin } from './painel-admin/SuperLogin';
 import { SuperPanel } from './painel-admin/SuperPanel';
+import { TelaQuiosque } from './quiosque/TelaQuiosque';
 import {
   definirSessao,
   EVENTO_SESSAO_EXPIRADA,
@@ -33,6 +35,12 @@ import {
  * Gestao de Funcionarios (ADM 2).
  */
 export function App(): JSX.Element {
+  // Modo Quiosque (tablet na portaria): standalone, sem login de funcionario.
+  // Acessado por ?modo=quiosque -- isolado do fluxo normal.
+  if (new URLSearchParams(window.location.search).get('modo') === 'quiosque') {
+    return <TelaQuiosque />;
+  }
+
   // Restaura a sessao apos recarregar (o token fica no localStorage).
   const sessao = sessaoAtual();
   const [contexto, setContexto] = useState<Contexto>(sessao ?? 'funcionario');
@@ -81,6 +89,7 @@ export function App(): JSX.Element {
             { id: 'auditoria', rotulo: 'Auditoria' },
             { id: 'config', rotulo: 'Configuracoes' },
             { id: 'integracoes', rotulo: 'Integracoes' },
+            { id: 'quiosque', rotulo: 'Quiosque' },
           ];
     const telas: Record<string, JSX.Element> =
       contexto === 'funcionario'
@@ -102,6 +111,7 @@ export function App(): JSX.Element {
             auditoria: <PainelAuditoria />,
             config: <PainelConfiguracoes />,
             integracoes: <PainelIntegracoes />,
+            quiosque: <PainelQuiosque />,
           };
     return (
       <div>
