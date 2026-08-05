@@ -46,4 +46,17 @@ export default defineConfig({
       },
     },
   },
+  // `vite preview` (serve o build de producao) usa a config propria -- espelha o
+  // proxy do dev para o app buildado tambem falar com a API local numa porta so.
+  preview: {
+    port: 5173,
+    host: true,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
 });
