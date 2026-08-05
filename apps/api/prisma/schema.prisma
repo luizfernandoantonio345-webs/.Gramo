@@ -1026,6 +1026,24 @@ model ChaveApi {
   @@map("chaves_api")
 }
 
+/// Dispositivo de quiosque (tablet fixo na portaria) que registra ponto por CPF.
+/// Autentica por token de dispositivo (guardado so como hash). Escopo por filial.
+model DispositivoKiosk {
+  id               String    @id @default(uuid()) @db.Uuid
+  empresaId        String    @map("empresa_id") @db.Uuid
+  filialId         String    @map("filial_id") @db.Uuid
+  nome             String
+  tokenHash        String    @map("token_hash")
+  ativo            Boolean   @default(true)
+  criadoPorAdminId String    @map("criado_por_admin_id") @db.Uuid
+  ultimoUsoEm      DateTime? @map("ultimo_uso_em")
+  criadoEm         DateTime  @default(now()) @map("criado_em")
+
+  @@index([empresaId])
+  @@index([tokenHash])
+  @@map("dispositivos_kiosk")
+}
+
 /// Configuracao de integracao (folha/eSocial). A transmissao em si e infra externa.
 model IntegracaoConfig {
   id           String         @id @default(uuid()) @db.Uuid

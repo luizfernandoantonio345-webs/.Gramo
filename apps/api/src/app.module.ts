@@ -13,6 +13,7 @@ import { ConfiguracoesModule } from './configuracoes/configuracoes.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { FechamentoModule } from './fechamento/fechamento.module';
 import { IntegracoesModule } from './integracoes/integracoes.module';
+import { KioskModule } from './kiosk/kiosk.module';
 import { RequestIdMiddleware } from './common/http/request-id.middleware';
 import { NotificacaoModule } from './common/notificacoes/notificacao.module';
 import { SecurityModule } from './common/security/security.module';
@@ -57,6 +58,7 @@ import { HealthModule } from './health/health.module';
     ComunicadosModule,
     IntegracoesModule,
     FechamentoModule,
+    KioskModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

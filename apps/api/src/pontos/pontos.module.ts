@@ -12,5 +12,6 @@ import { PontoService } from './ponto.service';
 @Module({
   controllers: [PontoController, GestaoPontoController, RegapController],
   providers: [PontoService, NsrService, GestaoPontoService],
+  exports: [PontoService],
 })
 export class PontosModule {}

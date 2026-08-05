@@ -85,7 +85,8 @@ DECLARE
     'comunicados_leitura',
     'chaves_api',
     'integracoes_config',
-    'ajustes_banco_horas'
+    'ajustes_banco_horas',
+    'dispositivos_kiosk'
   ];
 BEGIN
   FOREACH t IN ARRAY tabelas LOOP
@@ -175,7 +176,8 @@ REVOKE ALL ON funcionarios, pontos, pontos_ajustes, justificativas_autorizacoes,
   regap, contadores_nsr, convites, refresh_tokens, tokens_recuperacao,
   logs_acesso, logs_auditoria, usuarios_admin, admin_filial_acesso,
   exportacoes_afd_aej, filiais, jornadas, feriados, ferias_afastamentos,
-  contestacoes_ponto, comunicados, comunicados_leitura, chaves_api, integracoes_config
+  contestacoes_ponto, comunicados, comunicados_leitura, chaves_api, integracoes_config,
+  dispositivos_kiosk
   FROM repp_super;
 
 -- empresas tem FORCE RLS; a policy de tenant retornaria 0 linhas p/ o super (sem
