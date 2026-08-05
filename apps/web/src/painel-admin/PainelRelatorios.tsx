@@ -100,6 +100,30 @@ export function PainelRelatorios() {
     }
   }
 
+  async function baixarCsv() {
+    setFeedback(null);
+    try {
+      const r = await apiPost<{ nomeArquivo: string; conteudo: string; totalMarcacoes: number }>(
+        '/admin/relatorios/espelho-csv',
+        periodo(),
+        true,
+      );
+      const blob = new Blob([r.conteudo], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.nomeArquivo;
+      a.click();
+      URL.revokeObjectURL(url);
+      setFeedback({
+        tom: 'sucesso',
+        texto: `Espelho gerado: ${r.totalMarcacoes} marcações (CSV).`,
+      });
+    } catch (e) {
+      setFeedback({ tom: 'erro', texto: e instanceof Error ? e.message : 'Falha ao gerar CSV.' });
+    }
+  }
+
   async function baixar(id: string, tipo: string) {
     const r = await apiGet<{
       conteudoBase64: string;
@@ -156,6 +180,9 @@ export function PainelRelatorios() {
           <Botao onClick={() => gerar('aej')}>Gerar AEJ</Botao>
           <Botao variante="secundario" onClick={pacote}>
             Pacote fiscalização
+          </Botao>
+          <Botao variante="secundario" onClick={baixarCsv}>
+            Espelho (CSV/Excel)
           </Botao>
         </div>
       </Cartao>

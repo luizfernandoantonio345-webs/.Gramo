@@ -25,14 +25,26 @@ export class ExportacaoController {
   @Roles(...COMPLIANCE)
   @ApiOperation({ summary: 'Gera o AFD do periodo (hash + assinatura + registro).' })
   gerarAfd(@Body() dto: PeriodoDto, @CurrentUser() user: UsuarioAutenticado) {
-    return this.service.exportar(TipoExportacao.AFD, new Date(dto.inicio), new Date(dto.fim), user, dto.filialId);
+    return this.service.exportar(
+      TipoExportacao.AFD,
+      new Date(dto.inicio),
+      new Date(dto.fim),
+      user,
+      dto.filialId,
+    );
   }
 
   @Post('aej')
   @Roles(...COMPLIANCE)
   @ApiOperation({ summary: 'Gera o AEJ do periodo.' })
   gerarAej(@Body() dto: PeriodoDto, @CurrentUser() user: UsuarioAutenticado) {
-    return this.service.exportar(TipoExportacao.AEJ, new Date(dto.inicio), new Date(dto.fim), user, dto.filialId);
+    return this.service.exportar(
+      TipoExportacao.AEJ,
+      new Date(dto.inicio),
+      new Date(dto.fim),
+      user,
+      dto.filialId,
+    );
   }
 
   @Get()
@@ -79,5 +91,12 @@ export class FiscalizacaoController {
   @ApiOperation({ summary: 'Gera o pacote de fiscalizacao (AFD + AEJ + trilha).' })
   pacote(@Body() dto: PeriodoDto, @CurrentUser() user: UsuarioAutenticado) {
     return this.service.pacote(new Date(dto.inicio), new Date(dto.fim), user, dto.filialId);
+  }
+
+  @Post('espelho-csv')
+  @Roles(...COMPLIANCE)
+  @ApiOperation({ summary: 'Espelho de ponto do periodo em CSV (gerencial, abre no Excel).' })
+  espelhoCsv(@Body() dto: PeriodoDto, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.espelhoCsv(new Date(dto.inicio), new Date(dto.fim), user, dto.filialId);
   }
 }

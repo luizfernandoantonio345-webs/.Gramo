@@ -5,6 +5,7 @@ export * from './assinatura';
 export * from './ausencia';
 export * from './banco-horas';
 export * from './cpf';
+export * from './csv';
 export * from './dinheiro';
 export * from './documentos';
 export * from './enums';
