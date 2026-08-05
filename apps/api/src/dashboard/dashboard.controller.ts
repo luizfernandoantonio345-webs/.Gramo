@@ -22,4 +22,10 @@ export class DashboardController {
   geral(@CurrentUser() user: UsuarioAutenticado) {
     return this.service.geral(user);
   }
+
+  @Get('presenca')
+  @ApiOperation({ summary: 'Presenca em tempo real: quem esta trabalhando agora (por filial).' })
+  presenca(@CurrentUser() user: UsuarioAutenticado) {
+    return this.service.presencaAgora(user);
+  }
 }

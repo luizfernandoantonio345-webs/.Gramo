@@ -5,10 +5,48 @@ import {
   StatusDocumento,
   StatusExcecao,
   StatusFuncionario,
+  TipoMarcacao,
 } from '@prisma/client';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { EscopoFilialService } from '../common/authz/escopo-filial.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+/** Tipos de marcacao que deixam o funcionario "dentro" (trabalhando agora). */
+const TIPOS_PRESENTE: TipoMarcacao[] = [TipoMarcacao.ENTRADA, TipoMarcacao.FIM_INTERVALO];
+
+interface PontoPresenca {
+  funcionarioId: string;
+  tipo: TipoMarcacao;
+  registradoEm: Date;
+  funcionario: { nome: string; filial: { nome: string } | null };
+}
+
+/**
+ * Reduz os pontos de hoje ao "quem esta presente agora": o ultimo ponto de cada
+ * funcionario define o estado (ENTRADA/FIM_INTERVALO = dentro; SAIDA/INICIO_
+ * INTERVALO = fora). Puro e testavel isoladamente.
+ */
+export function calcularPresenca(pontosOrdenados: PontoPresenca[]) {
+  const ultimoPorFuncionario = new Map<string, PontoPresenca>();
+  for (const p of pontosOrdenados) ultimoPorFuncionario.set(p.funcionarioId, p);
+
+  const presentes = [...ultimoPorFuncionario.values()]
+    .filter((p) => TIPOS_PRESENTE.includes(p.tipo))
+    .map((p) => ({
+      funcionario: p.funcionario.nome,
+      filial: p.funcionario.filial?.nome ?? 'Sem filial',
+      desde: p.registradoEm.toISOString(),
+    }))
+    .sort((a, b) => a.funcionario.localeCompare(b.funcionario, 'pt-BR'));
+
+  const porFilialMap = new Map<string, number>();
+  for (const p of presentes) porFilialMap.set(p.filial, (porFilialMap.get(p.filial) ?? 0) + 1);
+  const porFilial = [...porFilialMap.entries()]
+    .map(([filial, total]) => ({ filial, total }))
+    .sort((a, b) => b.total - a.total);
+
+  return { total: presentes.length, porFilial, presentes };
+}
 
 /** ADM 5 -- Dashboard Geral (visao executiva consolidada). So leitura. */
 @Injectable()
@@ -91,5 +129,30 @@ export class DashboardService {
         presenca7dias: presenca,
       };
     });
+  }
+
+  /**
+   * Presenca EM TEMPO REAL: quem esta trabalhando agora (ultimo ponto de hoje =
+   * ENTRADA/FIM_INTERVALO). Escopo por filial + RLS. Leitura leve para polling.
+   */
+  async presencaAgora(autor: UsuarioAutenticado) {
+    const inicioHoje = new Date();
+    inicioHoje.setHours(0, 0, 0, 0);
+    const f = await this.escopo.escopoFilialId(autor);
+
+    const pontos = await this.prisma.forTenant((tx) =>
+      tx.ponto.findMany({
+        where: { ...f, registradoEm: { gte: inicioHoje } },
+        orderBy: { registradoEm: 'asc' },
+        select: {
+          funcionarioId: true,
+          tipo: true,
+          registradoEm: true,
+          funcionario: { select: { nome: true, filial: { select: { nome: true } } } },
+        },
+      }),
+    );
+
+    return { atualizadoEm: new Date().toISOString(), ...calcularPresenca(pontos) };
   }
 }

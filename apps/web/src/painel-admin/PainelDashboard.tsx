@@ -61,6 +61,10 @@ export function PainelDashboard() {
         </div>
       )}
 
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <PresencaAgora />
+      </div>
+
       <div
         style={{
           display: 'grid',
@@ -171,6 +175,156 @@ export function PainelDashboard() {
       <div style={{ height: 'var(--space-4)' }} />
       <BancoHorasTool />
     </div>
+  );
+}
+
+interface Presenca {
+  atualizadoEm: string;
+  total: number;
+  porFilial: Array<{ filial: string; total: number }>;
+  presentes: Array<{ funcionario: string; filial: string; desde: string }>;
+}
+
+/**
+ * Presenca em tempo real (near real-time): "quem esta trabalhando agora".
+ * Poll a cada 15s -- robusto, atravessa qualquer proxy, sem estado no servidor.
+ * Ponto de "uau" para o RH: numero vivo + quebra por filial + nomes sob demanda.
+ */
+function PresencaAgora() {
+  const [p, setP] = useState<Presenca | null>(null);
+  const [erro, setErro] = useState(false);
+  const [expandido, setExpandido] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    const carregar = async () => {
+      try {
+        const r = await apiGet<Presenca>('/admin/dashboard/presenca');
+        if (vivo) {
+          setP(r);
+          setErro(false);
+        }
+      } catch {
+        if (vivo) setErro(true);
+      }
+    };
+    void carregar();
+    const id = setInterval(carregar, 15000);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  return (
+    <Cartao>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-2)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <span
+            aria-hidden
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: 'var(--color-teal-success)',
+              boxShadow: '0 0 0 4px rgba(30, 138, 110, 0.18)',
+            }}
+          />
+          <h2 style={{ font: '600 16px var(--font-display)', margin: 0 }}>Presença agora</h2>
+        </div>
+        <span
+          style={{ font: '11px var(--font-mono)', color: '#5b6472' }}
+          role="status"
+          aria-live="polite"
+        >
+          {p
+            ? `atualizado ${new Date(p.atualizadoEm).toLocaleTimeString('pt-BR')}`
+            : erro
+              ? 'sem conexão'
+              : '—'}
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 'var(--space-2)',
+          margin: 'var(--space-2) 0',
+        }}
+      >
+        <span style={{ font: '700 40px var(--font-display)', color: 'var(--color-teal-success)' }}>
+          {p?.total ?? '—'}
+        </span>
+        <span style={{ font: '400 14px var(--font-body)', color: '#5b6472' }}>
+          trabalhando neste momento
+        </span>
+      </div>
+
+      {p && p.porFilial.length > 0 && (
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          {p.porFilial.map((x) => (
+            <Badge key={x.filial} cor="var(--color-navy-900)">
+              {x.filial}: {x.total}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {p && p.total > 0 && (
+        <>
+          <button
+            onClick={() => setExpandido((v) => !v)}
+            aria-expanded={expandido}
+            style={{
+              minHeight: 44,
+              marginTop: 'var(--space-2)',
+              padding: 0,
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-accent)',
+              cursor: 'pointer',
+              font: '500 13px var(--font-body)',
+            }}
+          >
+            {expandido ? 'ocultar nomes' : 'ver quem está'}
+          </button>
+          {expandido && (
+            <ul style={{ listStyle: 'none', margin: 'var(--space-2) 0 0', padding: 0 }}>
+              {p.presentes.map((x, i) => (
+                <li
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 'var(--space-2)',
+                    padding: 'var(--space-1) 0',
+                    borderBottom: '1px solid var(--color-border)',
+                    font: '400 13px var(--font-body)',
+                  }}
+                >
+                  <span>{x.funcionario}</span>
+                  <span style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                    {x.filial} · desde{' '}
+                    {new Date(x.desde).toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </Cartao>
   );
 }
 
