@@ -13,6 +13,7 @@ export * from './geo';
 export * from './horario';
 export * from './lockout';
 export * from './marcacao';
+export * from './noturno';
 export * from './password-policy';
 export * from './ponto-hash';
 export * from './sync-contract';
