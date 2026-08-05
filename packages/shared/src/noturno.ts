@@ -33,6 +33,24 @@ export function minutosNoturnosReduzidos(minutosRelogio: number): number {
   return Math.round(minutosRelogio * FATOR_HORA_REDUZIDA);
 }
 
+function sobreposicao(a1: number, a2: number, b1: number, b2: number): number {
+  return Math.max(0, Math.min(a2, b2) - Math.max(a1, b1));
+}
+
+/**
+ * Minutos noturnos de um intervalo expresso em MINUTOS-DO-DIA (0..1440), no fuso
+ * da filial — casa com o modelo do banco de horas. A janela 22h-5h e tratada como
+ * [22:00,24:00) + [00:00,05:00) DENTRO do dia. (Turnos que cruzam a meia-noite sao
+ * pares em dias distintos no modelo atual — limitacao pre-existente do banco.)
+ */
+export function minutosNoturnosMinDia(entradaMin: number, saidaMin: number): number {
+  if (saidaMin <= entradaMin) return 0;
+  return (
+    sobreposicao(entradaMin, saidaMin, NOTURNO_INICIO_MIN, 24 * 60) +
+    sobreposicao(entradaMin, saidaMin, 0, NOTURNO_FIM_MIN)
+  );
+}
+
 /** Resumo do adicional noturno de um intervalo trabalhado. */
 export function resumoNoturno(entrada: Date, saida: Date, percentual = ADICIONAL_NOTURNO_PADRAO) {
   const minutosRelogio = minutosNoturnos(entrada, saida);

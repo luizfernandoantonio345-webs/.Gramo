@@ -25,6 +25,32 @@ describe('calcularHorasDia', () => {
     const r = calcularHorasDia([m(TipoMarcacao.SAIDA, 17), m(TipoMarcacao.ENTRADA, 9)]);
     expect(r.trabalhadoMin).toBe(8 * 60);
   });
+
+  it('dia diurno nao tem minutos noturnos', () => {
+    const r = calcularHorasDia([m(TipoMarcacao.ENTRADA, 8), m(TipoMarcacao.SAIDA, 17)]);
+    expect(r.noturnoMin).toBe(0);
+  });
+
+  it('conta so a parte noturna da noite: 18:00->23:30 = 90 min (22:00-23:30)', () => {
+    const r = calcularHorasDia([m(TipoMarcacao.ENTRADA, 18), m(TipoMarcacao.SAIDA, 23, 30)]);
+    expect(r.noturnoMin).toBe(90);
+  });
+
+  it('conta a janela da madrugada: 03:00->08:00 = 120 min (03:00-05:00)', () => {
+    const r = calcularHorasDia([m(TipoMarcacao.ENTRADA, 3), m(TipoMarcacao.SAIDA, 8)]);
+    expect(r.noturnoMin).toBe(120);
+  });
+
+  it('desconta intervalo noturno: 22:00-23:00 com pausa 22:15-22:30 = 45 min noturnos', () => {
+    const r = calcularHorasDia([
+      m(TipoMarcacao.ENTRADA, 22),
+      m(TipoMarcacao.INICIO_INTERVALO, 22, 15),
+      m(TipoMarcacao.FIM_INTERVALO, 22, 30),
+      m(TipoMarcacao.SAIDA, 23),
+    ]);
+    // bruto noturno 60 - intervalo noturno 15 = 45
+    expect(r.noturnoMin).toBe(45);
+  });
 });
 
 describe('saldoDia', () => {

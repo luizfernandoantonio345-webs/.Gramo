@@ -437,6 +437,7 @@ interface Consolidado {
   ajustesMin: number;
   observacao: string;
   alertas: string[];
+  noturno?: { relogioMin: number; formatado: string; adicionalMin: number; percentual: number };
 }
 
 function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
@@ -510,6 +511,13 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
             Saldo: <strong>{dados.saldoFormatado ?? '—'}</strong> · extras {dados.extrasMin}min ·
             faltas {dados.faltasMin}min · ajustes {dados.ajustesMin}min
           </div>
+          {dados.noturno && dados.noturno.relogioMin > 0 && (
+            <div>
+              Noturno (art. 73): <strong>{dados.noturno.formatado}</strong> (hora reduzida) +
+              adicional {Math.round(dados.noturno.percentual * 100)}% ={' '}
+              <strong>{dados.noturno.adicionalMin}min</strong>
+            </div>
+          )}
           <div style={{ color: '#5b6472', font: '12px var(--font-body)' }}>{dados.observacao}</div>
           {dados.alertas.map((a, i) => (
             <div key={i} style={{ marginTop: 4 }}>

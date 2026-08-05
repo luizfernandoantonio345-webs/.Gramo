@@ -1,4 +1,5 @@
 import { TipoMarcacao } from './enums';
+import { minutosNoturnosMinDia } from './noturno';
 
 /**
  * Banco de horas (ADM 4/ADM 7). Puro e testavel. Emparelha as marcacoes do dia
@@ -15,12 +16,16 @@ export interface HorasDia {
   /** Minutos trabalhados liquidos (bruto menos intervalos). */
   trabalhadoMin: number;
   intervaloMin: number;
+  /** Minutos-relogio trabalhados na janela noturna (22h-5h), ja sem intervalo. */
+  noturnoMin: number;
 }
 
 export function calcularHorasDia(marcacoes: MarcacaoDia[]): HorasDia {
   const ord = [...marcacoes].sort((a, b) => a.minutosDoDia - b.minutosDoDia);
   let bruto = 0;
   let intervalo = 0;
+  let noturnoBruto = 0;
+  let noturnoIntervalo = 0;
   let entrada: number | null = null;
   let inicioInt: number | null = null;
 
@@ -32,6 +37,7 @@ export function calcularHorasDia(marcacoes: MarcacaoDia[]): HorasDia {
       case TipoMarcacao.SAIDA:
         if (entrada !== null) {
           bruto += m.minutosDoDia - entrada;
+          noturnoBruto += minutosNoturnosMinDia(entrada, m.minutosDoDia);
           entrada = null;
         }
         break;
@@ -41,12 +47,17 @@ export function calcularHorasDia(marcacoes: MarcacaoDia[]): HorasDia {
       case TipoMarcacao.FIM_INTERVALO:
         if (inicioInt !== null) {
           intervalo += m.minutosDoDia - inicioInt;
+          noturnoIntervalo += minutosNoturnosMinDia(inicioInt, m.minutosDoDia);
           inicioInt = null;
         }
         break;
     }
   }
-  return { trabalhadoMin: Math.max(0, bruto - intervalo), intervaloMin: intervalo };
+  return {
+    trabalhadoMin: Math.max(0, bruto - intervalo),
+    intervaloMin: intervalo,
+    noturnoMin: Math.max(0, noturnoBruto - noturnoIntervalo),
+  };
 }
 
 /** Saldo do dia (minutos) = trabalhado - carga esperada. Null se sem carga. */

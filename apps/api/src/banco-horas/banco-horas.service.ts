@@ -1,6 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { RegimeHoras, TipoAjusteBanco, TipoMarcacao } from '@prisma/client';
-import { calcularHorasDia, formatarMinutos, saldoDia, type MarcacaoDia } from '@repp/shared';
+import {
+  ADICIONAL_NOTURNO_PADRAO,
+  calcularHorasDia,
+  formatarMinutos,
+  minutosNoturnosReduzidos,
+  saldoDia,
+  type MarcacaoDia,
+} from '@repp/shared';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { EscopoFilialService } from '../common/authz/escopo-filial.service';
 import { TenantContext } from '../common/tenant/tenant-context';
@@ -57,8 +64,8 @@ export class BancoHorasService {
         throw new NotFoundException('Funcionario fora do seu escopo de filial.');
       }
       const tz = func.filialId
-        ? (await tx.filial.findFirst({ where: { id: func.filialId }, select: { timezone: true } }))
-            ?.timezone ?? 'America/Sao_Paulo'
+        ? ((await tx.filial.findFirst({ where: { id: func.filialId }, select: { timezone: true } }))
+            ?.timezone ?? 'America/Sao_Paulo')
         : 'America/Sao_Paulo';
       const carga = func.jornada?.cargaDiariaMinutos ?? null;
       const regime = func.jornada?.regimeHoras ?? RegimeHoras.COMPENSACAO_MENSAL;
@@ -83,7 +90,9 @@ export class BancoHorasService {
       const alertas: string[] = [];
       let extrasMin = 0;
       let faltasMin = 0;
+      let noturnoRelogioMin = 0;
       for (const d of dias) {
+        noturnoRelogioMin += d.noturnoMin;
         if (d.saldoMin === null) continue;
         if (d.saldoMin > 0) extrasMin += d.saldoMin;
         else faltasMin += -d.saldoMin;
@@ -94,6 +103,22 @@ export class BancoHorasService {
         }
       }
       const ajustesMin = ajustes.reduce((s, a) => s + a.minutos, 0);
+
+      // Adicional noturno (CLT art. 73): hora reduzida (52min30s) + 20%. So base
+      // de folha -- nao entra no saldo do banco (que e compensacao de jornada).
+      const noturnoLegalMin = minutosNoturnosReduzidos(noturnoRelogioMin);
+      const noturno = {
+        relogioMin: noturnoRelogioMin,
+        legalMin: noturnoLegalMin,
+        adicionalMin: Math.round(noturnoLegalMin * ADICIONAL_NOTURNO_PADRAO),
+        percentual: ADICIONAL_NOTURNO_PADRAO,
+        formatado: formatarMinutos(noturnoLegalMin),
+      };
+      if (noturnoRelogioMin > 0) {
+        alertas.push(
+          `Trabalho noturno no periodo: ${formatarMinutos(noturnoLegalMin)} (com hora reduzida) + adicional de ${Math.round(ADICIONAL_NOTURNO_PADRAO * 100)}%.`,
+        );
+      }
 
       // Aplica o regime.
       let saldoBancoMin: number | null;
@@ -138,6 +163,7 @@ export class BancoHorasService {
         saldoFormatado: saldoBancoMin === null ? null : formatarMinutos(saldoBancoMin),
         observacao,
         alertas,
+        noturno,
         dias,
         ajustes,
       };
@@ -202,8 +228,8 @@ export class BancoHorasService {
     return [...porDia.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([data, marcacoes]) => {
-        const { trabalhadoMin } = calcularHorasDia(marcacoes);
-        return { data, trabalhadoMin, saldoMin: saldoDia(trabalhadoMin, carga) };
+        const { trabalhadoMin, noturnoMin } = calcularHorasDia(marcacoes);
+        return { data, trabalhadoMin, noturnoMin, saldoMin: saldoDia(trabalhadoMin, carga) };
       });
   }
 
