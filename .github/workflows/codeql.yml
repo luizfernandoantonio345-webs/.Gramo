@@ -1,0 +1,36 @@
+# SAST: analise estatica de seguranca do codigo (CodeQL) em PR e semanalmente.
+name: CodeQL
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: '0 3 * * 1' # segunda 03:00 UTC
+
+jobs:
+  analyze:
+    name: Analise CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inicializar CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Consultas de seguranca + qualidade (mais abrangente que o default).
+          queries: security-and-quality
+
+      - name: Analisar
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'

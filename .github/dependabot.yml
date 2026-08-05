@@ -1,0 +1,26 @@
+# SCA automatizado: Dependabot abre PRs de atualizacao de dependencia.
+# Agrupado para reduzir ruido; foca em seguranca (patch/minor) semanalmente.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Um PR unico para patches/minors nao-quebrantes.
+      dependencias-seguras:
+        update-types:
+          - minor
+          - patch
+    # Majors (quebrantes, ex.: NestJS) sobem em PR proprio para revisao dedicada.
+    labels:
+      - dependencias
+      - seguranca
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    labels:
+      - ci

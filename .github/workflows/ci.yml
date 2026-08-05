@@ -48,3 +48,8 @@ jobs:
       # e2e com Postgres real embarcado (RLS, concorrencia do NSR, imutabilidade).
       - name: Testes e2e (Postgres embarcado)
         run: npm run test:e2e -w @repp/api
+
+      # SCA: trava regressao de vulnerabilidade ALTA/CRITICA em dependencia de
+      # PRODUCAO (dev-tooling nao entra). Hoje prod = 0 vulnerabilidades.
+      - name: Auditoria de dependencias (producao)
+        run: npm audit --omit=dev --audit-level=high
