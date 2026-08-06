@@ -6,7 +6,7 @@ import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { JwtAuthGuard } from '../common/auth/jwt-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
-import { EspelhoPdfDto } from './dto/relatorio.dto';
+import { EspelhoPdfDto, FechamentoObraDto } from './dto/relatorio.dto';
 import { RelatorioService } from './relatorio.service';
 
 const RELATORIOS = [PapelAdmin.RH_MASTER, PapelAdmin.GESTOR_FILIAL, PapelAdmin.FINANCEIRO] as const;
@@ -28,5 +28,14 @@ export class RelatorioController {
     @CurrentUser() user: UsuarioAutenticado,
   ) {
     return this.service.espelhoPdf(funcionarioId, dto.inicio, dto.fim, user, dto.competencia);
+  }
+
+  @Post('fechamento-obra')
+  @Roles(...RELATORIOS)
+  @ApiOperation({
+    summary: 'Fechamento mensal gerencial de uma obra (todos os funcionarios) em PDF.',
+  })
+  fechamentoObra(@Body() dto: FechamentoObraDto, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.fechamentoObraPdf(dto.filialId, dto.competencia, user);
   }
 }

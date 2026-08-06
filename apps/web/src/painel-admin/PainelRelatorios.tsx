@@ -32,6 +32,8 @@ export function PainelRelatorios() {
   const [inicio, setInicio] = useState('2026-07-01');
   const [fim, setFim] = useState('2026-07-31');
   const [filialId, setFilialId] = useState('');
+  const [competencia, setCompetencia] = useState('2026-07');
+  const [gerandoFechamento, setGerandoFechamento] = useState(false);
   const [filiais, setFiliais] = useState<FilialRef[]>([]);
   const [lista, setLista] = useState<Exportacao[]>([]);
   const [feedback, setFeedback] = useState<{ tom: TomFeedback; texto: string } | null>(null);
@@ -124,6 +126,37 @@ export function PainelRelatorios() {
     }
   }
 
+  async function fechamentoObra() {
+    setFeedback(null);
+    setGerandoFechamento(true);
+    try {
+      const r = await apiPost<{
+        nomeArquivo: string;
+        conteudoBase64: string;
+        totalFuncionarios: number;
+      }>('/admin/relatorios/fechamento-obra', { filialId, competencia }, true);
+      const bin = atob(r.conteudoBase64);
+      const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.nomeArquivo;
+      a.click();
+      URL.revokeObjectURL(url);
+      setFeedback({
+        tom: 'sucesso',
+        texto: `Fechamento gerado: ${r.totalFuncionarios} funcionário(s) na obra (PDF).`,
+      });
+    } catch (e) {
+      setFeedback({
+        tom: 'erro',
+        texto: e instanceof Error ? e.message : 'Falha ao gerar o fechamento.',
+      });
+    } finally {
+      setGerandoFechamento(false);
+    }
+  }
+
   async function baixar(id: string, tipo: string) {
     const r = await apiGet<{
       conteudoBase64: string;
@@ -185,6 +218,42 @@ export function PainelRelatorios() {
             Espelho (CSV/Excel)
           </Botao>
         </div>
+      </Cartao>
+
+      <div style={{ height: 'var(--space-3)' }} />
+      <Cartao>
+        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>
+          Fechamento mensal por obra (PDF gerencial)
+        </h2>
+        <p
+          style={{ font: '13px var(--font-body)', color: 'var(--color-text-muted)', marginTop: 0 }}
+        >
+          Consolida todos os funcionários da obra na competência — trabalhado, extras, faltas, saldo
+          do banco e adicional noturno. Conferência de folha do gestor. Não substitui o AFD/AEJ.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-2)' }}>
+          <Selecao
+            label="Obra / filial"
+            value={filialId}
+            onChange={(e) => setFilialId(e.target.value)}
+          >
+            <option value="">Selecione a obra…</option>
+            {filiais.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nome}
+              </option>
+            ))}
+          </Selecao>
+          <Campo
+            label="Competência"
+            type="month"
+            value={competencia}
+            onChange={(e) => setCompetencia(e.target.value)}
+          />
+        </div>
+        <Botao onClick={fechamentoObra} disabled={!filialId || gerandoFechamento}>
+          {gerandoFechamento ? 'Gerando…' : 'Gerar fechamento (PDF)'}
+        </Botao>
       </Cartao>
 
       <div style={{ height: 'var(--space-3)' }} />
