@@ -19,6 +19,7 @@ import { PainelQuiosque } from './painel-admin/PainelQuiosque';
 import { PainelRelatorios } from './painel-admin/PainelRelatorios';
 import { SuperLogin } from './painel-admin/SuperLogin';
 import { SuperPanel } from './painel-admin/SuperPanel';
+import { TelaoPresenca } from './painel-admin/TelaoPresenca';
 import { TelaQuiosque } from './quiosque/TelaQuiosque';
 import {
   definirSessao,
@@ -35,11 +36,12 @@ import {
  * Gestao de Funcionarios (ADM 2).
  */
 export function App(): JSX.Element {
-  // Modo Quiosque (tablet na portaria): standalone, sem login de funcionario.
-  // Acessado por ?modo=quiosque -- isolado do fluxo normal.
-  if (new URLSearchParams(window.location.search).get('modo') === 'quiosque') {
-    return <TelaQuiosque />;
-  }
+  // Modos standalone (isolados do fluxo normal), por ?modo=... :
+  // - quiosque: tablet na portaria (sem login de funcionario).
+  // - presenca: telao de presenca em tempo real (usa sessao de admin).
+  const modo = new URLSearchParams(window.location.search).get('modo');
+  if (modo === 'quiosque') return <TelaQuiosque />;
+  if (modo === 'presenca') return <TelaoPresenca />;
 
   // Restaura a sessao apos recarregar (o token fica no localStorage).
   const sessao = sessaoAtual();
@@ -131,17 +133,33 @@ export function App(): JSX.Element {
               </TabBtn>
             ))}
           </div>
-          <button
-            onClick={sair}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--color-accent)',
-              cursor: 'pointer',
-            }}
-          >
-            Sair
-          </button>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+            {contexto === 'admin' && (
+              <a
+                href="?modo=presenca"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: 'var(--color-accent)',
+                  font: '600 13px var(--font-body)',
+                  textDecoration: 'none',
+                }}
+              >
+                📺 Telão
+              </a>
+            )}
+            <button
+              onClick={sair}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-accent)',
+                cursor: 'pointer',
+              }}
+            >
+              Sair
+            </button>
+          </div>
         </div>
         {telas[secao] ?? telas.principal}
       </div>
