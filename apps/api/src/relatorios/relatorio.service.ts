@@ -166,7 +166,8 @@ export class RelatorioService {
     // Garante que o gestor tem escopo sobre a obra pedida (RH_MASTER passa direto).
     await this.escopo.garantirFilial(autor, filialId);
 
-    const [ano, mes] = competencia.split('-').map(Number);
+    const ano = Number(competencia.slice(0, 4));
+    const mes = Number(competencia.slice(5, 7));
     const inicioIso = new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0)).toISOString();
     const fimIso = new Date(Date.UTC(ano, mes, 0, 23, 59, 59, 999)).toISOString();
 

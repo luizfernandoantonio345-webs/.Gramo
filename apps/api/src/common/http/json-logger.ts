@@ -19,19 +19,19 @@ export class JsonLogger extends ConsoleLogger {
     );
   }
 
-  log(message: unknown, context?: string): void {
+  override log(message: unknown, context?: string): void {
     this.emitir('log', message, context);
   }
-  error(message: unknown, stackOrContext?: string, context?: string): void {
+  override error(message: unknown, stackOrContext?: string, context?: string): void {
     this.emitir('error', message, context ?? stackOrContext);
   }
-  warn(message: unknown, context?: string): void {
+  override warn(message: unknown, context?: string): void {
     this.emitir('warn', message, context);
   }
-  debug(message: unknown, context?: string): void {
+  override debug(message: unknown, context?: string): void {
     this.emitir('debug', message, context);
   }
-  verbose(message: unknown, context?: string): void {
+  override verbose(message: unknown, context?: string): void {
     this.emitir('verbose', message, context);
   }
 }

@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NestMiddleware } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NestMiddleware,
+} from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantContext } from './tenant-context';
@@ -19,7 +24,7 @@ export class TenantMiddleware implements NestMiddleware {
     // Health/docs e as rotas de PLATAFORMA (Super Admin) nao dependem de tenant.
     // Usa originalUrl (caminho completo, independente de prefixo/versao aplicados
     // ao req.path) e checa por segmento (evita falso-positivo de substring).
-    const url = (req.originalUrl || req.url || '').split('?')[0];
+    const url = (req.originalUrl || req.url || '').split('?')[0] ?? '';
     if (url.startsWith('/api/docs') || /^\/api(\/v\d+)?\/(health|super|publico)(\/|$)/.test(url)) {
       return next();
     }

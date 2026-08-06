@@ -1,11 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { StatusAssinatura, TipoDocAssinatura, TipoMarcacao } from '@prisma/client';
-import {
-  calcularHorasDia,
-  formatarMinutos,
-  saldoDia,
-  type MarcacaoDia,
-} from '@repp/shared';
+import { calcularHorasDia, formatarMinutos, saldoDia, type MarcacaoDia } from '@repp/shared';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { SignatureService } from '../assinaturas/signature.service';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
@@ -56,8 +51,8 @@ export class FechamentoService {
         throw new NotFoundException('Funcionario fora do seu escopo de filial.');
       }
       const tz = func.filialId
-        ? (await tx.filial.findFirst({ where: { id: func.filialId }, select: { timezone: true } }))
-            ?.timezone ?? 'America/Sao_Paulo'
+        ? ((await tx.filial.findFirst({ where: { id: func.filialId }, select: { timezone: true } }))
+            ?.timezone ?? 'America/Sao_Paulo')
         : 'America/Sao_Paulo';
 
       const { inicio, fim } = this.intervaloMes(competencia);
@@ -95,8 +90,11 @@ export class FechamentoService {
       saldoTotal: carga === null ? null : formatarMinutos(saldoTotal),
     });
 
-    const hashDocumento = this.signature.hashDocumento(pdf);
-    const arquivoRef = await this.storage.salvarArquivo(Buffer.from(pdf).toString('base64'), 'espelho');
+    const hashDocumento = this.signature.hashDocumento(Buffer.from(pdf));
+    const arquivoRef = await this.storage.salvarArquivo(
+      Buffer.from(pdf).toString('base64'),
+      'espelho',
+    );
     const titulo = `Espelho de Ponto ${competencia.slice(5)}/${competencia.slice(0, 4)}`;
 
     return this.prisma.forTenant(async (tx) => {
@@ -134,7 +132,8 @@ export class FechamentoService {
   // --- helpers ---
 
   private intervaloMes(competencia: string): { inicio: Date; fim: Date } {
-    const [ano, mes] = competencia.split('-').map(Number);
+    const ano = Number(competencia.slice(0, 4));
+    const mes = Number(competencia.slice(5, 7));
     const inicio = new Date(Date.UTC(ano, mes - 1, 1, 0, 0, 0));
     const fim = new Date(Date.UTC(ano, mes, 0, 23, 59, 59, 999));
     return { inicio, fim };
