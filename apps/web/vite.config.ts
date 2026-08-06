@@ -10,6 +10,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // PWA_OFF=true -> gera um service worker "auto-destrutivo" que remove o SW
+      // antigo e limpa TODOS os caches no cliente (util em dev p/ desencalhar quem
+      // ficou com versao velha). Em producao (sem a env) o PWA fica normal.
+      selfDestroying: process.env.PWA_OFF === 'true',
       manifest: {
         name: 'REP-P - Ponto Eletronico',
         short_name: 'REP-P',
