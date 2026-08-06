@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Botao, Campo, Cartao, Feedback } from '../design-system/components';
+import { Botao, Campo, Cartao, Feedback, MarcaRepp } from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa';
@@ -48,17 +48,9 @@ export function SuperLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) =>
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-navy-deep)', paddingTop: 60 }}>
       <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
-        <div
-          style={{
-            color: '#8fb0ef',
-            font: '700 12px var(--font-mono)',
-            letterSpacing: '0.15em',
-            marginBottom: 'var(--space-2)',
-          }}
-        >
-          SUPER ADMIN · PLATAFORMA
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <MarcaRepp subtitulo="Plataforma · Super Admin" />
         </div>
-        <h1 style={{ font: '700 24px var(--font-display)', color: '#fff', marginTop: 0 }}>REP-P</h1>
         <Cartao>
           {etapa === 'credenciais' && (
             <>

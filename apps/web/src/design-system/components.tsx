@@ -20,24 +20,27 @@ export function Botao({
   variante?: 'primario' | 'secundario';
   grande?: boolean;
 }) {
-  const cor = variante === 'primario' ? 'var(--color-accent)' : 'var(--color-surface-2)';
-  // Texto ESCURO sobre o ciano (acao primaria) -> contraste alto e ar premium.
-  const texto = variante === 'primario' ? 'var(--color-navy-deep)' : 'var(--color-navy-900)';
+  const primario = variante === 'primario';
+  const cor = primario ? 'var(--gradient-accent)' : 'var(--color-surface-2)';
+  // Texto ESCURO sobre o acento vivo (acao primaria) -> contraste alto, ar premium.
+  const texto = primario ? 'var(--color-navy-deep)' : 'var(--color-navy-900)';
   return (
     <button
       {...props}
       style={{
         width: '100%',
-        minHeight: grande ? 60 : 44,
+        minHeight: grande ? 60 : 46,
         padding: grande ? 'var(--space-3) var(--space-4)' : 'var(--space-3)',
         borderRadius: 'var(--radius-lg)',
         border: variante === 'secundario' ? '1px solid var(--color-border)' : 'none',
         background: props.disabled ? 'var(--color-surface-2)' : cor,
         color: props.disabled ? 'var(--color-text-muted)' : texto,
-        font: `${grande ? '700 17px' : '600 15px'} var(--font-body)`,
-        letterSpacing: '0.03em',
+        boxShadow: primario && !props.disabled ? 'var(--glow-accent)' : 'none',
+        font: `${grande ? '700 17px' : '700 14px'} var(--font-body)`,
+        letterSpacing: '0.04em',
         textTransform: 'uppercase',
         cursor: props.disabled ? 'not-allowed' : 'pointer',
+        transition: 'transform 0.06s ease, box-shadow 0.15s ease',
         ...style,
       }}
     >
@@ -323,6 +326,7 @@ export function Cartao({ children }: { children: ReactNode }) {
     <div
       style={{
         background: 'var(--color-surface)',
+        backgroundImage: 'var(--realce-topo)',
         border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-md)',
         padding: 'var(--space-4)',
@@ -330,6 +334,59 @@ export function Cartao({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+    </div>
+  );
+}
+
+/**
+ * Marca REP-P (lockup): "logo" com gradiente + wordmark + subtitulo opcional.
+ * Da identidade profissional as telas de acesso e cabecalhos.
+ */
+export function MarcaRepp({ subtitulo }: { subtitulo?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <div
+        aria-hidden
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: 'var(--gradient-marca)',
+          boxShadow: 'var(--glow-accent)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          font: '800 20px var(--font-display)',
+          color: 'var(--color-navy-deep)',
+          flex: '0 0 auto',
+        }}
+      >
+        R
+      </div>
+      <div>
+        <div
+          style={{
+            font: '800 22px var(--font-display)',
+            letterSpacing: '0.02em',
+            lineHeight: 1,
+          }}
+        >
+          REP-P
+        </div>
+        {subtitulo && (
+          <div
+            style={{
+              font: '500 12px var(--font-body)',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              marginTop: 4,
+            }}
+          >
+            {subtitulo}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

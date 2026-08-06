@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Botao, Campo, Cartao, Feedback } from '../design-system/components';
+import { Botao, Campo, Cartao, Feedback, MarcaRepp } from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa' | 'cadastro';
@@ -58,9 +58,9 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
 
   return (
     <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
-      <h1 style={{ font: '700 24px var(--font-display)', color: 'var(--color-navy-900)' }}>
-        REP-P · Administracao
-      </h1>
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <MarcaRepp subtitulo="Administração" />
+      </div>
 
       <Cartao>
         {etapa === 'credenciais' && (

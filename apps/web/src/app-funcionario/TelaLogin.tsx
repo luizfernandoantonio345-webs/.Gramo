@@ -1,6 +1,6 @@
 import { formatarCpf, isCpfValido, normalizarCpf, validarSenha } from '@repp/shared';
 import { useState } from 'react';
-import { Botao, Campo, Cartao, Feedback } from '../design-system/components';
+import { Botao, Campo, Cartao, Feedback, MarcaRepp } from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Modo = 'login' | 'primeiro-acesso';
@@ -54,11 +54,11 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
 
   return (
     <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
-      <h1 style={{ font: '700 26px var(--font-display)', color: 'var(--color-navy-900)' }}>
-        REP-P
-      </h1>
-      <p style={{ color: 'var(--color-text-muted)', marginTop: 0 }}>
-        {modo === 'login' ? 'Acesse sua conta' : 'Primeiro acesso com codigo do RH'}
+      <div style={{ marginBottom: 'var(--space-3)' }}>
+        <MarcaRepp subtitulo="Ponto Eletrônico" />
+      </div>
+      <p style={{ color: 'var(--color-text-muted)', marginTop: 0, marginBottom: 'var(--space-3)' }}>
+        {modo === 'login' ? 'Acesse sua conta' : 'Primeiro acesso com código do RH'}
       </p>
 
       <Cartao>
