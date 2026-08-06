@@ -65,6 +65,10 @@ export function PainelDashboard() {
         <PresencaAgora />
       </div>
 
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <AlertaExtras />
+      </div>
+
       <div
         style={{
           display: 'grid',
@@ -331,6 +335,127 @@ function PresencaAgora() {
             </ul>
           )}
         </>
+      )}
+    </Cartao>
+  );
+}
+
+interface AlertaExtra {
+  funcionarioId: string;
+  funcionario: string;
+  filial: string;
+  data: string;
+  trabalhadoMin: number;
+  extraMin: number;
+  limiteMin: number;
+  restanteMin: number;
+  status: 'EXCEDIDO' | 'PROXIMO';
+  mensagem: string;
+}
+interface AlertasExtras {
+  atualizadoEm: string;
+  total: number;
+  alertas: AlertaExtra[];
+}
+
+/**
+ * Alerta PROATIVO de hora extra do dia. Diferencial de gestao: o RH ve, AINDA
+ * durante o turno, quem esta prestes a estourar (ou ja estourou) o limite legal
+ * de 2h/dia -- e pode agir antes do fechamento. Poll a cada 60s (dado do dia
+ * muda devagar). Reusa a mesma matematica do banco de horas no servidor.
+ */
+function AlertaExtras() {
+  const [a, setA] = useState<AlertasExtras | null>(null);
+  const [erro, setErro] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    const carregar = async () => {
+      try {
+        const r = await apiGet<AlertasExtras>('/admin/dashboard/alertas-extras');
+        if (vivo) {
+          setA(r);
+          setErro(false);
+        }
+      } catch {
+        if (vivo) setErro(true);
+      }
+    };
+    void carregar();
+    const id = setInterval(carregar, 60000);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  const excedidos = a?.alertas.filter((x) => x.status === 'EXCEDIDO').length ?? 0;
+
+  return (
+    <Cartao>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-2)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <span aria-hidden style={{ fontSize: 18 }}>
+            ⏱️
+          </span>
+          <h2 style={{ font: '600 16px var(--font-display)', margin: 0 }}>Hora extra — hoje</h2>
+          {excedidos > 0 && <Badge cor="var(--color-red-alert)">{excedidos} no limite</Badge>}
+        </div>
+        <span
+          style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}
+          role="status"
+          aria-live="polite"
+        >
+          {a
+            ? `atualizado ${new Date(a.atualizadoEm).toLocaleTimeString('pt-BR')}`
+            : erro
+              ? 'sem conexão'
+              : '—'}
+        </span>
+      </div>
+
+      {!a ? (
+        <div style={{ marginTop: 'var(--space-2)' }}>
+          <EstadoVazio>{erro ? 'Sem conexão.' : 'Carregando…'}</EstadoVazio>
+        </div>
+      ) : a.total === 0 ? (
+        <div style={{ marginTop: 'var(--space-2)' }}>
+          <EstadoVazio>Ninguém próximo do limite de extra hoje. 👍</EstadoVazio>
+        </div>
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 'var(--space-2) 0 0', padding: 0 }}>
+          {a.alertas.map((x) => (
+            <li
+              key={x.funcionarioId}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                padding: 'var(--space-2) 0',
+                borderBottom: '1px solid var(--color-border)',
+              }}
+            >
+              <Badge
+                cor={
+                  x.status === 'EXCEDIDO' ? 'var(--color-red-alert)' : 'var(--color-amber-warning)'
+                }
+              >
+                {x.status === 'EXCEDIDO' ? 'excedido' : 'atenção'}
+              </Badge>
+              <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>{x.funcionario}</span>
+              <span style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
+                {x.filial} · extra {formatarMinutos(x.extraMin)} / {formatarMinutos(x.limiteMin)}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </Cartao>
   );

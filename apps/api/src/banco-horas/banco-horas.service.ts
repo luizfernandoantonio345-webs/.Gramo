@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { RegimeHoras, TipoAjusteBanco, TipoMarcacao } from '@prisma/client';
+import { RegimeHoras, StatusFuncionario, TipoAjusteBanco, TipoMarcacao } from '@prisma/client';
 import {
   ADICIONAL_NOTURNO_PADRAO,
   calcularHorasDia,
@@ -19,6 +19,36 @@ interface RegistrarAjuste {
   tipo: TipoAjusteBanco;
   motivo: string;
   competencia?: string;
+}
+
+export interface ExtraDiaAvaliado {
+  extraMin: number;
+  limiteMin: number;
+  restanteMin: number;
+  status: 'EXCEDIDO' | 'PROXIMO';
+}
+
+/**
+ * Decide se o extra de UM dia merece alerta proativo. Puro e testavel: nao toca
+ * em banco nem em ponto. Retorna null quando nao ha extra relevante.
+ *
+ * @param saldoMin  saldo do dia (positivo = extra); null = sem jornada/carga.
+ * @param limiteMin limite legal de extra diaria (CLT: 120 = 2h por padrao).
+ * @param fracaoAviso fracao do limite a partir da qual ja avisa (0.75 = 75%).
+ */
+export function avaliarExtraDia(
+  saldoMin: number | null,
+  limiteMin: number,
+  fracaoAviso = 0.75,
+): ExtraDiaAvaliado | null {
+  if (saldoMin === null || saldoMin <= 0) return null;
+  if (saldoMin < Math.round(limiteMin * fracaoAviso)) return null;
+  return {
+    extraMin: saldoMin,
+    limiteMin,
+    restanteMin: Math.max(0, limiteMin - saldoMin),
+    status: saldoMin > limiteMin ? 'EXCEDIDO' : 'PROXIMO',
+  };
 }
 
 /**
@@ -167,6 +197,81 @@ export class BancoHorasService {
         dias,
         ajustes,
       };
+    });
+  }
+
+  /**
+   * Alerta PROATIVO de hora extra do DIA. Varre os pontos de HOJE dos funcionarios
+   * no escopo do gestor e sinaliza quem ja passou -- ou esta perto de passar -- do
+   * limite legal de extra diaria (CLT: 2h/dia por padrao, configuravel na jornada).
+   *
+   * Reusa a MESMA matematica de saldo do banco de horas (saldosPorDia). E leitura
+   * pura: nada altera o ponto. O objetivo e o RH agir ANTES do fim do turno, e nao
+   * so descobrir o estouro no fechamento do mes.
+   *
+   * @param fracaoAviso fracao do limite a partir da qual ja avisa (0.75 = 75%).
+   */
+  async alertasHoraExtraHoje(autor: UsuarioAutenticado, fracaoAviso = 0.75) {
+    const filialFiltro = await this.escopo.escopoFilialId(autor);
+    // Janela ampla o suficiente para cobrir "hoje" em qualquer fuso do canteiro.
+    const desde = new Date(Date.now() - 18 * 60 * 60 * 1000);
+
+    return this.prisma.forTenant(async (tx) => {
+      const funcs = await tx.funcionario.findMany({
+        where: { ...filialFiltro, status: StatusFuncionario.ATIVO },
+        select: {
+          id: true,
+          nome: true,
+          jornada: { select: { cargaDiariaMinutos: true, limiteExtraDiariaMin: true } },
+          filial: { select: { nome: true, timezone: true } },
+        },
+      });
+      const vazio = { atualizadoEm: new Date().toISOString(), total: 0, alertas: [] };
+      if (funcs.length === 0) return vazio;
+
+      const pontos = await tx.ponto.findMany({
+        where: { funcionarioId: { in: funcs.map((f) => f.id) }, registradoEm: { gte: desde } },
+        orderBy: { registradoEm: 'asc' },
+        select: { funcionarioId: true, tipo: true, registradoEm: true },
+      });
+      const porFunc = new Map<string, { tipo: TipoMarcacao; registradoEm: Date }[]>();
+      for (const p of pontos) {
+        if (!porFunc.has(p.funcionarioId)) porFunc.set(p.funcionarioId, []);
+        porFunc.get(p.funcionarioId)!.push({ tipo: p.tipo, registradoEm: p.registradoEm });
+      }
+
+      const alertas = [];
+      for (const f of funcs) {
+        const carga = f.jornada?.cargaDiariaMinutos ?? null;
+        if (carga === null) continue; // sem jornada com carga definida nao ha "extra"
+        const pts = porFunc.get(f.id);
+        if (!pts || pts.length === 0) continue;
+
+        const tz = f.filial?.timezone ?? 'America/Sao_Paulo';
+        const dias = this.saldosPorDia(pts, tz, carga);
+        // Janela recente => a ultima data local do funcionario e o dia de HOJE dele.
+        const hoje = dias[dias.length - 1];
+        if (!hoje) continue;
+
+        const limite = f.jornada?.limiteExtraDiariaMin ?? 120;
+        const aval = avaliarExtraDia(hoje.saldoMin, limite, fracaoAviso);
+        if (!aval) continue;
+
+        alertas.push({
+          funcionarioId: f.id,
+          funcionario: f.nome,
+          filial: f.filial?.nome ?? 'Sem filial',
+          data: hoje.data,
+          trabalhadoMin: hoje.trabalhadoMin,
+          ...aval,
+          mensagem:
+            aval.status === 'EXCEDIDO'
+              ? `Extra de ${formatarMinutos(aval.extraMin)} HOJE excede o limite legal (${formatarMinutos(limite)}).`
+              : `Extra de ${formatarMinutos(aval.extraMin)} HOJE -- a ${formatarMinutos(aval.restanteMin)} do limite (${formatarMinutos(limite)}).`,
+        });
+      }
+      alertas.sort((a, b) => b.extraMin - a.extraMin);
+      return { atualizadoEm: new Date().toISOString(), total: alertas.length, alertas };
     });
   }
 

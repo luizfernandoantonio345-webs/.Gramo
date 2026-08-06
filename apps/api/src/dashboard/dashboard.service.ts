@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { EscopoFilialService } from '../common/authz/escopo-filial.service';
+import { BancoHorasService } from '../banco-horas/banco-horas.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Tipos de marcacao que deixam o funcionario "dentro" (trabalhando agora). */
@@ -54,7 +55,13 @@ export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly escopo: EscopoFilialService,
+    private readonly bancoHoras: BancoHorasService,
   ) {}
+
+  /** Alerta proativo de hora extra do dia (delegado ao BancoHorasService). */
+  alertasExtrasHoje(autor: UsuarioAutenticado) {
+    return this.bancoHoras.alertasHoraExtraHoje(autor);
+  }
 
   async geral(autor: UsuarioAutenticado) {
     const inicioHoje = new Date();

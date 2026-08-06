@@ -28,4 +28,12 @@ export class DashboardController {
   presenca(@CurrentUser() user: UsuarioAutenticado) {
     return this.service.presencaAgora(user);
   }
+
+  @Get('alertas-extras')
+  @ApiOperation({
+    summary: 'Alerta proativo: quem passou (ou esta perto) do limite de extra HOJE.',
+  })
+  alertasExtras(@CurrentUser() user: UsuarioAutenticado) {
+    return this.service.alertasExtrasHoje(user);
+  }
 }
