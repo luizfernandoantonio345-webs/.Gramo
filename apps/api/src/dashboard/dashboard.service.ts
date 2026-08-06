@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   StatusAusencia,
   StatusContestacao,
@@ -61,6 +61,79 @@ export class DashboardService {
   /** Alerta proativo de hora extra do dia (delegado ao BancoHorasService). */
   alertasExtrasHoje(autor: UsuarioAutenticado) {
     return this.bancoHoras.alertasHoraExtraHoje(autor);
+  }
+
+  /**
+   * Comparativo executivo ENTRE OBRAS (filiais) no periodo: headcount ativo,
+   * marcacoes, e o indicador-chave de conformidade -- % de marcacoes FORA da
+   * REGAP (geofence do canteiro). Visao que um gestor de multiplos canteiros usa
+   * para priorizar atencao. Agregacoes baratas (groupBy), respeitando escopo/RLS.
+   */
+  async comparativoObras(autor: UsuarioAutenticado, inicioIso?: string, fimIso?: string) {
+    const agora = new Date();
+    const inicio = inicioIso
+      ? new Date(inicioIso)
+      : new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const fim = fimIso ? new Date(fimIso) : agora;
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) {
+      throw new BadRequestException('Periodo invalido.');
+    }
+    const scope = await this.escopo.escopoFilialId(autor);
+
+    return this.prisma.forTenant(async (tx) => {
+      const [filiais, ativos, marc, fora] = await Promise.all([
+        tx.filial.findMany({
+          where: scope.filialId ? { id: scope.filialId } : {},
+          select: { id: true, nome: true },
+          orderBy: { nome: 'asc' },
+        }),
+        tx.funcionario.groupBy({
+          by: ['filialId'],
+          where: { status: StatusFuncionario.ATIVO, ...scope },
+          _count: { _all: true },
+        }),
+        tx.ponto.groupBy({
+          by: ['filialId'],
+          where: { registradoEm: { gte: inicio, lte: fim }, ...scope },
+          _count: { _all: true },
+        }),
+        tx.ponto.groupBy({
+          by: ['filialId'],
+          where: { registradoEm: { gte: inicio, lte: fim }, dentroRegap: false, ...scope },
+          _count: { _all: true },
+        }),
+      ]);
+
+      const paraMapa = (arr: Array<{ filialId: string | null; _count: { _all: number } }>) =>
+        new Map(arr.map((a) => [a.filialId, a._count._all]));
+      const mAtivos = paraMapa(ativos);
+      const mMarc = paraMapa(marc);
+      const mFora = paraMapa(fora);
+
+      const obras = filiais
+        .map((f) => {
+          const marcacoes = mMarc.get(f.id) ?? 0;
+          const foraRegap = mFora.get(f.id) ?? 0;
+          return {
+            filialId: f.id,
+            obra: f.nome,
+            funcionariosAtivos: mAtivos.get(f.id) ?? 0,
+            marcacoes,
+            foraRegap,
+            // 1 casa decimal; 0 quando nao houve marcacao no periodo.
+            percentualForaRegap:
+              marcacoes > 0 ? Math.round((foraRegap / marcacoes) * 1000) / 10 : 0,
+          };
+        })
+        // Prioriza quem tem maior % fora da REGAP (mais risco de conformidade).
+        .sort(
+          (a, b) =>
+            b.percentualForaRegap - a.percentualForaRegap ||
+            b.funcionariosAtivos - a.funcionariosAtivos,
+        );
+
+      return { periodo: { inicio: inicio.toISOString(), fim: fim.toISOString() }, obras };
+    });
   }
 
   async geral(autor: UsuarioAutenticado) {

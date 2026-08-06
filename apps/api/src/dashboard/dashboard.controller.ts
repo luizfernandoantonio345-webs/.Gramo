@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PapelAdmin } from '@prisma/client';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -35,5 +35,15 @@ export class DashboardController {
   })
   alertasExtras(@CurrentUser() user: UsuarioAutenticado) {
     return this.service.alertasExtrasHoje(user);
+  }
+
+  @Get('comparativo-obras')
+  @ApiOperation({ summary: 'Comparativo entre obras: headcount, marcacoes e % fora da REGAP.' })
+  comparativoObras(
+    @CurrentUser() user: UsuarioAutenticado,
+    @Query('inicio') inicio?: string,
+    @Query('fim') fim?: string,
+  ) {
+    return this.service.comparativoObras(user, inicio, fim);
   }
 }

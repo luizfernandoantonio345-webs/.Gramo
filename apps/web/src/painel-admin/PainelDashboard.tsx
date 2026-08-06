@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { formatarMinutos } from '@repp/shared';
 import {
   Badge,
@@ -183,6 +183,9 @@ export function PainelDashboard() {
           )}
         </Cartao>
       </div>
+
+      <div style={{ height: 'var(--space-4)' }} />
+      <ComparativoObras />
 
       <div style={{ height: 'var(--space-4)' }} />
       <BancoHorasTool />
@@ -460,6 +463,105 @@ function AlertaExtras() {
     </Cartao>
   );
 }
+
+interface ComparativoObra {
+  filialId: string;
+  obra: string;
+  funcionariosAtivos: number;
+  marcacoes: number;
+  foraRegap: number;
+  percentualForaRegap: number;
+}
+interface Comparativo {
+  periodo: { inicio: string; fim: string };
+  obras: ComparativoObra[];
+}
+
+/**
+ * Comparativo executivo entre obras (canteiros). O indicador-chave e o % de
+ * marcacoes FORA da REGAP (geofence) -- risco de conformidade. Ordenado do maior
+ * risco para o menor, para o gestor priorizar. Periodo padrao: mes corrente.
+ */
+function ComparativoObras() {
+  const [c, setC] = useState<Comparativo | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    apiGet<Comparativo>('/admin/dashboard/comparativo-obras')
+      .then((r) => vivo && setC(r))
+      .catch((e) => vivo && setErro(e instanceof Error ? e.message : 'Falha ao carregar.'));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  const corRisco = (pct: number) =>
+    pct >= 10
+      ? 'var(--color-red-alert)'
+      : pct >= 3
+        ? 'var(--color-amber-warning)'
+        : 'var(--color-teal-success)';
+
+  return (
+    <Cartao>
+      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>
+        Comparativo entre obras{' '}
+        <span style={{ font: '400 12px var(--font-body)', color: 'var(--color-text-muted)' }}>
+          (mês corrente)
+        </span>
+      </h2>
+      {erro ? (
+        <Feedback tom="erro">{erro}</Feedback>
+      ) : !c ? (
+        <EstadoVazio>Carregando…</EstadoVazio>
+      ) : c.obras.length === 0 ? (
+        <EstadoVazio>Nenhuma obra cadastrada.</EstadoVazio>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
+            <thead>
+              <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)' }}>
+                <th style={thc}>Obra</th>
+                <th style={thcNum}>Ativos</th>
+                <th style={thcNum}>Marcações</th>
+                <th style={thcNum}>Fora REGAP</th>
+                <th style={thcNum}>% fora</th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.obras.map((o) => (
+                <tr key={o.filialId} style={{ borderTop: '1px solid var(--color-border)' }}>
+                  <td style={{ ...tdc, font: '500 13px var(--font-body)' }}>{o.obra}</td>
+                  <td style={tdcNum}>{o.funcionariosAtivos}</td>
+                  <td style={tdcNum}>{o.marcacoes}</td>
+                  <td style={tdcNum}>{o.foraRegap}</td>
+                  <td style={tdcNum}>
+                    <Badge cor={corRisco(o.percentualForaRegap)}>
+                      {o.percentualForaRegap.toFixed(1)}%
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Cartao>
+  );
+}
+
+const thc: CSSProperties = {
+  padding: 'var(--space-2) var(--space-2) var(--space-1)',
+  font: '600 11px var(--font-mono)',
+};
+const thcNum: CSSProperties = { ...thc, textAlign: 'right' };
+const tdc: CSSProperties = { padding: 'var(--space-2)' };
+const tdcNum: CSSProperties = {
+  ...tdc,
+  textAlign: 'right',
+  font: '13px var(--font-mono)',
+};
 
 function BancoHorasTool() {
   const [funcionarioId, setFuncId] = useState('');
