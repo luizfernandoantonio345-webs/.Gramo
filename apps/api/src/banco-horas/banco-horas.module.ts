@@ -6,5 +6,6 @@ import { BancoHorasService } from './banco-horas.service';
 @Module({
   controllers: [BancoHorasController],
   providers: [BancoHorasService],
+  exports: [BancoHorasService],
 })
 export class BancoHorasModule {}

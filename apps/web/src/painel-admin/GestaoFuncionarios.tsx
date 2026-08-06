@@ -497,6 +497,27 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
     }
   }
 
+  async function baixarPdf() {
+    setErro(null);
+    try {
+      const r = await apiPost<{ nomeArquivo: string; conteudoBase64: string }>(
+        `/admin/relatorios/espelho-pdf/${funcionarioId}`,
+        { inicio: `${ini}T00:00:00Z`, fim: `${fimStr}T23:59:59Z`, competencia: comp },
+        true,
+      );
+      const bin = atob(r.conteudoBase64);
+      const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.nomeArquivo;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao gerar o PDF.');
+    }
+  }
+
   return (
     <div
       style={{
@@ -505,7 +526,31 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
         paddingTop: 'var(--space-3)',
       }}
     >
-      <h3 style={{ font: '600 15px var(--font-body)', marginTop: 0 }}>Banco de horas ({comp})</h3>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-2)',
+        }}
+      >
+        <h3 style={{ font: '600 15px var(--font-body)', margin: 0 }}>Banco de horas ({comp})</h3>
+        <button
+          onClick={baixarPdf}
+          style={{
+            minHeight: 36,
+            padding: '0 var(--space-3)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--color-accent)',
+            background: 'transparent',
+            color: 'var(--color-accent)',
+            cursor: 'pointer',
+            font: '600 12px var(--font-body)',
+          }}
+        >
+          📄 Espelho (PDF)
+        </button>
+      </div>
       {dados && (
         <div style={{ font: '13px var(--font-body)', marginBottom: 'var(--space-2)' }}>
           <div>
