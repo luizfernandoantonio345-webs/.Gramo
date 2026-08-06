@@ -37,8 +37,12 @@ import { HealthModule } from './health/health.module';
       isGlobal: true,
       validate: validateEnv,
     }),
-    // Rate limiting global (hardening) -- protege login/2FA de brute force.
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+    // Rate limiting global (hardening anti-DoS). Dimensionado para ESCALA DE OBRA:
+    // no pico de turno, muitos operarios batem ponto por tras de UM IP (quiosque/
+    // wifi do canteiro). O login continua protegido por lockout de conta (5/15min)
+    // independentemente. Refinamento futuro: @Throttle por rota (login estrito x
+    // ponto/kiosk mais folgado).
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 300 }]),
     PrismaModule,
     StorageModule,
     SecurityModule,

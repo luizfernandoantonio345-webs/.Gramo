@@ -25,6 +25,9 @@ const envSchema = z.object({
 
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   STORAGE_LOCAL_PATH: z.string().default('./storage'),
+
+  // Dev/demo APENAS: pula o 2FA no login admin/super. Proibido em producao.
+  DEV_BYPASS_2FA: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -37,5 +40,22 @@ export function validateEnv(config: Record<string, unknown>): Env {
       .join('\n');
     throw new Error(`Variaveis de ambiente invalidas:\n${issues}`);
   }
+
+  // FAIL-FAST de seguranca: o bypass de 2FA NUNCA pode subir em producao. Melhor
+  // derrubar o boot do que operar com 2FA desligado por engano.
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.DEV_BYPASS_2FA === 'true') {
+    throw new Error(
+      'DEV_BYPASS_2FA=true e PROIBIDO em producao (2FA e obrigatorio). Remova a variavel.',
+    );
+  }
+  // Aviso: em producao sem CORS_ORIGINS, o CORS cross-origin fica negado (ver
+  // main.ts). Sinalizamos para evitar "por que o front nao conecta?".
+  if (parsed.data.NODE_ENV === 'production' && !config.CORS_ORIGINS) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[env] Producao sem CORS_ORIGINS: requisicoes cross-origin serao negadas. Defina o dominio do PWA.',
+    );
+  }
+
   return parsed.data;
 }
