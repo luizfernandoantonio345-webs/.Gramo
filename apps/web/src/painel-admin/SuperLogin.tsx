@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Botao, Campo, Cartao, Feedback, MarcaRepp } from '../design-system/components';
+import {
+  ambienteDemo,
+  Botao,
+  BotaoDemo,
+  Campo,
+  Cartao,
+  Feedback,
+  MarcaRepp,
+} from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa';
@@ -17,11 +25,18 @@ export function SuperLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) =>
   async function login() {
     setErro(null);
     try {
-      const r = await apiPost<{ desafioToken: string; setup2fa: boolean }>('/super/auth/login', {
-        email,
-        senha,
-      });
-      setDesafioToken(r.desafioToken);
+      const r = await apiPost<{
+        desafioToken?: string;
+        setup2fa?: boolean;
+        accessToken?: string;
+        refreshToken?: string;
+        expiresIn?: number;
+      }>('/super/auth/login', { email, senha });
+      if (r.accessToken) {
+        onAutenticado(r as ParTokens);
+        return;
+      }
+      setDesafioToken(r.desafioToken ?? '');
       if (r.setup2fa) {
         const s = await apiPost<{ otpauthUrl: string }>('/super/auth/2fa/setup', {
           desafioToken: r.desafioToken,
@@ -69,6 +84,14 @@ export function SuperLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) =>
               <Botao onClick={login} disabled={!email || !senha}>
                 Continuar
               </Botao>
+              {ambienteDemo() && (
+                <BotaoDemo
+                  onClick={() => {
+                    setEmail('super@piloto.local');
+                    setSenha('Super@12345');
+                  }}
+                />
+              )}
             </>
           )}
           {etapa === 'setup-2fa' && (

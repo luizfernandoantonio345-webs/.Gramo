@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Botao, Campo, Cartao, Feedback, MarcaRepp } from '../design-system/components';
+import {
+  ambienteDemo,
+  Botao,
+  BotaoDemo,
+  Campo,
+  Cartao,
+  Feedback,
+  MarcaRepp,
+} from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa' | 'cadastro';
@@ -17,16 +25,25 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
   const [codigo, setCodigo] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const ehDemo = ambienteDemo();
 
   async function login() {
     setErro(null);
     setCarregando(true);
     try {
-      const r = await apiPost<{ desafioToken: string; setup2fa: boolean }>('/auth/admin/login', {
-        email,
-        senha,
-      });
-      setDesafioToken(r.desafioToken);
+      const r = await apiPost<{
+        desafioToken?: string;
+        setup2fa?: boolean;
+        accessToken?: string;
+        refreshToken?: string;
+        expiresIn?: number;
+      }>('/auth/admin/login', { email, senha });
+      // Dev: com o bypass de 2FA ligado, o backend ja devolve os tokens.
+      if (r.accessToken) {
+        onAutenticado(r as ParTokens);
+        return;
+      }
+      setDesafioToken(r.desafioToken ?? '');
       if (r.setup2fa) {
         const s = await apiPost<{ otpauthUrl: string }>('/auth/admin/2fa/setup', {
           desafioToken: r.desafioToken,
@@ -80,6 +97,14 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
             <Botao onClick={login} disabled={carregando || !email || !senha}>
               {carregando ? 'Aguarde...' : 'Continuar'}
             </Botao>
+            {ehDemo && (
+              <BotaoDemo
+                onClick={() => {
+                  setEmail('admin@piloto.local');
+                  setSenha('Piloto@12345');
+                }}
+              />
+            )}
             <button
               onClick={() => {
                 setErro(null);

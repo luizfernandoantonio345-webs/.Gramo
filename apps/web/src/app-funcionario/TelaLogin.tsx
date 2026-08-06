@@ -1,6 +1,14 @@
 import { formatarCpf, isCpfValido, normalizarCpf, validarSenha } from '@repp/shared';
 import { useState } from 'react';
-import { Botao, Campo, Cartao, Feedback, MarcaRepp } from '../design-system/components';
+import {
+  ambienteDemo,
+  Botao,
+  BotaoDemo,
+  Campo,
+  Cartao,
+  Feedback,
+  MarcaRepp,
+} from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Modo = 'login' | 'primeiro-acesso';
@@ -124,6 +132,14 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         <Botao onClick={enviar} disabled={carregando}>
           {carregando ? 'Aguarde…' : modo === 'login' ? 'Entrar' : 'Cadastrar'}
         </Botao>
+        {modo === 'login' && ambienteDemo() && (
+          <BotaoDemo
+            onClick={() => {
+              setCpf('52998224725');
+              setSenha('Func@12345');
+            }}
+          />
+        )}
       </Cartao>
 
       <button

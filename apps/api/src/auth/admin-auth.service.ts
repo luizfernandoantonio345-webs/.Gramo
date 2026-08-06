@@ -40,7 +40,7 @@ export class AdminAuthService {
     email: string,
     senha: string,
     ctx: Ctx,
-  ): Promise<{ desafioToken: string; setup2fa: boolean }> {
+  ): Promise<{ desafioToken: string; setup2fa: boolean } | ParParticipacao> {
     const agora = new Date();
     const admin = await this.prisma.forTenant((tx) =>
       tx.usuarioAdmin.findFirst({ where: { email: email.toLowerCase() } }),
@@ -60,7 +60,12 @@ export class AdminAuthService {
       throw credenciaisInvalidas;
     }
 
-    if (estaBloqueado({ tentativasFalhas: admin.tentativasFalhas, bloqueadoAte: admin.bloqueadoAte }, agora)) {
+    if (
+      estaBloqueado(
+        { tentativasFalhas: admin.tentativasFalhas, bloqueadoAte: admin.bloqueadoAte },
+        agora,
+      )
+    ) {
       const mins = minutosRestantes(
         { tentativasFalhas: admin.tentativasFalhas, bloqueadoAte: admin.bloqueadoAte },
         agora,
@@ -70,7 +75,14 @@ export class AdminAuthService {
 
     const senhaOk = await verificarSenha(admin.senhaHash, senha);
     if (!senhaOk) {
-      await this.registrarFalhaLogin(admin.id, admin.tentativasFalhas, admin.bloqueadoAte, agora, email, ctx);
+      await this.registrarFalhaLogin(
+        admin.id,
+        admin.tentativasFalhas,
+        admin.bloqueadoAte,
+        agora,
+        email,
+        ctx,
+      );
       throw credenciaisInvalidas;
     }
 
@@ -82,8 +94,26 @@ export class AdminAuthService {
       }),
     );
 
+    // DEV ONLY: bypass de 2FA para demonstracao local. Gated por env E por
+    // NODE_ENV !== production -- NUNCA emite tokens sem 2FA em producao.
+    if (process.env.DEV_BYPASS_2FA === 'true' && process.env.NODE_ENV !== 'production') {
+      await this.log.registrar({
+        evento: EventoAcesso.LOGIN_SUCESSO,
+        sujeitoTipo: TipoSujeito.ADMIN,
+        sujeitoId: admin.id,
+        ip: ctx.ip,
+        userAgent: ctx.userAgent,
+      });
+      return this.tokens.emitirPar(this.montarPayload(admin.id, admin.papel), ctx);
+    }
+
     const desafioToken = await this.jwt.signAsync(
-      { sub: admin.id, empresaId: TenantContext.requireEmpresaId(), tipo: TipoSujeito.ADMIN, stage: '2fa' },
+      {
+        sub: admin.id,
+        empresaId: TenantContext.requireEmpresaId(),
+        tipo: TipoSujeito.ADMIN,
+        stage: '2fa',
+      },
       { secret: process.env.JWT_ACCESS_SECRET, expiresIn: DESAFIO_TTL },
     );
     return { desafioToken, setup2fa: !admin.totpAtivado };
@@ -184,7 +214,13 @@ export class AdminAuthService {
   // ---- Gestao de administradores (somente RH_MASTER, imposto no controller) --
 
   async criarAdmin(
-    dados: { nome: string; email: string; senhaProvisoria: string; papel: PapelAdmin; filialIds?: string[] },
+    dados: {
+      nome: string;
+      email: string;
+      senhaProvisoria: string;
+      papel: PapelAdmin;
+      filialIds?: string[];
+    },
     autor: UsuarioAutenticado,
   ): Promise<{ id: string }> {
     const politica = validarSenha(dados.senhaProvisoria);
@@ -224,7 +260,14 @@ export class AdminAuthService {
   }
 
   async listarAdmins(): Promise<
-    Array<{ id: string; nome: string; email: string; papel: PapelAdmin; ativo: boolean; totpAtivado: boolean }>
+    Array<{
+      id: string;
+      nome: string;
+      email: string;
+      papel: PapelAdmin;
+      ativo: boolean;
+      totpAtivado: boolean;
+    }>
   > {
     return this.prisma.forTenant((tx) =>
       tx.usuarioAdmin.findMany({
@@ -257,7 +300,11 @@ export class AdminAuthService {
       });
     });
     await this.tokens.revogarTodasSessoes(adminId);
-    await this.log.registrar({ evento: EventoAcesso.ACESSO_REVOGADO, sujeitoTipo: TipoSujeito.ADMIN, sujeitoId: adminId });
+    await this.log.registrar({
+      evento: EventoAcesso.ACESSO_REVOGADO,
+      sujeitoTipo: TipoSujeito.ADMIN,
+      sujeitoId: adminId,
+    });
   }
 
   // ---- helpers ----

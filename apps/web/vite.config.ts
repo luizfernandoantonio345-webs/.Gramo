@@ -15,11 +15,11 @@ export default defineConfig({
       // ficou com versao velha). Em producao (sem a env) o PWA fica normal.
       selfDestroying: process.env.PWA_OFF === 'true',
       manifest: {
-        name: 'REP-P - Ponto Eletronico',
-        short_name: 'REP-P',
+        name: '.GRAMO - Ponto Eletronico',
+        short_name: '.GRAMO',
         description: 'Registro de ponto por reconhecimento facial e geolocalizacao',
-        theme_color: '#14213D',
-        background_color: '#F5F7FA',
+        theme_color: '#090d14',
+        background_color: '#090d14',
         display: 'standalone',
         start_url: '/',
         icons: [

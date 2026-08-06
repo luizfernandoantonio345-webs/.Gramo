@@ -123,6 +123,40 @@ export function Feedback({
   );
 }
 
+/** True em ambiente de demonstracao local (localhost) -- libera os atalhos. */
+export function ambienteDemo(): boolean {
+  return typeof window !== 'undefined' && window.location.hostname === 'localhost';
+}
+
+/** Atalho (dev/demo): preenche as credenciais de teste da aba. */
+export function BotaoDemo({
+  onClick,
+  rotulo = 'Preencher credenciais de demonstração',
+}: {
+  onClick: () => void;
+  rotulo?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: '100%',
+        marginTop: 'var(--space-2)',
+        minHeight: 44,
+        borderRadius: 'var(--radius-md)',
+        border: '1px dashed var(--color-border)',
+        background: 'transparent',
+        color: 'var(--color-accent)',
+        cursor: 'pointer',
+        font: '600 13px var(--font-body)',
+      }}
+    >
+      ⚡ {rotulo}
+    </button>
+  );
+}
+
 /** Estado vazio (lista sem itens) -- mensagem centralizada e discreta. */
 export function EstadoVazio({ children }: { children: ReactNode }) {
   return (
@@ -339,7 +373,7 @@ export function Cartao({ children }: { children: ReactNode }) {
 }
 
 /**
- * Marca REP-P (lockup): "logo" com gradiente + wordmark + subtitulo opcional.
+ * Marca .GRAMO (lockup): "logo" com gradiente + wordmark + subtitulo opcional.
  * Da identidade profissional as telas de acesso e cabecalhos.
  */
 export function MarcaRepp({ subtitulo }: { subtitulo?: string }) {
@@ -348,30 +382,30 @@ export function MarcaRepp({ subtitulo }: { subtitulo?: string }) {
       <div
         aria-hidden
         style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
+          width: 46,
+          height: 46,
+          borderRadius: 13,
           background: 'var(--gradient-marca)',
           boxShadow: 'var(--glow-accent)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          font: '800 20px var(--font-display)',
+          font: '800 24px var(--font-display)',
           color: 'var(--color-navy-deep)',
           flex: '0 0 auto',
         }}
       >
-        R
+        G
       </div>
       <div>
         <div
           style={{
-            font: '800 22px var(--font-display)',
-            letterSpacing: '0.02em',
+            font: '800 23px var(--font-display)',
+            letterSpacing: '0.01em',
             lineHeight: 1,
           }}
         >
-          REP-P
+          <span style={{ color: 'var(--color-accent)' }}>.</span>GRAMO
         </div>
         {subtitulo && (
           <div

@@ -40,26 +40,46 @@ export class SuperAuthService implements OnModuleInit {
       const total = await this.prisma.superAdmin.count();
       if (total > 0) return;
       await this.prisma.superAdmin.create({
-        data: { nome: 'Super Admin', email: email.toLowerCase(), senhaHash: await hashSenha(senha) },
+        data: {
+          nome: 'Super Admin',
+          email: email.toLowerCase(),
+          senhaHash: await hashSenha(senha),
+        },
       });
-      this.logger.warn(`Super Admin inicial criado (${email}). Configure o 2FA no primeiro acesso.`);
+      this.logger.warn(
+        `Super Admin inicial criado (${email}). Configure o 2FA no primeiro acesso.`,
+      );
     } catch (e) {
       this.logger.warn(`Bootstrap do Super Admin ignorado: ${(e as Error).message}`);
     }
   }
 
-  async login(email: string, senha: string): Promise<{ desafioToken: string; setup2fa: boolean }> {
+  async login(
+    email: string,
+    senha: string,
+  ): Promise<
+    | { desafioToken: string; setup2fa: boolean }
+    | { accessToken: string; refreshToken: string; expiresIn: number }
+  > {
     const agora = new Date();
     const sa = await this.prisma.superAdmin.findFirst({ where: { email: email.toLowerCase() } });
     const invalido = new UnauthorizedException('Credenciais invalidas.');
     if (!sa || !sa.ativo) throw invalido;
 
-    if (estaBloqueado({ tentativasFalhas: sa.tentativasFalhas, bloqueadoAte: sa.bloqueadoAte }, agora)) {
-      const m = minutosRestantes({ tentativasFalhas: sa.tentativasFalhas, bloqueadoAte: sa.bloqueadoAte }, agora);
+    if (
+      estaBloqueado({ tentativasFalhas: sa.tentativasFalhas, bloqueadoAte: sa.bloqueadoAte }, agora)
+    ) {
+      const m = minutosRestantes(
+        { tentativasFalhas: sa.tentativasFalhas, bloqueadoAte: sa.bloqueadoAte },
+        agora,
+      );
       throw new UnauthorizedException(`Conta bloqueada. Tente em ${m} min.`);
     }
     if (!(await verificarSenha(sa.senhaHash, senha))) {
-      const novo = registrarFalha({ tentativasFalhas: sa.tentativasFalhas, bloqueadoAte: sa.bloqueadoAte }, agora);
+      const novo = registrarFalha(
+        { tentativasFalhas: sa.tentativasFalhas, bloqueadoAte: sa.bloqueadoAte },
+        agora,
+      );
       await this.prisma.superAdmin.update({
         where: { id: sa.id },
         data: { tentativasFalhas: novo.tentativasFalhas, bloqueadoAte: novo.bloqueadoAte },
@@ -70,6 +90,13 @@ export class SuperAuthService implements OnModuleInit {
       where: { id: sa.id },
       data: { tentativasFalhas: 0, bloqueadoAte: null },
     });
+
+    // DEV ONLY: bypass de 2FA para demonstracao local (gated por env + NODE_ENV).
+    if (process.env.DEV_BYPASS_2FA === 'true' && process.env.NODE_ENV !== 'production') {
+      await this.registrarLog(sa.id, 'super.login', 'super_admins', sa.id, {});
+      return this.emitirPar(sa.id, {});
+    }
+
     const desafioToken = await this.jwt.signAsync(
       { sub: sa.id, tipo: TipoSujeito.SUPER_ADMIN, stage: '2fa' },
       { secret: process.env.JWT_ACCESS_SECRET, expiresIn: DESAFIO_TTL },
@@ -82,7 +109,10 @@ export class SuperAuthService implements OnModuleInit {
     const sa = await this.prisma.superAdmin.findUniqueOrThrow({ where: { id: sub } });
     if (sa.totpAtivado) throw new ConflictException('2FA ja ativado.');
     const segredo = gerarSegredoTotp();
-    await this.prisma.superAdmin.update({ where: { id: sub }, data: { totpSecret: cifrar(segredo) } });
+    await this.prisma.superAdmin.update({
+      where: { id: sub },
+      data: { totpSecret: cifrar(segredo) },
+    });
     return { otpauthUrl: otpauthUrl(sa.email, 'Plataforma', segredo), segredo };
   }
 
@@ -107,7 +137,10 @@ export class SuperAuthService implements OnModuleInit {
     if (!reg || reg.revogadoEm || reg.expiraEm.getTime() < Date.now()) {
       throw new UnauthorizedException('Refresh invalido ou expirado.');
     }
-    await this.prisma.superRefreshToken.update({ where: { id: reg.id }, data: { revogadoEm: new Date() } });
+    await this.prisma.superRefreshToken.update({
+      where: { id: reg.id },
+      data: { revogadoEm: new Date() },
+    });
     return this.emitirPar(reg.superAdminId, ctx);
   }
 
@@ -123,7 +156,10 @@ export class SuperAuthService implements OnModuleInit {
   private async emitirPar(superAdminId: string, ctx: Ctx) {
     const accessToken = await this.jwt.signAsync(
       { sub: superAdminId, tipo: TipoSujeito.SUPER_ADMIN, empresaId: '' },
-      { secret: process.env.JWT_ACCESS_SECRET, expiresIn: Number(process.env.JWT_ACCESS_TTL ?? 900) },
+      {
+        secret: process.env.JWT_ACCESS_SECRET,
+        expiresIn: Number(process.env.JWT_ACCESS_TTL ?? 900),
+      },
     );
     const refreshToken = gerarTokenOpaco();
     await this.prisma.superRefreshToken.create({
@@ -140,10 +176,13 @@ export class SuperAuthService implements OnModuleInit {
 
   private async validarDesafio(desafioToken: string): Promise<string> {
     try {
-      const p = await this.jwt.verifyAsync<{ sub: string; tipo: string; stage?: string }>(desafioToken, {
-        secret: process.env.JWT_ACCESS_SECRET,
-        algorithms: ['HS256'],
-      });
+      const p = await this.jwt.verifyAsync<{ sub: string; tipo: string; stage?: string }>(
+        desafioToken,
+        {
+          secret: process.env.JWT_ACCESS_SECRET,
+          algorithms: ['HS256'],
+        },
+      );
       if (p.stage !== '2fa' || p.tipo !== TipoSujeito.SUPER_ADMIN) {
         throw new UnauthorizedException('Desafio invalido.');
       }
@@ -174,7 +213,14 @@ export class SuperAuthService implements OnModuleInit {
   }
 
   /** Reuso interno para registrar acoes vindas do SuperAdminService. */
-  async log(superAdminId: string, acao: string, entidade: string, entidadeId: string | null, ctx: Ctx, valorNovo?: unknown) {
+  async log(
+    superAdminId: string,
+    acao: string,
+    entidade: string,
+    entidadeId: string | null,
+    ctx: Ctx,
+    valorNovo?: unknown,
+  ) {
     await this.registrarLog(superAdminId, acao, entidade, entidadeId, ctx, valorNovo);
   }
 }
