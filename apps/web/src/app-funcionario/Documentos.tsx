@@ -109,7 +109,7 @@ export function Documentos() {
                 </p>
               )}
               {d.dataValidade && (
-                <p style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                <p style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                   Validade: {new Date(d.dataValidade).toLocaleDateString('pt-BR')}
                 </p>
               )}

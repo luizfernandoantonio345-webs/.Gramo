@@ -211,7 +211,7 @@ export function PainelRelatorios() {
                 <Badge cor="var(--color-navy-900)">{e.tipoArquivo}</Badge>
                 <span style={{ font: '12px var(--font-mono)' }}>{e.periodoReferencia}</span>
                 <span style={{ font: '12px var(--font-body)' }}>{e.totalRegistros} reg.</span>
-                <span style={{ font: '11px var(--font-mono)', color: '#5b6472' }}>
+                <span style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                   {e.hashArquivo.slice(0, 12)}…
                 </span>
                 <button

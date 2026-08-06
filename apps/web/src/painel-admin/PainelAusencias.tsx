@@ -99,11 +99,16 @@ export function PainelAusencias() {
                     </strong>
                     <Badge cor="var(--color-amber-warning)">{s.tipo.toLowerCase()}</Badge>
                   </div>
-                  <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                  <div style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                     {s.dataInicio.slice(0, 10)} a {s.dataFim.slice(0, 10)}
                   </div>
                   {s.motivo && (
-                    <div style={{ font: '400 13px var(--font-body)', color: '#5b6472' }}>
+                    <div
+                      style={{
+                        font: '400 13px var(--font-body)',
+                        color: 'var(--color-text-muted)',
+                      }}
+                    >
                       “{s.motivo}”
                     </div>
                   )}
@@ -155,7 +160,7 @@ export function PainelAusencias() {
                   <strong style={{ font: '600 15px var(--font-body)' }}>
                     {c.funcionario.nome}
                   </strong>
-                  <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                  <div style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                     NSR {c.ponto.nsr} · {new Date(c.ponto.registradoEm).toLocaleString('pt-BR')}
                   </div>
                   <div style={{ font: '400 13px var(--font-body)' }}>“{c.motivo}”</div>
@@ -182,7 +187,7 @@ function btn(cor: string) {
     borderRadius: 'var(--radius-sm)',
     border: 'none',
     background: cor,
-    color: '#fff',
+    color: 'var(--color-navy-deep)',
     cursor: 'pointer',
     font: '600 13px var(--font-body)',
   } as const;

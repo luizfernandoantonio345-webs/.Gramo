@@ -113,6 +113,8 @@ export function PainelComunicados() {
               border: '1px solid var(--color-border)',
               font: '400 14px var(--font-body)',
               marginBottom: 'var(--space-3)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-navy-900)',
             }}
           />
           <Selecao
@@ -170,7 +172,7 @@ export function PainelComunicados() {
                     <strong style={{ font: '600 14px var(--font-body)' }}>{c.titulo}</strong>
                     <Badge cor="var(--color-teal-success)">{c._count.leituras} leituras</Badge>
                   </div>
-                  <div style={{ font: '11px var(--font-mono)', color: '#5b6472' }}>
+                  <div style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                     {c.publicoTipo.toLowerCase()}
                     {c.publicoValor ? ` · ${c.publicoValor}` : ''} ·{' '}
                     {new Date(c.criadoEm).toLocaleDateString('pt-BR')}

@@ -94,7 +94,7 @@ export function Comunicados() {
                         style={{
                           display: 'block',
                           font: '11px var(--font-mono)',
-                          color: '#5b6472',
+                          color: 'var(--color-text-muted)',
                         }}
                       >
                         {new Date(c.criadoEm).toLocaleString('pt-BR')}

@@ -195,8 +195,8 @@ function TabBtn({
         padding: 'var(--space-2) var(--space-3)',
         borderRadius: 'var(--radius-sm)',
         border: '1px solid var(--color-border)',
-        background: ativo ? 'var(--color-navy-900)' : 'var(--color-surface)',
-        color: ativo ? '#fff' : 'var(--color-navy-900)',
+        background: ativo ? 'var(--color-accent)' : 'var(--color-surface)',
+        color: ativo ? 'var(--color-navy-deep)' : 'var(--color-navy-900)',
         cursor: 'pointer',
         font: '500 14px var(--font-body)',
       }}

@@ -147,12 +147,17 @@ export function GestaoPonto() {
                     </strong>
                     <Badge cor="var(--color-amber-warning)">{e.tipo}</Badge>
                   </div>
-                  <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                  <div style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                     NSR {e.ponto.nsr} · {new Date(e.ponto.registradoEm).toLocaleString('pt-BR')}
                     {e.ponto.dentroRegap ? '' : ' · fora da área'}
                   </div>
                   {e.motivo && (
-                    <div style={{ font: '400 13px var(--font-body)', color: '#5b6472' }}>
+                    <div
+                      style={{
+                        font: '400 13px var(--font-body)',
+                        color: 'var(--color-text-muted)',
+                      }}
+                    >
                       “{e.motivo}”
                     </div>
                   )}
@@ -201,7 +206,7 @@ export function GestaoPonto() {
                 }}
               >
                 <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>{r.nome}</span>
-                <span style={{ font: '13px var(--font-mono)', color: '#5b6472' }}>
+                <span style={{ font: '13px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                   raio {r.raioMetros} m
                 </span>
                 <Badge cor={r.ativo ? 'var(--color-teal-success)' : 'var(--color-border)'}>
@@ -279,7 +284,7 @@ function botaoAcao(cor: string): CSSProperties {
     borderRadius: 'var(--radius-sm)',
     border: 'none',
     background: cor,
-    color: '#fff',
+    color: 'var(--color-navy-deep)',
     cursor: 'pointer',
     font: '600 13px var(--font-body)',
   };

@@ -1,23 +1,35 @@
 /*
- * Design System REP-P (Especificacao_Frontend). Tokens como CSS custom props.
+ * Design System REP-P -- tema ESCURO PREMIUM. Tokens como CSS custom props.
  * Cores de status sao FUNCIONAIS, nunca decorativas. Badges = cor + texto
  * (nunca so cor) por acessibilidade/daltonismo.
+ *
+ * Nota de compatibilidade: `--color-navy-900` passou a ser o TEXTO principal
+ * (claro) -- a maioria dos componentes o usa como cor de texto. As POUCAS
+ * superficies "marca" que antes usavam navy como fundo agora usam
+ * `--color-navy-deep`.
  */
 :root {
-  /* Paleta institucional */
-  --color-navy-900: #14213d; /* fundo institucional, sidebar admin, texto forte */
-  --color-accent: #2f6fed; /* acoes primarias, links, foco */
-  --color-teal-success: #1e8a6e; /* aprovado, dentro da REGAP, sucesso */
-  --color-amber-warning: #c98a2c; /* pendente, fora da area -- sinaliza, nao bloqueia */
-  --color-red-alert: #c13b3b; /* erro, recusado, vencido */
-  --color-neutral-bg: #f5f7fa; /* fundo padrao das telas */
-  --color-surface: #ffffff; /* cartoes */
-  --color-border: #e2e8f0;
+  /* Texto */
+  --color-navy-900: #e6edf3; /* TEXTO principal (claro sobre fundo escuro) */
+  --color-text-muted: #94a3b8; /* texto secundario (datas, hashes, hints) */
+
+  /* Superficies (do fundo para o elevado) */
+  --color-navy-deep: #0b0f16; /* superficie de marca (header super, palco quiosque) */
+  --color-neutral-bg: #0f141a; /* fundo da pagina */
+  --color-surface: #161d27; /* cartoes */
+  --color-surface-2: #1f2a37; /* elevado: hover, aba ativa, selecionado */
+  --color-border: #263243; /* bordas sutis */
+
+  /* Acao e status (mais vivos p/ brilhar no escuro) */
+  --color-accent: #22d3ee; /* ciano -- acoes, links, foco, KPIs */
+  --color-teal-success: #34d399; /* aprovado, dentro da REGAP, sucesso */
+  --color-amber-warning: #fbbf24; /* pendente, fora da area -- sinaliza */
+  --color-red-alert: #f87171; /* erro, recusado, vencido */
 
   /* Tipografia */
-  --font-display: 'Sora', system-ui, sans-serif; /* titulos, KPIs */
-  --font-body: 'Inter', system-ui, sans-serif; /* leitura, labels, botoes */
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace; /* horarios, CPF, hashes */
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* Espacamento */
   --space-1: 4px;
@@ -26,9 +38,12 @@
   --space-4: 24px;
 
   /* Raios */
-  --radius-sm: 8px; /* botoes secundarios, badges */
-  --radius-md: 12px; /* cartoes, inputs */
-  --radius-lg: 22px; /* botao principal, moldura */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 22px;
+
+  /* Profundidade (premium): sombra sutil dos cartoes no escuro */
+  --sombra-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -43,9 +58,19 @@ body {
   font-family: var(--font-body);
   background: var(--color-neutral-bg);
   color: var(--color-navy-900);
+  /* Antialias mais suave no escuro. */
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Foco visivel em Accent Blue para todo elemento interativo (acessibilidade). */
+/* Placeholders e seleção legíveis no escuro. */
+::placeholder {
+  color: #64748b;
+}
+::selection {
+  background: rgba(34, 211, 238, 0.3);
+}
+
+/* Foco visivel em ciano para todo elemento interativo (acessibilidade). */
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;

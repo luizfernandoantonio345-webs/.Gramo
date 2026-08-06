@@ -78,7 +78,9 @@ export function PainelAssinaturas() {
 
         <Cartao>
           <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Fila de status</h2>
-          {fila.length === 0 && <p style={{ color: '#5b6472' }}>Nenhum documento.</p>}
+          {fila.length === 0 && (
+            <p style={{ color: 'var(--color-text-muted)' }}>Nenhum documento.</p>
+          )}
           {fila.map((d) => (
             <div
               key={d.id}

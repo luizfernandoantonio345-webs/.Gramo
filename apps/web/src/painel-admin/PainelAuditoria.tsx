@@ -78,8 +78,8 @@ export function PainelAuditoria() {
                 padding: '0 var(--space-3)',
                 borderRadius: 'var(--radius-sm)',
                 border: '1px solid var(--color-border)',
-                background: sel ? 'var(--color-navy-900)' : 'var(--color-surface)',
-                color: sel ? '#fff' : 'var(--color-navy-900)',
+                background: sel ? 'var(--color-accent)' : 'var(--color-surface)',
+                color: sel ? 'var(--color-navy-deep)' : 'var(--color-navy-900)',
                 cursor: 'pointer',
                 font: '600 13px var(--font-body)',
               }}
@@ -105,7 +105,7 @@ export function PainelAuditoria() {
           trilha.map((l) => (
             <Linha key={l.id} cor="var(--color-accent)" quando={l.timestamp}>
               <strong style={{ font: '600 13px var(--font-mono)' }}>{l.acao}</strong>{' '}
-              <span style={{ color: '#5b6472' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>
                 {l.entidadeAfetada} · {l.usuarioTipo} · {l.ip ?? '-'}
               </span>
             </Linha>
@@ -122,7 +122,7 @@ export function PainelAuditoria() {
               quando={l.timestamp}
             >
               <strong style={{ font: '600 13px var(--font-mono)' }}>{l.evento}</strong>{' '}
-              <span style={{ color: '#5b6472' }}>
+              <span style={{ color: 'var(--color-text-muted)' }}>
                 {l.sujeitoTipo} · {l.identificador ?? '-'} · {l.ip ?? '-'}
               </span>
             </Linha>
@@ -158,7 +158,13 @@ function Linha({ cor, quando, children }: { cor: string; quando: string; childre
         }}
       />
       <div style={{ flex: 1, font: '400 13px var(--font-body)' }}>{children}</div>
-      <span style={{ font: '11px var(--font-mono)', color: '#5b6472', whiteSpace: 'nowrap' }}>
+      <span
+        style={{
+          font: '11px var(--font-mono)',
+          color: 'var(--color-text-muted)',
+          whiteSpace: 'nowrap',
+        }}
+      >
         {new Date(quando).toLocaleString('pt-BR')}
       </span>
     </div>

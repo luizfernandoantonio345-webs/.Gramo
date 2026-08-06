@@ -150,7 +150,9 @@ export function PainelQuiosque() {
                 >
                   <div>
                     <strong style={{ font: '600 14px var(--font-body)' }}>{d.nome}</strong>
-                    <div style={{ font: '11px var(--font-mono)', color: '#5b6472' }}>
+                    <div
+                      style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}
+                    >
                       {nomeFilial(d.filialId)} ·{' '}
                       {d.ultimoUsoEm
                         ? `último uso ${new Date(d.ultimoUsoEm).toLocaleString('pt-BR')}`
@@ -166,7 +168,7 @@ export function PainelQuiosque() {
                         borderRadius: 'var(--radius-sm)',
                         border: 'none',
                         background: 'var(--color-red-alert)',
-                        color: '#fff',
+                        color: 'var(--color-navy-deep)',
                         cursor: 'pointer',
                         font: '600 12px var(--font-body)',
                       }}

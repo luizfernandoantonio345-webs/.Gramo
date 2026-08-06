@@ -122,6 +122,8 @@ export function GestaoFuncionarios() {
                 border: '1px solid var(--color-border)',
                 font: '400 15px var(--font-body)',
                 marginBottom: 'var(--space-2)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-navy-900)',
               }}
             />
             {carregando ? (
@@ -150,7 +152,9 @@ export function GestaoFuncionarios() {
                       }}
                     >
                       <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>{f.nome}</span>
-                      <span style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                      <span
+                        style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}
+                      >
                         {f.cpf}
                       </span>
                       <Badge
@@ -518,7 +522,9 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
               <strong>{dados.noturno.adicionalMin}min</strong>
             </div>
           )}
-          <div style={{ color: '#5b6472', font: '12px var(--font-body)' }}>{dados.observacao}</div>
+          <div style={{ color: 'var(--color-text-muted)', font: '12px var(--font-body)' }}>
+            {dados.observacao}
+          </div>
           {dados.alertas.map((a, i) => (
             <div key={i} style={{ marginTop: 4 }}>
               <Badge cor="var(--color-amber-warning)">{a}</Badge>
@@ -562,7 +568,7 @@ function acao(cor: string) {
     borderRadius: 'var(--radius-sm)',
     border: 'none',
     background: cor,
-    color: '#fff',
+    color: 'var(--color-navy-deep)',
     cursor: 'pointer',
     font: '600 12px var(--font-body)',
   } as const;

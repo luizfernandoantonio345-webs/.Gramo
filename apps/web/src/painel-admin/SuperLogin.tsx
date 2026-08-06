@@ -46,7 +46,7 @@ export function SuperLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) =>
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-navy-900)', paddingTop: 60 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-navy-deep)', paddingTop: 60 }}>
       <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
         <div
           style={{

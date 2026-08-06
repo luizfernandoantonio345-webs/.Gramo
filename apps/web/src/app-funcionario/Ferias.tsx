@@ -142,7 +142,9 @@ export function Ferias() {
                     <strong style={{ font: '600 15px var(--font-body)' }}>
                       {rotuloTipo(a.tipo)}
                     </strong>
-                    <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                    <div
+                      style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}
+                    >
                       {a.dataInicio.slice(0, 10)} a {a.dataFim.slice(0, 10)}
                     </div>
                   </div>
@@ -154,7 +156,7 @@ export function Ferias() {
                   <p
                     style={{
                       font: '400 13px var(--font-body)',
-                      color: '#5b6472',
+                      color: 'var(--color-text-muted)',
                       margin: 'var(--space-1) 0 0',
                     }}
                   >

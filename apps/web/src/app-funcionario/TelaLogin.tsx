@@ -57,7 +57,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
       <h1 style={{ font: '700 26px var(--font-display)', color: 'var(--color-navy-900)' }}>
         REP-P
       </h1>
-      <p style={{ color: '#5b6472', marginTop: 0 }}>
+      <p style={{ color: 'var(--color-text-muted)', marginTop: 0 }}>
         {modo === 'login' ? 'Acesse sua conta' : 'Primeiro acesso com codigo do RH'}
       </p>
 

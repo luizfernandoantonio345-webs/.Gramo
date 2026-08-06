@@ -102,7 +102,7 @@ export function PainelConfiguracoes() {
                   }}
                 >
                   <strong style={{ font: '600 14px var(--font-body)' }}>{f.nome}</strong>
-                  <span style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                  <span style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                     {f.cnpj ?? 'sem CNPJ'} · {f.timezone}
                   </span>
                 </li>
@@ -131,7 +131,9 @@ export function PainelConfiguracoes() {
                     }}
                   >
                     <strong style={{ font: '600 14px var(--font-body)' }}>{j.nome}</strong>
-                    <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                    <div
+                      style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}
+                    >
                       {j.horaEntrada}-{j.horaSaida} · tol {j.toleranciaMinutos}min ·{' '}
                       {j.diasSemana.map((d) => DIAS[d]).join(' ')}
                     </div>

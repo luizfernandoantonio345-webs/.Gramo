@@ -116,7 +116,9 @@ export function PainelDashboard() {
             >
               {d?.presenca7dias.map((p) => (
                 <div key={p.dia} style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ font: '600 11px var(--font-mono)', color: '#5b6472' }}>
+                  <div
+                    style={{ font: '600 11px var(--font-mono)', color: 'var(--color-text-muted)' }}
+                  >
                     {p.marcacoes}
                   </div>
                   <div
@@ -128,7 +130,13 @@ export function PainelDashboard() {
                       borderRadius: '4px 4px 0 0',
                     }}
                   />
-                  <div style={{ font: '9px var(--font-mono)', color: '#5b6472', marginTop: 2 }}>
+                  <div
+                    style={{
+                      font: '9px var(--font-mono)',
+                      color: 'var(--color-text-muted)',
+                      marginTop: 2,
+                    }}
+                  >
                     {p.dia.slice(5)}
                   </div>
                 </div>
@@ -162,7 +170,7 @@ export function PainelDashboard() {
                   <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>
                     {a.funcionario}
                   </span>
-                  <span style={{ font: '11px var(--font-mono)', color: '#5b6472' }}>
+                  <span style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                     desde {new Date(a.desde).toLocaleString('pt-BR')}
                   </span>
                 </li>
@@ -240,7 +248,7 @@ function PresencaAgora() {
           <h2 style={{ font: '600 16px var(--font-display)', margin: 0 }}>Presença agora</h2>
         </div>
         <span
-          style={{ font: '11px var(--font-mono)', color: '#5b6472' }}
+          style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}
           role="status"
           aria-live="polite"
         >
@@ -263,7 +271,7 @@ function PresencaAgora() {
         <span style={{ font: '700 40px var(--font-display)', color: 'var(--color-teal-success)' }}>
           {p?.total ?? '—'}
         </span>
-        <span style={{ font: '400 14px var(--font-body)', color: '#5b6472' }}>
+        <span style={{ font: '400 14px var(--font-body)', color: 'var(--color-text-muted)' }}>
           trabalhando neste momento
         </span>
       </div>
@@ -311,7 +319,7 @@ function PresencaAgora() {
                   }}
                 >
                   <span>{x.funcionario}</span>
-                  <span style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                  <span style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                     {x.filial} · desde{' '}
                     {new Date(x.desde).toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
@@ -387,7 +395,7 @@ function BancoHorasTool() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   font: '12px var(--font-mono)',
-                  color: '#5b6472',
+                  color: 'var(--color-text-muted)',
                   padding: '3px 0',
                   borderBottom: '1px solid var(--color-border)',
                 }}

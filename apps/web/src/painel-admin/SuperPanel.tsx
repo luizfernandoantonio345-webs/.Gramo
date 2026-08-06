@@ -73,8 +73,8 @@ export function SuperPanel({ onSair }: { onSair: () => void }) {
     <div>
       <div
         style={{
-          background: 'var(--color-navy-900)',
-          color: '#fff',
+          background: 'var(--color-navy-deep)',
+          color: 'var(--color-navy-900)',
           padding: 'var(--space-3) var(--space-4)',
           display: 'flex',
           justifyContent: 'space-between',
@@ -143,7 +143,9 @@ export function SuperPanel({ onSair }: { onSair: () => void }) {
                   >
                     <div style={{ minWidth: 0 }}>
                       <strong style={{ font: '600 15px var(--font-body)' }}>{e.razaoSocial}</strong>
-                      <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                      <div
+                        style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}
+                      >
                         {e.subdominio} · {e.cnpj} · {e.planoRef?.nome ?? 'sem plano'}
                       </div>
                     </div>
@@ -178,7 +180,13 @@ export function SuperPanel({ onSair }: { onSair: () => void }) {
                     </div>
                   </div>
                   {uso[e.id] && (
-                    <div style={{ font: '12px var(--font-mono)', color: '#5b6472', marginTop: 4 }}>
+                    <div
+                      style={{
+                        font: '12px var(--font-mono)',
+                        color: 'var(--color-text-muted)',
+                        marginTop: 4,
+                      }}
+                    >
                       funcionários ativos: {uso[e.id]!.funcionariosAtivos} · marcações/mês:{' '}
                       {uso[e.id]!.marcacoesMes} · documentos: {uso[e.id]!.documentos}
                     </div>

@@ -133,7 +133,7 @@ export function Folha() {
             <p
               style={{
                 font: '400 12px var(--font-body)',
-                color: '#5b6472',
+                color: 'var(--color-text-muted)',
                 margin: 'var(--space-2) 0 0',
               }}
             >
@@ -168,7 +168,9 @@ export function Folha() {
                 >
                   <div style={{ minWidth: 0 }}>
                     <strong style={{ font: '600 15px var(--font-body)' }}>{d.titulo}</strong>
-                    <div style={{ font: '12px var(--font-mono)', color: '#5b6472' }}>
+                    <div
+                      style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}
+                    >
                       {d.tipo}
                       {d.competencia ? ` · ${d.competencia}` : ''}
                     </div>

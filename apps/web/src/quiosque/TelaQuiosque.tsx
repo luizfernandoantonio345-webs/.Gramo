@@ -134,7 +134,7 @@ function Registrar({ onTrocarDispositivo }: { onTrocarDispositivo: () => void })
               borderRadius: '50%',
               margin: '0 auto var(--space-4)',
               background: valido ? 'var(--color-teal-success)' : 'var(--color-amber-warning)',
-              color: '#fff',
+              color: 'var(--color-navy-deep)',
               font: '700 52px var(--font-display)',
               display: 'flex',
               alignItems: 'center',
@@ -206,7 +206,7 @@ function Registrar({ onTrocarDispositivo }: { onTrocarDispositivo: () => void })
             minHeight: 44,
             background: 'none',
             border: 'none',
-            color: '#5b6472',
+            color: 'var(--color-text-muted)',
             cursor: 'pointer',
             font: '400 12px var(--font-body)',
           }}
@@ -224,7 +224,7 @@ function Palco({ children }: { children: ReactNode }) {
     <div
       style={{
         minHeight: '100vh',
-        background: 'var(--color-navy-900)',
+        background: 'var(--color-navy-deep)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

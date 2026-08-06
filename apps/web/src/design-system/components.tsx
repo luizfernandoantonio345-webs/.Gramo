@@ -20,8 +20,9 @@ export function Botao({
   variante?: 'primario' | 'secundario';
   grande?: boolean;
 }) {
-  const cor = variante === 'primario' ? 'var(--color-accent)' : 'var(--color-surface)';
-  const texto = variante === 'primario' ? '#fff' : 'var(--color-navy-900)';
+  const cor = variante === 'primario' ? 'var(--color-accent)' : 'var(--color-surface-2)';
+  // Texto ESCURO sobre o ciano (acao primaria) -> contraste alto e ar premium.
+  const texto = variante === 'primario' ? 'var(--color-navy-deep)' : 'var(--color-navy-900)';
   return (
     <button
       {...props}
@@ -31,8 +32,8 @@ export function Botao({
         padding: grande ? 'var(--space-3) var(--space-4)' : 'var(--space-3)',
         borderRadius: 'var(--radius-lg)',
         border: variante === 'secundario' ? '1px solid var(--color-border)' : 'none',
-        background: props.disabled ? '#9db4d8' : cor,
-        color: texto,
+        background: props.disabled ? 'var(--color-surface-2)' : cor,
+        color: props.disabled ? 'var(--color-text-muted)' : texto,
         font: `${grande ? '700 17px' : '600 15px'} var(--font-body)`,
         letterSpacing: '0.03em',
         textTransform: 'uppercase',
@@ -51,10 +52,25 @@ export function Botao({
  * sucesso (teal), erro (vermelho), aviso (ambar -- sinaliza, nao bloqueia), info.
  */
 const TONS_FEEDBACK = {
-  sucesso: { bg: '#e6f4ef', borda: 'var(--color-teal-success)', texto: '#0f5741', icone: '✓' },
-  erro: { bg: '#fbeaea', borda: 'var(--color-red-alert)', texto: '#7a2323', icone: '!' },
-  aviso: { bg: '#fdf3e3', borda: 'var(--color-amber-warning)', texto: '#7a531a', icone: '!' },
-  info: { bg: '#eaf1fe', borda: 'var(--color-accent)', texto: '#1c3f8f', icone: 'i' },
+  sucesso: {
+    bg: 'rgba(52,211,153,0.12)',
+    borda: 'var(--color-teal-success)',
+    texto: '#6ee7b7',
+    icone: '✓',
+  },
+  erro: {
+    bg: 'rgba(248,113,113,0.12)',
+    borda: 'var(--color-red-alert)',
+    texto: '#fca5a5',
+    icone: '!',
+  },
+  aviso: {
+    bg: 'rgba(251,191,36,0.12)',
+    borda: 'var(--color-amber-warning)',
+    texto: '#fcd34d',
+    icone: '!',
+  },
+  info: { bg: 'rgba(34,211,238,0.12)', borda: 'var(--color-accent)', texto: '#67e8f9', icone: 'i' },
 } as const;
 
 export function Feedback({
@@ -90,7 +106,7 @@ export function Feedback({
           height: 20,
           borderRadius: '50%',
           background: t.borda,
-          color: '#fff',
+          color: 'var(--color-navy-deep)',
           font: '700 13px var(--font-body)',
           display: 'flex',
           alignItems: 'center',
@@ -110,7 +126,7 @@ export function EstadoVazio({ children }: { children: ReactNode }) {
     <p
       style={{
         textAlign: 'center',
-        color: '#5b6472',
+        color: 'var(--color-text-muted)',
         font: '400 14px var(--font-body)',
         padding: 'var(--space-4) 0',
         margin: 0,
@@ -150,7 +166,7 @@ export function CabecalhoPagina({
           <p
             style={{
               font: '400 14px var(--font-body)',
-              color: '#5b6472',
+              color: 'var(--color-text-muted)',
               margin: 'var(--space-1) 0 0',
             }}
           >
@@ -195,7 +211,13 @@ export function Kpi({
       }}
     >
       <div style={{ font: '700 28px var(--font-display)', color: TOM_KPI[tom] }}>{valor}</div>
-      <div style={{ font: '500 12px var(--font-body)', color: '#5b6472', marginTop: 2 }}>
+      <div
+        style={{
+          font: '500 12px var(--font-body)',
+          color: 'var(--color-text-muted)',
+          marginTop: 2,
+        }}
+      >
         {rotulo}
       </div>
     </div>
@@ -228,6 +250,8 @@ export function Campo({
           borderRadius: 'var(--radius-md)',
           border: `1px solid ${erro ? 'var(--color-red-alert)' : 'var(--color-border)'}`,
           font: '400 15px var(--font-body)',
+          background: 'var(--color-surface)',
+          color: 'var(--color-navy-900)',
         }}
       />
       {erro && (
@@ -266,6 +290,7 @@ export function Selecao({
           border: '1px solid var(--color-border)',
           font: '400 15px var(--font-body)',
           background: 'var(--color-surface)',
+          color: 'var(--color-navy-900)',
         }}
       >
         {children}
@@ -283,8 +308,8 @@ export function Badge({ cor, children }: { cor: string; children: ReactNode }) {
         padding: 'var(--space-1) var(--space-2)',
         borderRadius: 'var(--radius-sm)',
         background: cor,
-        color: '#fff',
-        font: '500 12px var(--font-body)',
+        color: 'var(--color-navy-deep)', // texto escuro sobre a cor viva do status
+        font: '600 12px var(--font-body)',
       }}
     >
       {children}
@@ -301,6 +326,7 @@ export function Cartao({ children }: { children: ReactNode }) {
         border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-md)',
         padding: 'var(--space-4)',
+        boxShadow: 'var(--sombra-card)',
       }}
     >
       {children}

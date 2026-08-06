@@ -103,7 +103,7 @@ export function PainelIntegracoes() {
                   <strong style={{ font: '600 14px var(--font-body)' }}>
                     {t.replace('_', ' ').toLowerCase()}
                   </strong>
-                  <div style={{ font: '11px var(--font-body)', color: '#5b6472' }}>
+                  <div style={{ font: '11px var(--font-body)', color: 'var(--color-text-muted)' }}>
                     {t === 'ESOCIAL'
                       ? 'Transmissão de eventos de jornada (infra externa).'
                       : 'Envio de banco de horas / horas extras.'}
@@ -173,7 +173,7 @@ export function PainelIntegracoes() {
               >
                 <div>
                   <strong style={{ font: '600 14px var(--font-body)' }}>{c.nome}</strong>
-                  <div style={{ font: '11px var(--font-mono)', color: '#5b6472' }}>
+                  <div style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}>
                     {c.prefixo}… · {c.escopo}
                   </div>
                 </div>
@@ -188,7 +188,7 @@ export function PainelIntegracoes() {
                       borderRadius: 'var(--radius-sm)',
                       border: 'none',
                       background: 'var(--color-red-alert)',
-                      color: '#fff',
+                      color: 'var(--color-navy-deep)',
                       cursor: 'pointer',
                       font: '600 12px var(--font-body)',
                     }}
