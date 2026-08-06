@@ -70,7 +70,7 @@ function subdominioAtual(): string {
     const partes = host.split('.');
     if (partes.length >= 3 && partes[0] && partes[0] !== 'www') return partes[0];
   }
-  return (import.meta.env.VITE_TENANT as string) ?? 'piloto';
+  return (import.meta.env.VITE_TENANT as string) ?? 'gramo';
 }
 
 function headers(comAuth: boolean): Record<string, string> {

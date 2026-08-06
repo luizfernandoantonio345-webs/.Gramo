@@ -100,8 +100,8 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
             {ehDemo && (
               <BotaoDemo
                 onClick={() => {
-                  setEmail('admin@piloto.local');
-                  setSenha('Piloto@12345');
+                  setEmail('rh@gramoengenharia.com.br');
+                  setSenha('GramoRH@2026');
                 }}
               />
             )}

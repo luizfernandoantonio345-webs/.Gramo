@@ -136,7 +136,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
           <BotaoDemo
             onClick={() => {
               setCpf('52998224725');
-              setSenha('Func@12345');
+              setSenha('Gramo@12345');
             }}
           />
         )}
