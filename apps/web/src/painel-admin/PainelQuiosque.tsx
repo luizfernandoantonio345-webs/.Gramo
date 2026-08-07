@@ -78,7 +78,7 @@ export function PainelQuiosque() {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div>
       <CabecalhoPagina
         titulo="Quiosque"
         subtitulo="Tablets fixos na portaria que registram ponto por CPF (para quem não tem celular)"

@@ -68,7 +68,7 @@ export function PainelConfiguracoes() {
   } as const;
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div>
       <CabecalhoPagina
         titulo="Configurações"
         subtitulo="Filiais (estabelecimentos), jornadas e feriados"

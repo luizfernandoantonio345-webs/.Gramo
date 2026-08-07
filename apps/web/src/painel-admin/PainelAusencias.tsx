@@ -59,7 +59,7 @@ export function PainelAusencias() {
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div>
       <CabecalhoPagina
         titulo="Ausências e contestações"
         subtitulo="Fila de decisão do RH — férias/afastamentos e contestações de ponto"

@@ -220,7 +220,7 @@ export function BaterPonto() {
         : 'Localização indisponível';
 
   return (
-    <div style={{ maxWidth: 440, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div style={{ maxWidth: 440, margin: '0 auto' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ font: '700 24px var(--font-display)', margin: 0 }}>Bater ponto</h1>
         <Badge cor={online ? 'var(--color-teal-success)' : 'var(--color-amber-warning)'}>

@@ -61,7 +61,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div style={{ maxWidth: 420, margin: '0 auto' }}>
       <div style={{ marginBottom: 'var(--space-3)' }}>
         <MarcaRepp subtitulo="Ponto Eletrônico" />
       </div>

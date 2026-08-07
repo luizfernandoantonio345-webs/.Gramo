@@ -69,7 +69,7 @@ export function PainelAssinaturas() {
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div>
       <h1 style={{ font: '700 24px var(--font-display)' }}>Assinaturas Virtuais</h1>
       {erro && <Badge cor="var(--color-red-alert)">{erro}</Badge>}
 

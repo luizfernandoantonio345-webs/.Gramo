@@ -71,7 +71,7 @@ export function PainelIntegracoes() {
   const tipoAtivo = (t: string) => config.find((c) => c.tipo === t)?.ativo ?? false;
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div>
       <CabecalhoPagina
         titulo="Integrações"
         subtitulo="Chaves de API e conectores de folha / eSocial"

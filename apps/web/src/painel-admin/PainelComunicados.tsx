@@ -71,7 +71,7 @@ export function PainelComunicados() {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div>
       <CabecalhoPagina
         titulo="Comunicados"
         subtitulo="Publicação para a equipe e taxa de leitura"

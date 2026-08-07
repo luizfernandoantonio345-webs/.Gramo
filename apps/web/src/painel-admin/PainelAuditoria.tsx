@@ -55,7 +55,7 @@ export function PainelAuditoria() {
     (aba === 'trilha' && trilha.length === 0) || (aba === 'acessos' && acessos.length === 0);
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div>
       <CabecalhoPagina
         titulo="Auditoria"
         subtitulo="Trilha imutável de tudo que acontece no sistema — prova documental (ADM 6)"

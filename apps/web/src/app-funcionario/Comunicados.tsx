@@ -45,7 +45,7 @@ export function Comunicados() {
   }
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div style={{ maxWidth: 560, margin: '0 auto' }}>
       <h1 style={{ font: '700 24px var(--font-display)', marginTop: 0 }}>Comunicados</h1>
 
       {erro && (

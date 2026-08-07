@@ -72,7 +72,7 @@ export function Documentos() {
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div style={{ maxWidth: 480, margin: '0 auto' }}>
       <h1 style={{ font: '700 24px var(--font-display)', marginTop: 0 }}>Documentação</h1>
 
       {feedback && (
