@@ -9,6 +9,7 @@ import {
   Feedback,
   Selecao,
   Tabela,
+  TituloSecao,
 } from '../design-system/components';
 import { apiGet, apiPost } from '../lib/api';
 
@@ -175,12 +176,6 @@ export function PainelRelatorios() {
     });
   }
 
-  const tituloCartao = {
-    font: '600 var(--text-lg) var(--font-display)',
-    letterSpacing: '-0.01em',
-    margin: '0 0 var(--space-5)',
-  } as const;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <CabecalhoPagina
@@ -190,7 +185,7 @@ export function PainelRelatorios() {
       {feedback && <Feedback tom={feedback.tom}>{feedback.texto}</Feedback>}
 
       <Cartao>
-        <h2 style={tituloCartao}>Exportações legais (fiscalização)</h2>
+        <TituloSecao>Exportações legais (fiscalização)</TituloSecao>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
           <Campo
             label="Início"
@@ -229,7 +224,7 @@ export function PainelRelatorios() {
       </Cartao>
 
       <Cartao>
-        <h2 style={tituloCartao}>Fechamento mensal por obra (PDF gerencial)</h2>
+        <TituloSecao>Fechamento mensal por obra (PDF gerencial)</TituloSecao>
         <p
           style={{
             font: 'var(--text-sm) var(--font-body)',
@@ -266,7 +261,7 @@ export function PainelRelatorios() {
       </Cartao>
 
       <Cartao>
-        <h2 style={tituloCartao}>Exportações geradas</h2>
+        <TituloSecao>Exportações geradas</TituloSecao>
         {carregando ? (
           <EstadoVazio>Carregando…</EstadoVazio>
         ) : lista.length === 0 ? (

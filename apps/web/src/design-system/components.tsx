@@ -415,6 +415,54 @@ export function Tabela({ children, minWidth }: { children: ReactNode; minWidth?:
   );
 }
 
+/* ---------------------------------------------------- Layout primitives --- */
+/** Titulo de secao dentro de um cartao, com area de "meta" opcional a direita. */
+export function TituloSecao({ children, meta }: { children: ReactNode; meta?: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 'var(--space-4)',
+        marginBottom: 'var(--space-5)',
+      }}
+    >
+      <h2
+        style={{
+          font: '600 var(--text-lg) var(--font-display)',
+          letterSpacing: '-0.01em',
+          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+        }}
+      >
+        {children}
+      </h2>
+      {meta}
+    </div>
+  );
+}
+
+/** Linha de lista com divisoria inferior (padrao interno dos cartoes). */
+export function LinhaLista({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 'var(--space-4)',
+        padding: 'var(--space-4) 0',
+        borderBottom: '1px solid var(--color-divider)',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------- MarcaRepp - */
 /**
  * Marca .GRAMO (lockup): tile de acento + wordmark + subtitulo opcional. Sobrio

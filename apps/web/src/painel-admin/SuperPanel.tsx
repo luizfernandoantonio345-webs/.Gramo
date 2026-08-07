@@ -8,6 +8,7 @@ import {
   EstadoVazio,
   Feedback,
   Selecao,
+  TituloSecao,
 } from '../design-system/components';
 import { apiGet, apiPost } from '../lib/api';
 
@@ -29,12 +30,6 @@ interface Uso {
   marcacoesMes: number;
   documentos: number;
 }
-
-const tituloCartao = {
-  font: '600 var(--text-lg) var(--font-display)',
-  letterSpacing: '-0.01em',
-  margin: '0 0 var(--space-5)',
-} as const;
 
 /** ADM 0 -- painel do Super Admin (plataforma). */
 export function SuperPanel({ onSair }: { onSair: () => void }) {
@@ -132,7 +127,7 @@ export function SuperPanel({ onSair }: { onSair: () => void }) {
         <NovaEmpresa planos={planos} onCriada={carregar} />
 
         <Cartao>
-          <h2 style={tituloCartao}>Empresas-cliente</h2>
+          <TituloSecao>Empresas-cliente</TituloSecao>
           {carregando ? (
             <EstadoVazio>Carregando…</EstadoVazio>
           ) : empresas.length === 0 ? (
@@ -217,7 +212,7 @@ export function SuperPanel({ onSair }: { onSair: () => void }) {
         </Cartao>
 
         <Cartao>
-          <h2 style={tituloCartao}>Planos</h2>
+          <TituloSecao>Planos</TituloSecao>
           {planos.length === 0 ? (
             <EstadoVazio>Nenhum plano cadastrado.</EstadoVazio>
           ) : (
@@ -273,7 +268,7 @@ function NovaEmpresa({ planos, onCriada }: { planos: Plano[]; onCriada: () => vo
 
   return (
     <Cartao>
-      <h2 style={tituloCartao}>Cadastrar empresa (onboarding)</h2>
+      <TituloSecao>Cadastrar empresa (onboarding)</TituloSecao>
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--space-4)' }}>
         <Campo
           label="Razão social"

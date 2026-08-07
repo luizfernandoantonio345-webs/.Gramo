@@ -1,5 +1,5 @@
 import { formatarCpf, isCpfValido, normalizarCpf } from '@repp/shared';
-import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Badge,
   Botao,
@@ -9,6 +9,7 @@ import {
   EstadoVazio,
   Feedback,
   Selecao,
+  TituloSecao,
 } from '../design-system/components';
 import { apiGet, apiPost } from '../lib/api';
 
@@ -41,23 +42,6 @@ const COR_DOC: Record<string, string> = {
   PENDENTE: 'var(--color-warning)',
 };
 const humaniza = (s: string) => s.toLowerCase().replace(/_/g, ' ');
-
-/** Subtitulo de secao dentro de um cartao. */
-function Secao({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return (
-    <h3
-      style={{
-        font: '600 var(--text-md) var(--font-display)',
-        letterSpacing: '-0.01em',
-        margin: 0,
-        color: 'var(--color-text)',
-        ...style,
-      }}
-    >
-      {children}
-    </h3>
-  );
-}
 
 /** ADM 2 -- Gestao de Funcionarios. */
 export function GestaoFuncionarios() {
@@ -196,7 +180,7 @@ export function GestaoFuncionarios() {
                 </div>
 
                 <div>
-                  <Secao style={{ marginBottom: 'var(--space-4)' }}>Documentos</Secao>
+                  <TituloSecao>Documentos</TituloSecao>
                   {docs.length === 0 ? (
                     <EstadoVazio>Nenhum documento enviado.</EstadoVazio>
                   ) : (
@@ -315,7 +299,7 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
 
   return (
     <Cartao>
-      <Secao style={{ marginBottom: 'var(--space-5)' }}>Novo funcionário</Secao>
+      <TituloSecao>Novo funcionário</TituloSecao>
       <Campo label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
       <Campo
         label="CPF"
@@ -408,7 +392,7 @@ function FechamentoMensal({ funcionarioId }: { funcionarioId: string }) {
 
   return (
     <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: 'var(--space-5)' }}>
-      <Secao style={{ marginBottom: 'var(--space-4)' }}>Fechamento mensal (espelho de ponto)</Secao>
+      <TituloSecao>Fechamento mensal (espelho de ponto)</TituloSecao>
       <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end' }}>
         <div style={{ flex: 1 }}>
           <Campo
@@ -525,7 +509,7 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
           marginBottom: 'var(--space-4)',
         }}
       >
-        <Secao>Banco de horas · {comp}</Secao>
+        <TituloSecao>Banco de horas · {comp}</TituloSecao>
         <Botao tamanho="sm" variante="secundario" bloco={false} onClick={baixarPdf}>
           Espelho (PDF)
         </Botao>

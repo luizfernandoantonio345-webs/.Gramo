@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Badge,
   Botao,
@@ -8,6 +8,8 @@ import {
   EstadoVazio,
   Feedback,
   Kpi,
+  LinhaLista,
+  TituloSecao,
 } from '../design-system/components';
 import { apiGet, apiPost } from '../lib/api';
 
@@ -32,12 +34,6 @@ interface Regap {
   raioMetros: number;
   ativo: boolean;
 }
-
-const tituloCartao: CSSProperties = {
-  font: '600 var(--text-lg) var(--font-display)',
-  letterSpacing: '-0.01em',
-  margin: '0 0 var(--space-5)',
-};
 
 /** ADM 4 -- Gestao de Ponto: dashboard, fila de excecoes e REGAP. */
 export function GestaoPonto() {
@@ -114,7 +110,7 @@ export function GestaoPonto() {
 
       {/* Fila de excecoes -- superficie de decisao principal do RH */}
       <Cartao>
-        <h2 style={tituloCartao}>Fila de exceções</h2>
+        <TituloSecao>Fila de exceções</TituloSecao>
         {carregando ? (
           <EstadoVazio>Carregando…</EstadoVazio>
         ) : excecoes.length === 0 ? (
@@ -122,7 +118,7 @@ export function GestaoPonto() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {excecoes.map((e) => (
-              <LinhaDivisor key={e.id}>
+              <LinhaLista key={e.id}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div
                     style={{
@@ -172,7 +168,7 @@ export function GestaoPonto() {
                     Recusar
                   </Botao>
                 </div>
-              </LinhaDivisor>
+              </LinhaLista>
             ))}
           </div>
         )}
@@ -181,13 +177,13 @@ export function GestaoPonto() {
       <NovaRegap onCriada={carregar} />
 
       <Cartao>
-        <h2 style={tituloCartao}>Áreas (REGAP)</h2>
+        <TituloSecao>Áreas (REGAP)</TituloSecao>
         {regaps.length === 0 ? (
           <EstadoVazio>Nenhuma área cadastrada.</EstadoVazio>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {regaps.map((r) => (
-              <LinhaDivisor key={r.id}>
+              <LinhaLista key={r.id}>
                 <span style={{ flex: 1, fontWeight: 500 }}>{r.nome}</span>
                 <span
                   style={{
@@ -200,29 +196,11 @@ export function GestaoPonto() {
                 <Badge cor={r.ativo ? 'var(--color-success)' : 'var(--color-text-muted)'}>
                   {r.ativo ? 'ativa' : 'inativa'}
                 </Badge>
-              </LinhaDivisor>
+              </LinhaLista>
             ))}
           </div>
         )}
       </Cartao>
-    </div>
-  );
-}
-
-/** Linha de lista com divisoria inferior (padrao dos cartoes). */
-function LinhaDivisor({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: 'var(--space-4)',
-        padding: 'var(--space-4) 0',
-        borderBottom: '1px solid var(--color-divider)',
-      }}
-    >
-      {children}
     </div>
   );
 }
@@ -262,7 +240,7 @@ function NovaRegap({ onCriada }: { onCriada: () => void }) {
 
   return (
     <Cartao>
-      <h2 style={tituloCartao}>Nova área (REGAP)</h2>
+      <TituloSecao>Nova área (REGAP)</TituloSecao>
       <div
         style={{
           display: 'grid',

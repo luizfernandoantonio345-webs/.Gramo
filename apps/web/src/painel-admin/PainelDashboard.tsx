@@ -9,7 +9,9 @@ import {
   EstadoVazio,
   Feedback,
   Kpi,
+  LinhaLista,
   Tabela,
+  TituloSecao,
 } from '../design-system/components';
 import { apiGet } from '../lib/api';
 
@@ -30,35 +32,6 @@ interface BancoHoras {
   cargaDiariaMinutos: number | null;
   saldoTotalMin: number | null;
   dias: Array<{ data: string; trabalhadoMin: number; saldoMin: number | null }>;
-}
-
-/** Titulo de secao dentro de um cartao. */
-function TituloCartao({ children, meta }: { children: ReactNode; meta?: ReactNode }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: 'var(--space-4)',
-        marginBottom: 'var(--space-5)',
-      }}
-    >
-      <h2
-        style={{
-          font: '600 var(--text-lg) var(--font-display)',
-          letterSpacing: '-0.01em',
-          margin: 0,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-        }}
-      >
-        {children}
-      </h2>
-      {meta}
-    </div>
-  );
 }
 
 const metaStyle = {
@@ -154,7 +127,7 @@ export function PainelDashboard() {
         }}
       >
         <Cartao>
-          <TituloCartao>Presença (7 dias)</TituloCartao>
+          <TituloSecao>Presença (7 dias)</TituloSecao>
           {carregando ? (
             <EstadoVazio>Carregando…</EstadoVazio>
           ) : (
@@ -213,7 +186,7 @@ export function PainelDashboard() {
         </Cartao>
 
         <Cartao>
-          <TituloCartao>Alertas prioritários · exceções &gt; 48h</TituloCartao>
+          <TituloSecao>Alertas prioritários · exceções &gt; 48h</TituloSecao>
           {carregando ? (
             <EstadoVazio>Carregando…</EstadoVazio>
           ) : (d?.alertasPrioritarios.length ?? 0) === 0 ? (
@@ -242,24 +215,9 @@ export function PainelDashboard() {
   );
 }
 
-/* Lista vertical com divisorias (padrao dos cartoes). */
+/* Lista vertical (empilha LinhaLista, que ja traz a divisoria). */
 function Lista({ children }: { children: ReactNode }) {
   return <div style={{ display: 'flex', flexDirection: 'column' }}>{children}</div>;
-}
-function LinhaLista({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-4)',
-        padding: 'var(--space-4) 0',
-        borderBottom: '1px solid var(--color-divider)',
-      }}
-    >
-      {children}
-    </div>
-  );
 }
 
 interface Presenca {
@@ -301,7 +259,7 @@ function PresencaAgora() {
 
   return (
     <Cartao>
-      <TituloCartao
+      <TituloSecao
         meta={
           <span style={metaStyle} role="status" aria-live="polite">
             {p
@@ -323,7 +281,7 @@ function PresencaAgora() {
           }}
         />
         Presença agora
-      </TituloCartao>
+      </TituloSecao>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)' }}>
         <span
@@ -455,7 +413,7 @@ function AlertaExtras() {
 
   return (
     <Cartao>
-      <TituloCartao
+      <TituloSecao
         meta={
           <span style={metaStyle} role="status" aria-live="polite">
             {a
@@ -468,7 +426,7 @@ function AlertaExtras() {
       >
         Hora extra · hoje
         {excedidos > 0 && <Badge cor="var(--color-danger)">{excedidos} no limite</Badge>}
-      </TituloCartao>
+      </TituloSecao>
 
       {!a ? (
         <EstadoVazio>{erro ? 'Sem conexão.' : 'Carregando…'}</EstadoVazio>
@@ -531,9 +489,9 @@ function ComparativoObras() {
 
   return (
     <Cartao>
-      <TituloCartao meta={<span style={metaStyle}>mês corrente</span>}>
+      <TituloSecao meta={<span style={metaStyle}>mês corrente</span>}>
         Comparativo entre obras
-      </TituloCartao>
+      </TituloSecao>
       {erro ? (
         <Feedback tom="erro">{erro}</Feedback>
       ) : !c ? (
@@ -595,7 +553,7 @@ function BancoHorasTool() {
 
   return (
     <Cartao>
-      <TituloCartao>Banco de horas</TituloCartao>
+      <TituloSecao>Banco de horas</TituloSecao>
       <div
         style={{
           display: 'grid',
