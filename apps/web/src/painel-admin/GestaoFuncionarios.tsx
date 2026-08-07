@@ -1,5 +1,5 @@
 import { formatarCpf, isCpfValido, normalizarCpf } from '@repp/shared';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import {
   Badge,
   Botao,
@@ -104,6 +104,7 @@ export function GestaoFuncionarios() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
           <NovoFuncionario onCriado={carregar} />
+          <ImportarLote onImportado={carregar} />
           <Cartao padding="var(--space-5)">
             <input
               className="g-input"
@@ -240,6 +241,159 @@ export function GestaoFuncionarios() {
     </div>
   );
 }
+
+interface ResultadoImport {
+  ok: boolean;
+  inseridos: number;
+  erros: Array<{ linha: number; campo: string; mensagem: string }>;
+}
+
+const MODELO_CSV = `nome,cpf,cargo,obra,jornada
+José da Silva,529.982.247-25,Pedreiro,Canteiro Suape,Administrativo (08h-18h)
+Maria Souza,168.995.350-09,Mestre de obras,Canteiro Suape,`;
+
+/** ADM 2 -- Importacao em lote de funcionarios por CSV (tudo-ou-nada). */
+function ImportarLote({ onImportado }: { onImportado: () => void }) {
+  const [conteudo, setConteudo] = useState('');
+  const [nomeArquivo, setNomeArquivo] = useState('');
+  const [res, setRes] = useState<ResultadoImport | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  function baixarModelo() {
+    const url = URL.createObjectURL(new Blob([MODELO_CSV], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modelo-funcionarios.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function aoEscolher(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setNomeArquivo(file.name);
+    setConteudo(await file.text());
+    setRes(null);
+    setErro(null);
+  }
+
+  async function importar() {
+    setErro(null);
+    setRes(null);
+    setEnviando(true);
+    try {
+      const r = await apiPost<ResultadoImport>('/admin/funcionarios/importar', { conteudo }, true);
+      setRes(r);
+      if (r.ok) {
+        setConteudo('');
+        setNomeArquivo('');
+        onImportado();
+      }
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao importar.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Cartao padding="var(--space-5)">
+      <TituloSecao>Importar em lote (CSV)</TituloSecao>
+      <p
+        style={{
+          font: 'var(--text-sm) var(--font-body)',
+          color: 'var(--color-text-muted)',
+          margin: '0 0 var(--space-4)',
+        }}
+      >
+        Colunas: <strong>nome, cpf, obra</strong> (obrigatórias) + cargo, jornada (opcionais). A
+        obra e a jornada devem existir com o mesmo nome. Importação tudo-ou-nada.
+      </p>
+
+      <div
+        style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}
+      >
+        <label className="g-btn g-btn--sm g-btn--secondary" style={{ cursor: 'pointer' }}>
+          {nomeArquivo || 'Escolher arquivo .csv'}
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            onChange={aoEscolher}
+            style={{ display: 'none' }}
+          />
+        </label>
+        <button type="button" className="g-link" onClick={baixarModelo} style={btnLink}>
+          Baixar modelo
+        </button>
+      </div>
+
+      {conteudo && (
+        <div style={{ marginTop: 'var(--space-4)' }}>
+          <Botao onClick={importar} disabled={enviando} bloco={false}>
+            {enviando ? 'Importando…' : 'Importar'}
+          </Botao>
+        </div>
+      )}
+
+      {erro && (
+        <div style={{ marginTop: 'var(--space-4)' }}>
+          <Feedback tom="erro">{erro}</Feedback>
+        </div>
+      )}
+
+      {res?.ok && (
+        <div style={{ marginTop: 'var(--space-4)' }}>
+          <Feedback tom="sucesso">
+            {res.inseridos} funcionário(s) importado(s) com sucesso.
+          </Feedback>
+        </div>
+      )}
+
+      {res && !res.ok && (
+        <div style={{ marginTop: 'var(--space-4)' }}>
+          <Feedback tom="erro">
+            Nada foi importado — corrija {res.erros.length} erro(s) e tente de novo:
+          </Feedback>
+          <div style={{ marginTop: 'var(--space-3)', maxHeight: 220, overflowY: 'auto' }}>
+            {res.erros.map((e, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  gap: 'var(--space-3)',
+                  padding: 'var(--space-2) 0',
+                  borderBottom: '1px solid var(--color-divider)',
+                  font: 'var(--text-sm) var(--font-body)',
+                }}
+              >
+                <span
+                  style={{
+                    font: 'var(--text-xs) var(--font-mono)',
+                    color: 'var(--color-text-muted)',
+                    minWidth: 60,
+                  }}
+                >
+                  linha {e.linha}
+                </span>
+                <span>
+                  <strong>{e.campo}</strong>: {e.mensagem}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Cartao>
+  );
+}
+
+const btnLink = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  font: '500 var(--text-sm) var(--font-body)',
+} as const;
 
 function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
   const [nome, setNome] = useState('');

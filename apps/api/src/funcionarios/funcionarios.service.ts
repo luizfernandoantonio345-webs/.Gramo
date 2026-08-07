@@ -40,7 +40,12 @@ export class FuncionariosService {
           ...filialEscopo,
           status: q.status,
           ...(busca
-            ? { OR: [{ nome: { contains: busca, mode: 'insensitive' } }, { cpf: { contains: normalizarCpf(busca) } }] }
+            ? {
+                OR: [
+                  { nome: { contains: busca, mode: 'insensitive' } },
+                  { cpf: { contains: normalizarCpf(busca) } },
+                ],
+              }
             : {}),
         },
         select: {
@@ -113,7 +118,9 @@ export class FuncionariosService {
         },
         select: { id: true, status: true },
       });
-      await this.audit(tx, empresaId, autor, 'funcionario.atualizar', 'funcionarios', id, { ...dto });
+      await this.audit(tx, empresaId, autor, 'funcionario.atualizar', 'funcionarios', id, {
+        ...dto,
+      });
       return f;
     });
   }
@@ -215,7 +222,9 @@ export class FuncionariosService {
       }),
     );
     return docs
-      .filter((d) => d.dataValidade && (venceEmBreve(d.dataValidade, agora) || d.dataValidade < agora))
+      .filter(
+        (d) => d.dataValidade && (venceEmBreve(d.dataValidade, agora) || d.dataValidade < agora),
+      )
       .map((d) => ({
         ...d,
         dataValidade: d.dataValidade?.toISOString() ?? null,
@@ -228,36 +237,129 @@ export class FuncionariosService {
    * Se qualquer linha falhar, nada e gravado e retorna o relatorio de erros
    * (linha + campo). Cabecalho esperado: nome,cpf,cargo,jornada.
    */
+  /**
+   * Importacao em lote (CSV) tudo-ou-nada. Cabecalho obrigatorio, colunas por
+   * NOME (ordem livre): nome, cpf, obra [, cargo, jornada]. Aceita delimitador
+   * "," ou ";" (Excel BR). Resolve a OBRA para filialId (obrigatoria -- sem ela
+   * o funcionario nao bate ponto) e a JORNADA (opcional) para jornadaId. Valida
+   * CPF, duplicidade no arquivo e no banco. So grava se TODAS as linhas passarem;
+   * senao devolve o relatorio de erros (linha + campo + motivo).
+   */
   async importarCsv(conteudo: string, autor: UsuarioAutenticado) {
     const linhas = conteudo
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
-    if (linhas.length < 2) throw new BadRequestException('CSV vazio (esperado cabecalho + linhas).');
+    if (linhas.length < 2)
+      throw new BadRequestException('CSV vazio (esperado cabecalho + linhas).');
 
-    const registros: Array<{ nome: string; cpf: string; cargo?: string; jornada?: string; linha: number }> = [];
+    const cab = linhas[0]!;
+    const delim = cab.split(';').length > cab.split(',').length ? ';' : ',';
+    const split = (l: string) => l.split(delim).map((c) => c.trim());
+    const header = split(cab).map((h) => h.toLowerCase());
+    const col = (nome: string) => header.indexOf(nome);
+    const iNome = col('nome');
+    const iCpf = col('cpf');
+    const iObra = col('obra');
+    const iCargo = col('cargo');
+    const iJornada = col('jornada');
+    if (iNome < 0 || iCpf < 0 || iObra < 0) {
+      throw new BadRequestException(
+        'Cabecalho deve conter ao menos: nome, cpf, obra (opcionais: cargo, jornada).',
+      );
+    }
+
+    const empresaId = TenantContext.requireEmpresaId();
+    const filiaisPermitidas = await this.escopo.filiaisPermitidas(autor);
+    const [filiais, jornadas] = await this.prisma.forTenant((tx) =>
+      Promise.all([
+        tx.filial.findMany({ select: { id: true, nome: true } }),
+        tx.jornada.findMany({ select: { id: true, nome: true } }),
+      ]),
+    );
+    const mapFilial = new Map(filiais.map((f) => [f.nome.toLowerCase(), f]));
+    const mapJornada = new Map(jornadas.map((j) => [j.nome.toLowerCase(), j]));
+
+    const registros: Array<{
+      nome: string;
+      cpf: string;
+      cargo?: string;
+      filialId: string;
+      jornadaId?: string;
+      jornadaContratual?: string;
+      linha: number;
+    }> = [];
     const erros: ErroLinhaCsv[] = [];
     const cpfsNoArquivo = new Set<string>();
 
     for (let i = 1; i < linhas.length; i++) {
       const nLinha = i + 1;
-      const cols = linhas[i]!.split(',').map((c) => c.trim());
-      const [nome, cpfBruto, cargo, jornada] = cols;
-      if (!nome) erros.push({ linha: nLinha, campo: 'nome', mensagem: 'Nome obrigatorio.' });
-      const cpf = normalizarCpf(cpfBruto ?? '');
+      const cols = split(linhas[i]!);
+      const nome = cols[iNome] ?? '';
+      const cpf = normalizarCpf(cols[iCpf] ?? '');
+      const cargo = iCargo >= 0 ? cols[iCargo] : undefined;
+      const obraNome = (cols[iObra] ?? '').trim();
+      const jornadaNome = iJornada >= 0 ? (cols[iJornada] ?? '').trim() : '';
+      let linhaOk = true;
+
+      if (!nome) {
+        erros.push({ linha: nLinha, campo: 'nome', mensagem: 'Nome obrigatorio.' });
+        linhaOk = false;
+      }
       if (!isCpfValido(cpf)) {
         erros.push({ linha: nLinha, campo: 'cpf', mensagem: 'CPF invalido.' });
+        linhaOk = false;
       } else if (cpfsNoArquivo.has(cpf)) {
         erros.push({ linha: nLinha, campo: 'cpf', mensagem: 'CPF duplicado no arquivo.' });
+        linhaOk = false;
       } else {
         cpfsNoArquivo.add(cpf);
       }
-      if (nome && isCpfValido(cpf)) {
-        registros.push({ nome, cpf, cargo, jornada, linha: nLinha });
+
+      const filial = mapFilial.get(obraNome.toLowerCase());
+      if (!obraNome) {
+        erros.push({ linha: nLinha, campo: 'obra', mensagem: 'Obra obrigatoria.' });
+        linhaOk = false;
+      } else if (!filial) {
+        erros.push({
+          linha: nLinha,
+          campo: 'obra',
+          mensagem: `Obra "${obraNome}" nao encontrada.`,
+        });
+        linhaOk = false;
+      } else if (filiaisPermitidas !== null && !filiaisPermitidas.includes(filial.id)) {
+        erros.push({ linha: nLinha, campo: 'obra', mensagem: `Sem acesso a obra "${obraNome}".` });
+        linhaOk = false;
+      }
+
+      let jornadaId: string | undefined;
+      if (jornadaNome) {
+        const j = mapJornada.get(jornadaNome.toLowerCase());
+        if (!j) {
+          erros.push({
+            linha: nLinha,
+            campo: 'jornada',
+            mensagem: `Jornada "${jornadaNome}" nao encontrada.`,
+          });
+          linhaOk = false;
+        } else {
+          jornadaId = j.id;
+        }
+      }
+
+      if (linhaOk && filial) {
+        registros.push({
+          nome,
+          cpf,
+          cargo: cargo || undefined,
+          filialId: filial.id,
+          jornadaId,
+          jornadaContratual: jornadaNome || undefined,
+          linha: nLinha,
+        });
       }
     }
 
-    const empresaId = TenantContext.requireEmpresaId();
     // Duplicidade contra o banco.
     const existentes = await this.prisma.forTenant((tx) =>
       tx.funcionario.findMany({
@@ -283,8 +385,10 @@ export class FuncionariosService {
           empresaId,
           nome: r.nome,
           cpf: r.cpf,
-          cargo: r.cargo || null,
-          jornadaContratual: r.jornada || null,
+          cargo: r.cargo ?? null,
+          filialId: r.filialId,
+          jornadaId: r.jornadaId ?? null,
+          jornadaContratual: r.jornadaContratual ?? null,
           status: StatusFuncionario.PENDENTE_CADASTRO,
         })),
       });
