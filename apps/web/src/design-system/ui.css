@@ -1,0 +1,400 @@
+/*
+ * Camada de classes utilitarias/estados do .GRAMO. Cobre o que estilo inline
+ * NAO consegue: :hover, :active, :focus, transicoes. Os componentes React
+ * (components.tsx) aplicam estas classes; tokens vem de tokens.css.
+ */
+
+/* ---------------------------------------------------------------- Botao --- */
+.g-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: 600 var(--text-base) / 1 var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast),
+    color var(--t-fast),
+    box-shadow var(--t-fast),
+    transform var(--t-fast);
+  user-select: none;
+}
+.g-btn:active {
+  transform: translateY(0.5px);
+}
+.g-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* tamanhos */
+.g-btn--sm {
+  min-height: 34px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+.g-btn--md {
+  min-height: 42px;
+  padding: 0 var(--space-5);
+}
+.g-btn--lg {
+  min-height: 52px;
+  padding: 0 var(--space-6);
+  font-size: var(--text-md);
+}
+.g-btn--block {
+  width: 100%;
+}
+
+/* variantes */
+.g-btn--primary {
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  box-shadow: var(--shadow-xs);
+}
+.g-btn--primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+.g-btn--primary:active:not(:disabled) {
+  background: var(--color-accent-active);
+}
+
+.g-btn--secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-xs);
+}
+.g-btn--secondary:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+}
+
+.g-btn--ghost {
+  background: transparent;
+  color: var(--color-accent);
+}
+.g-btn--ghost:hover:not(:disabled) {
+  background: var(--color-accent-tint);
+}
+
+.g-btn--danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+.g-btn--danger:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+/* ---------------------------------------------------------------- Input --- */
+.g-input,
+.g-select,
+.g-textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: 400 var(--text-base) var(--font-body);
+  transition:
+    border-color var(--t-fast),
+    box-shadow var(--t-fast);
+}
+.g-textarea {
+  padding: var(--space-4);
+  min-height: 88px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.g-input:hover,
+.g-select:hover,
+.g-textarea:hover {
+  border-color: var(--color-border-strong);
+}
+.g-input:focus,
+.g-select:focus,
+.g-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-ring);
+}
+.g-input--erro,
+.g-input--erro:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+/* ---------------------------------------------------------------- Cartao -- */
+.g-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.g-card--hover {
+  transition:
+    box-shadow var(--t-base),
+    border-color var(--t-base),
+    transform var(--t-base);
+}
+.g-card--hover:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}
+
+/* ----------------------------------------------------------------- Tabela - */
+.g-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+.g-table thead th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font: 600 var(--text-xs) / 1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+.g-table tbody td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+.g-table tbody tr {
+  transition: background var(--t-fast);
+}
+.g-table tbody tr:hover {
+  background: var(--color-bg-subtle);
+}
+.g-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.g-num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------- Nav item -- */
+.g-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: 500 var(--text-base) var(--font-body);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
+}
+.g-nav-item:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+.g-nav-item--active {
+  background: var(--color-accent-tint);
+  color: var(--color-accent-active);
+  font-weight: 600;
+}
+.g-nav-item__icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* -------------------------------------------------------------- Segmented - */
+.g-seg {
+  display: inline-flex;
+  padding: var(--space-1);
+  gap: var(--space-1);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.g-seg button {
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-sm);
+  font: 600 var(--text-sm) var(--font-body);
+  cursor: pointer;
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
+}
+.g-seg button:hover {
+  color: var(--color-text);
+}
+.g-seg button[aria-selected='true'] {
+  background: var(--color-surface);
+  color: var(--color-accent-active);
+  box-shadow: var(--shadow-xs);
+}
+
+/* -------------------------------------------------------------- Link/misc - */
+.g-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--t-fast);
+}
+.g-link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------- Shell --- */
+.g-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: 100vh;
+}
+.g-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+}
+.g-sidebar__brand {
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+.g-sidebar__nav {
+  flex: 1;
+  padding: var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.g-sidebar__group-label {
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  font: 600 10px / 1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+.g-sidebar__footer {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-divider);
+}
+.g-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.g-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-7);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid var(--color-border);
+}
+.g-content {
+  flex: 1;
+  padding: var(--space-8) var(--space-7);
+}
+.g-content__inner {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+.g-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.g-scrim {
+  display: none;
+}
+
+/* Mobile: sidebar vira drawer sobreposto. */
+@media (max-width: 900px) {
+  .g-shell {
+    grid-template-columns: 1fr;
+  }
+  .g-sidebar {
+    position: fixed;
+    z-index: var(--z-drawer);
+    width: var(--sidebar-w);
+    transform: translateX(-100%);
+    transition: transform var(--t-base);
+    box-shadow: var(--shadow-lg);
+  }
+  .g-sidebar--aberta {
+    transform: translateX(0);
+  }
+  .g-hamburger {
+    display: inline-flex;
+  }
+  .g-scrim--visivel {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    background: rgba(15, 23, 42, 0.4);
+    z-index: calc(var(--z-drawer) - 1);
+  }
+  .g-content {
+    padding: var(--space-6) var(--space-5);
+  }
+}
+
+/* Skeleton de carregamento */
+.g-skel {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-2) 25%,
+    var(--color-bg-subtle) 37%,
+    var(--color-surface-2) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: var(--radius-sm);
+  animation: g-shimmer 1.4s ease infinite;
+}
+@keyframes g-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}

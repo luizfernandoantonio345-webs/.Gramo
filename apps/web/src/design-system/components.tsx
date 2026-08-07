@@ -1,79 +1,64 @@
 import type {
   ButtonHTMLAttributes,
+  CSSProperties,
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
+  TextareaHTMLAttributes,
 } from 'react';
 
 /**
- * Botao primario (radius-lg, caixa alta) conforme o design system.
- * `grande` = acao principal (alvo de toque generoso p/ uso em campo).
- * Sempre >=44px de altura (acessibilidade/toque). `style` do chamador e mesclado.
+ * Design System .GRAMO -- tema claro corporativo. Componentes consomem as
+ * classes de estado de ui.css (:hover/:focus/:active) e os tokens de tokens.css.
+ * A API publica e mantida compativel com as telas existentes.
  */
+
+/* ------------------------------------------------------------------ Botao - */
+type VarianteBotao = 'primario' | 'secundario' | 'ghost' | 'perigo';
+const CLASSE_VARIANTE: Record<VarianteBotao, string> = {
+  primario: 'g-btn--primary',
+  secundario: 'g-btn--secondary',
+  ghost: 'g-btn--ghost',
+  perigo: 'g-btn--danger',
+};
+
 export function Botao({
   children,
   variante = 'primario',
   grande = false,
-  style,
+  tamanho,
+  bloco = true,
+  className,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variante?: 'primario' | 'secundario';
+  variante?: VarianteBotao;
   grande?: boolean;
+  tamanho?: 'sm' | 'md' | 'lg';
+  bloco?: boolean;
 }) {
-  const primario = variante === 'primario';
-  const cor = primario ? 'var(--gradient-accent)' : 'var(--color-surface-2)';
-  // Texto ESCURO sobre o acento vivo (acao primaria) -> contraste alto, ar premium.
-  const texto = primario ? 'var(--color-navy-deep)' : 'var(--color-navy-900)';
+  const size = tamanho ?? (grande ? 'lg' : 'md');
+  const classes = [
+    'g-btn',
+    `g-btn--${size}`,
+    CLASSE_VARIANTE[variante],
+    bloco ? 'g-btn--block' : '',
+    className ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
-    <button
-      {...props}
-      style={{
-        width: '100%',
-        minHeight: grande ? 60 : 46,
-        padding: grande ? 'var(--space-3) var(--space-4)' : 'var(--space-3)',
-        borderRadius: 'var(--radius-lg)',
-        border: variante === 'secundario' ? '1px solid var(--color-border)' : 'none',
-        background: props.disabled ? 'var(--color-surface-2)' : cor,
-        color: props.disabled ? 'var(--color-text-muted)' : texto,
-        boxShadow: primario && !props.disabled ? 'var(--glow-accent)' : 'none',
-        font: `${grande ? '700 17px' : '700 14px'} var(--font-body)`,
-        letterSpacing: '0.04em',
-        textTransform: 'uppercase',
-        cursor: props.disabled ? 'not-allowed' : 'pointer',
-        transition: 'transform 0.06s ease, box-shadow 0.15s ease',
-        ...style,
-      }}
-    >
+    <button {...props} className={classes}>
       {children}
     </button>
   );
 }
 
-/**
- * Feedback de acao: SEMPRE cor + texto (nunca so cor) e `aria-live` para leitor
- * de tela. Substitui o uso do Badge para mensagens. Tons funcionais:
- * sucesso (teal), erro (vermelho), aviso (ambar -- sinaliza, nao bloqueia), info.
- */
+/* --------------------------------------------------------------- Feedback - */
 const TONS_FEEDBACK = {
-  sucesso: {
-    bg: 'rgba(52,211,153,0.12)',
-    borda: 'var(--color-teal-success)',
-    texto: '#6ee7b7',
-    icone: '✓',
-  },
-  erro: {
-    bg: 'rgba(248,113,113,0.12)',
-    borda: 'var(--color-red-alert)',
-    texto: '#fca5a5',
-    icone: '!',
-  },
-  aviso: {
-    bg: 'rgba(251,191,36,0.12)',
-    borda: 'var(--color-amber-warning)',
-    texto: '#fcd34d',
-    icone: '!',
-  },
-  info: { bg: 'rgba(34,211,238,0.12)', borda: 'var(--color-accent)', texto: '#67e8f9', icone: 'i' },
+  sucesso: { bg: 'var(--color-success-tint)', cor: 'var(--color-success)', icone: '✓' },
+  erro: { bg: 'var(--color-danger-tint)', cor: 'var(--color-danger)', icone: '!' },
+  aviso: { bg: 'var(--color-warning-tint)', cor: 'var(--color-warning)', icone: '!' },
+  info: { bg: 'var(--color-info-tint)', cor: 'var(--color-info)', icone: 'i' },
 } as const;
 
 export function Feedback({
@@ -90,15 +75,14 @@ export function Feedback({
       aria-live="polite"
       style={{
         display: 'flex',
-        gap: 'var(--space-2)',
+        gap: 'var(--space-4)',
         alignItems: 'flex-start',
         background: t.bg,
-        border: `1px solid ${t.borda}`,
-        borderLeft: `4px solid ${t.borda}`,
+        border: `1px solid ${t.cor}`,
         borderRadius: 'var(--radius-md)',
-        padding: 'var(--space-3)',
-        color: t.texto,
-        font: '500 14px var(--font-body)',
+        padding: 'var(--space-4) var(--space-5)',
+        color: 'var(--color-text)',
+        font: `500 var(--text-base) var(--font-body)`,
       }}
     >
       <span
@@ -107,13 +91,14 @@ export function Feedback({
           flex: '0 0 20px',
           width: 20,
           height: 20,
-          borderRadius: '50%',
-          background: t.borda,
-          color: 'var(--color-navy-deep)',
-          font: '700 13px var(--font-body)',
+          borderRadius: 'var(--radius-full)',
+          background: t.cor,
+          color: '#fff',
+          font: '700 12px var(--font-body)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          marginTop: 1,
         }}
       >
         {t.icone}
@@ -123,12 +108,11 @@ export function Feedback({
   );
 }
 
-/** True em ambiente de demonstracao local (localhost) -- libera os atalhos. */
+/* ------------------------------------------------------------ Demo helpers - */
 export function ambienteDemo(): boolean {
   return typeof window !== 'undefined' && window.location.hostname === 'localhost';
 }
 
-/** Atalho (dev/demo): preenche as credenciais de teste da aba. */
 export function BotaoDemo({
   onClick,
   rotulo = 'Preencher credenciais de demonstração',
@@ -140,16 +124,13 @@ export function BotaoDemo({
     <button
       type="button"
       onClick={onClick}
+      className="g-btn g-btn--md g-btn--block"
       style={{
-        width: '100%',
-        marginTop: 'var(--space-2)',
-        minHeight: 44,
-        borderRadius: 'var(--radius-md)',
-        border: '1px dashed var(--color-border)',
+        marginTop: 'var(--space-3)',
         background: 'transparent',
+        border: '1px dashed var(--color-border-strong)',
         color: 'var(--color-accent)',
-        cursor: 'pointer',
-        font: '600 13px var(--font-body)',
+        fontWeight: 600,
       }}
     >
       ⚡ {rotulo}
@@ -157,15 +138,15 @@ export function BotaoDemo({
   );
 }
 
-/** Estado vazio (lista sem itens) -- mensagem centralizada e discreta. */
+/* ------------------------------------------------------------ EstadoVazio - */
 export function EstadoVazio({ children }: { children: ReactNode }) {
   return (
     <p
       style={{
         textAlign: 'center',
         color: 'var(--color-text-muted)',
-        font: '400 14px var(--font-body)',
-        padding: 'var(--space-4) 0',
+        font: '400 var(--text-base) var(--font-body)',
+        padding: 'var(--space-8) 0',
         margin: 0,
       }}
     >
@@ -174,10 +155,7 @@ export function EstadoVazio({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Cabecalho de pagina (mundo ADM): titulo + subtitulo de contexto + acao opcional
- * a direita. Da consistencia a densidade do painel administrativo.
- */
+/* -------------------------------------------------------- CabecalhoPagina - */
 export function CabecalhoPagina({
   titulo,
   subtitulo,
@@ -193,18 +171,28 @@ export function CabecalhoPagina({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-end',
-        gap: 'var(--space-3)',
-        marginBottom: 'var(--space-4)',
+        gap: 'var(--space-5)',
+        marginBottom: 'var(--space-7)',
+        flexWrap: 'wrap',
       }}
     >
       <div>
-        <h1 style={{ font: '700 24px var(--font-display)', margin: 0 }}>{titulo}</h1>
+        <h1
+          style={{
+            font: '600 var(--text-2xl) var(--font-display)',
+            letterSpacing: '-0.01em',
+            margin: 0,
+            color: 'var(--color-text)',
+          }}
+        >
+          {titulo}
+        </h1>
         {subtitulo && (
           <p
             style={{
-              font: '400 14px var(--font-body)',
+              font: '400 var(--text-base) var(--font-body)',
               color: 'var(--color-text-muted)',
-              margin: 'var(--space-1) 0 0',
+              margin: 'var(--space-2) 0 0',
             }}
           >
             {subtitulo}
@@ -216,137 +204,70 @@ export function CabecalhoPagina({
   );
 }
 
-/**
- * Cartao de indicador (KPI) do painel ADM: numero grande + rotulo, com faixa
- * superior colorida FUNCIONAL (neutro/ok/aviso/alerta) -- cor sempre acompanha o
- * significado do numero, nunca decorativa.
- */
+/* ---------------------------------------------------------------- Kpi ----- */
 const TOM_KPI = {
-  neutro: 'var(--color-navy-900)',
-  ok: 'var(--color-teal-success)',
-  aviso: 'var(--color-amber-warning)',
-  alerta: 'var(--color-red-alert)',
+  neutro: 'var(--color-text)',
+  ok: 'var(--color-success)',
+  aviso: 'var(--color-warning)',
+  alerta: 'var(--color-danger)',
 } as const;
 
 export function Kpi({
   rotulo,
   valor,
   tom = 'neutro',
+  dica,
 }: {
   rotulo: string;
   valor: ReactNode;
   tom?: keyof typeof TOM_KPI;
+  dica?: string;
 }) {
   return (
-    <div
-      style={{
-        background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        borderTop: `3px solid ${TOM_KPI[tom]}`,
-        borderRadius: 'var(--radius-md)',
-        padding: 'var(--space-3)',
-      }}
-    >
-      <div style={{ font: '700 28px var(--font-display)', color: TOM_KPI[tom] }}>{valor}</div>
+    <div className="g-card" style={{ padding: 'var(--space-5) var(--space-5) var(--space-4)' }}>
       <div
         style={{
-          font: '500 12px var(--font-body)',
+          font: '500 var(--text-sm) var(--font-body)',
           color: 'var(--color-text-muted)',
-          marginTop: 2,
         }}
       >
         {rotulo}
       </div>
+      <div
+        style={{
+          font: '600 var(--text-2xl) var(--font-display)',
+          letterSpacing: '-0.02em',
+          color: TOM_KPI[tom],
+          marginTop: 'var(--space-2)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {valor}
+      </div>
+      {dica && (
+        <div
+          style={{
+            font: '400 var(--text-xs) var(--font-body)',
+            color: 'var(--color-text-faint)',
+            marginTop: 'var(--space-2)',
+          }}
+        >
+          {dica}
+        </div>
+      )}
     </div>
   );
 }
 
-/** Campo de formulario com label e mensagem de erro. */
-export function Campo({
-  label,
-  erro,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & { label: string; erro?: string }) {
-  return (
-    <label style={{ display: 'block', marginBottom: 'var(--space-3)' }}>
-      <span
-        style={{
-          display: 'block',
-          font: '500 13px var(--font-body)',
-          marginBottom: 'var(--space-1)',
-        }}
-      >
-        {label}
-      </span>
-      <input
-        {...props}
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          padding: 'var(--space-3)',
-          borderRadius: 'var(--radius-md)',
-          border: `1px solid ${erro ? 'var(--color-red-alert)' : 'var(--color-border)'}`,
-          font: '400 15px var(--font-body)',
-          background: 'var(--color-surface)',
-          color: 'var(--color-navy-900)',
-        }}
-      />
-      {erro && (
-        <span style={{ color: 'var(--color-red-alert)', font: '400 12px var(--font-body)' }}>
-          {erro}
-        </span>
-      )}
-    </label>
-  );
-}
-
-/** Campo de selecao (dropdown) com label. Reusa o estilo do Campo. */
-export function Selecao({
-  label,
-  children,
-  ...props
-}: SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
-  return (
-    <label style={{ display: 'block', marginBottom: 'var(--space-3)' }}>
-      <span
-        style={{
-          display: 'block',
-          font: '500 13px var(--font-body)',
-          marginBottom: 'var(--space-1)',
-        }}
-      >
-        {label}
-      </span>
-      <select
-        {...props}
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          padding: 'var(--space-3)',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--color-border)',
-          font: '400 15px var(--font-body)',
-          background: 'var(--color-surface)',
-          color: 'var(--color-navy-900)',
-        }}
-      >
-        {children}
-      </select>
-    </label>
-  );
-}
-
-/** Badge de status: SEMPRE cor + texto (acessibilidade/daltonismo). */
-export function Badge({ cor, children }: { cor: string; children: ReactNode }) {
+/* -------------------------------------------------------------- Campo ----- */
+function Rotulo({ children }: { children: ReactNode }) {
   return (
     <span
       style={{
-        display: 'inline-block',
-        padding: 'var(--space-1) var(--space-2)',
-        borderRadius: 'var(--radius-sm)',
-        background: cor,
-        color: 'var(--color-navy-deep)', // texto escuro sobre a cor viva do status
-        font: '600 12px var(--font-body)',
+        display: 'block',
+        font: '500 var(--text-sm) var(--font-body)',
+        color: 'var(--color-text-secondary)',
+        marginBottom: 'var(--space-3)',
       }}
     >
       {children}
@@ -354,44 +275,167 @@ export function Badge({ cor, children }: { cor: string; children: ReactNode }) {
   );
 }
 
-/** Cartao branco sobre fundo neutro. */
-export function Cartao({ children }: { children: ReactNode }) {
+function MsgErro({ children }: { children: ReactNode }) {
+  return (
+    <span
+      style={{
+        display: 'block',
+        color: 'var(--color-danger)',
+        font: '400 var(--text-xs) var(--font-body)',
+        marginTop: 'var(--space-2)',
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function Campo({
+  label,
+  erro,
+  dica,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { label: string; erro?: string; dica?: string }) {
+  return (
+    <label style={{ display: 'block', marginBottom: 'var(--space-5)' }}>
+      <Rotulo>{label}</Rotulo>
+      <input {...props} className={`g-input${erro ? ' g-input--erro' : ''}`} />
+      {dica && !erro && (
+        <span
+          style={{
+            display: 'block',
+            color: 'var(--color-text-muted)',
+            font: '400 var(--text-xs) var(--font-body)',
+            marginTop: 'var(--space-2)',
+          }}
+        >
+          {dica}
+        </span>
+      )}
+      {erro && <MsgErro>{erro}</MsgErro>}
+    </label>
+  );
+}
+
+export function Selecao({
+  label,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
+  return (
+    <label style={{ display: 'block', marginBottom: 'var(--space-5)' }}>
+      <Rotulo>{label}</Rotulo>
+      <select {...props} className="g-select">
+        {children}
+      </select>
+    </label>
+  );
+}
+
+export function AreaTexto({
+  label,
+  erro,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; erro?: string }) {
+  return (
+    <label style={{ display: 'block', marginBottom: 'var(--space-5)' }}>
+      <Rotulo>{label}</Rotulo>
+      <textarea {...props} className={`g-textarea${erro ? ' g-input--erro' : ''}`} />
+      {erro && <MsgErro>{erro}</MsgErro>}
+    </label>
+  );
+}
+
+/* --------------------------------------------------------------- Badge ---- */
+/**
+ * Badge de status: cor + texto (acessibilidade). Recebe uma cor de acento e
+ * renderiza um "tint" suave (fundo claro + texto forte) -- nunca cor solida
+ * gritante. `cor` aceita hex ou var() CSS (via color-mix).
+ */
+export function Badge({ cor, children }: { cor: string; children: ReactNode }) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 'var(--space-2)',
+        padding: '3px var(--space-3)',
+        borderRadius: 'var(--radius-full)',
+        background: `color-mix(in srgb, ${cor} 12%, #fff)`,
+        border: `1px solid color-mix(in srgb, ${cor} 28%, #fff)`,
+        color: `color-mix(in srgb, ${cor} 82%, #0f172a)`,
+        font: '600 var(--text-xs) var(--font-body)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------- Cartao ---- */
+export function Cartao({
+  children,
+  padding = 'var(--space-7)',
+  hover = false,
+  className,
+  style,
+}: {
+  children: ReactNode;
+  padding?: CSSProperties['padding'];
+  hover?: boolean;
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
     <div
-      style={{
-        background: 'var(--color-surface)',
-        backgroundImage: 'var(--realce-topo)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-md)',
-        padding: 'var(--space-4)',
-        boxShadow: 'var(--sombra-card)',
-      }}
+      className={`g-card${hover ? ' g-card--hover' : ''}${className ? ` ${className}` : ''}`}
+      style={{ padding, ...style }}
     >
       {children}
     </div>
   );
 }
 
+/* -------------------------------------------------------------- Tabela ---- */
 /**
- * Marca .GRAMO (lockup): "logo" com gradiente + wordmark + subtitulo opcional.
- * Da identidade profissional as telas de acesso e cabecalhos.
+ * Tabela padronizada: envolve <table class="g-table"> com scroll horizontal.
+ * A tela fornece <thead>/<tbody>; use className "g-num" em celulas numericas.
+ */
+export function Tabela({ children, minWidth }: { children: ReactNode; minWidth?: number }) {
+  return (
+    <div style={{ overflowX: 'auto', margin: '0 calc(var(--space-2) * -1)' }}>
+      <table
+        className="g-table"
+        style={{ minWidth, margin: '0 var(--space-2)', width: 'calc(100% - var(--space-4))' }}
+      >
+        {children}
+      </table>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------- MarcaRepp - */
+/**
+ * Marca .GRAMO (lockup): tile de acento + wordmark + subtitulo opcional. Sobrio
+ * para transmitir autoridade -- sem brilho/gradiente neon.
  */
 export function MarcaRepp({ subtitulo }: { subtitulo?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
       <div
         aria-hidden
         style={{
-          width: 46,
-          height: 46,
-          borderRadius: 13,
-          background: 'var(--gradient-marca)',
-          boxShadow: 'var(--glow-accent)',
+          width: 40,
+          height: 40,
+          borderRadius: 10,
+          background: 'var(--color-accent)',
+          boxShadow: 'var(--shadow-sm)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          font: '800 24px var(--font-display)',
-          color: 'var(--color-navy-deep)',
+          font: '700 20px var(--font-display)',
+          color: '#fff',
           flex: '0 0 auto',
         }}
       >
@@ -400,9 +444,10 @@ export function MarcaRepp({ subtitulo }: { subtitulo?: string }) {
       <div>
         <div
           style={{
-            font: '800 23px var(--font-display)',
-            letterSpacing: '0.01em',
+            font: '700 var(--text-xl) var(--font-display)',
+            letterSpacing: '-0.02em',
             lineHeight: 1,
+            color: 'var(--color-text)',
           }}
         >
           <span style={{ color: 'var(--color-accent)' }}>.</span>GRAMO
@@ -410,11 +455,11 @@ export function MarcaRepp({ subtitulo }: { subtitulo?: string }) {
         {subtitulo && (
           <div
             style={{
-              font: '500 12px var(--font-body)',
+              font: '500 var(--text-xs) var(--font-body)',
               color: 'var(--color-text-muted)',
-              letterSpacing: '0.12em',
+              letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              marginTop: 4,
+              marginTop: 5,
             }}
           >
             {subtitulo}

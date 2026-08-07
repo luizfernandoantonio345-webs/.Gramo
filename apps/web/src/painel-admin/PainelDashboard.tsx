@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { formatarMinutos } from '@repp/shared';
 import {
   Badge,
@@ -9,6 +9,7 @@ import {
   EstadoVazio,
   Feedback,
   Kpi,
+  Tabela,
 } from '../design-system/components';
 import { apiGet } from '../lib/api';
 
@@ -31,6 +32,40 @@ interface BancoHoras {
   dias: Array<{ data: string; trabalhadoMin: number; saldoMin: number | null }>;
 }
 
+/** Titulo de secao dentro de um cartao. */
+function TituloCartao({ children, meta }: { children: ReactNode; meta?: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 'var(--space-4)',
+        marginBottom: 'var(--space-5)',
+      }}
+    >
+      <h2
+        style={{
+          font: '600 var(--text-lg) var(--font-display)',
+          letterSpacing: '-0.01em',
+          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+        }}
+      >
+        {children}
+      </h2>
+      {meta}
+    </div>
+  );
+}
+
+const metaStyle = {
+  font: '400 var(--text-xs) var(--font-mono)',
+  color: 'var(--color-text-muted)',
+} as const;
+
 /** ADM 5 -- Dashboard Geral (executivo) + consulta de banco de horas. */
 export function PainelDashboard() {
   const [d, setD] = useState<Dashboard | null>(null);
@@ -52,29 +87,16 @@ export function PainelDashboard() {
   const maxPres = Math.max(1, ...(d?.presenca7dias.map((p) => p.marcacoes) ?? [1]));
 
   return (
-    <div style={{ maxWidth: 1040, margin: '0 auto', padding: 'var(--space-4)' }}>
-      <CabecalhoPagina titulo="Dashboard geral" subtitulo="Visão executiva da operação de ponto" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      <CabecalhoPagina titulo="Dashboard" subtitulo="Visão executiva da operação de ponto" />
 
-      {erro && (
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <Feedback tom="erro">{erro}</Feedback>
-        </div>
-      )}
-
-      <div style={{ marginBottom: 'var(--space-4)' }}>
-        <PresencaAgora />
-      </div>
-
-      <div style={{ marginBottom: 'var(--space-4)' }}>
-        <AlertaExtras />
-      </div>
+      {erro && <Feedback tom="erro">{erro}</Feedback>}
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: 'var(--space-3)',
-          margin: '0 0 var(--space-4)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 'var(--space-5)',
         }}
       >
         <Kpi rotulo="Funcionários ativos" valor={d?.kpis.funcionariosAtivos ?? '—'} />
@@ -101,27 +123,52 @@ export function PainelDashboard() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 'var(--space-4)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: 'var(--space-6)',
+        }}
+      >
+        <PresencaAgora />
+        <AlertaExtras />
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: 'var(--space-6)',
         }}
       >
         <Cartao>
-          <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Presença (7 dias)</h2>
+          <TituloCartao>Presença (7 dias)</TituloCartao>
           {carregando ? (
             <EstadoVazio>Carregando…</EstadoVazio>
           ) : (
             <div
               style={{
                 display: 'flex',
-                gap: 'var(--space-2)',
+                gap: 'var(--space-3)',
                 alignItems: 'flex-end',
-                height: 132,
+                height: 140,
+                borderBottom: '1px solid var(--color-divider)',
               }}
             >
               {d?.presenca7dias.map((p) => (
-                <div key={p.dia} style={{ flex: 1, textAlign: 'center' }}>
+                <div
+                  key={p.dia}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    height: '100%',
+                    textAlign: 'center',
+                  }}
+                >
                   <div
-                    style={{ font: '600 11px var(--font-mono)', color: 'var(--color-text-muted)' }}
+                    style={{
+                      font: '600 var(--text-xs) var(--font-mono)',
+                      color: 'var(--color-text-muted)',
+                    }}
                   >
                     {p.marcacoes}
                   </div>
@@ -129,16 +176,17 @@ export function PainelDashboard() {
                     role="img"
                     aria-label={`${p.dia}: ${p.marcacoes} marcações`}
                     style={{
-                      height: `${Math.max(4, (p.marcacoes / maxPres) * 90)}px`,
+                      height: `${Math.max(4, (p.marcacoes / maxPres) * 96)}px`,
                       background: 'var(--color-accent)',
-                      borderRadius: '4px 4px 0 0',
+                      borderRadius: '6px 6px 0 0',
+                      marginTop: 'var(--space-2)',
                     }}
                   />
                   <div
                     style={{
-                      font: '9px var(--font-mono)',
-                      color: 'var(--color-text-muted)',
-                      marginTop: 2,
+                      font: '400 10px var(--font-mono)',
+                      color: 'var(--color-text-faint)',
+                      marginTop: 'var(--space-2)',
                     }}
                   >
                     {p.dia.slice(5)}
@@ -150,45 +198,51 @@ export function PainelDashboard() {
         </Cartao>
 
         <Cartao>
-          <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>
-            Alertas prioritários (&gt;48h)
-          </h2>
+          <TituloCartao>Alertas prioritários · exceções &gt; 48h</TituloCartao>
           {carregando ? (
             <EstadoVazio>Carregando…</EstadoVazio>
           ) : (d?.alertasPrioritarios.length ?? 0) === 0 ? (
             <EstadoVazio>Sem alertas — exceções em dia.</EstadoVazio>
           ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            <Lista>
               {d?.alertasPrioritarios.map((a) => (
-                <li
-                  key={a.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-2)',
-                    padding: 'var(--space-2) 0',
-                    borderBottom: '1px solid var(--color-border)',
-                  }}
-                >
-                  <Badge cor="var(--color-red-alert)">{a.tipo}</Badge>
-                  <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>
+                <LinhaLista key={a.id}>
+                  <Badge cor="var(--color-danger)">{a.tipo}</Badge>
+                  <span style={{ flex: 1, font: '500 var(--text-base) var(--font-body)' }}>
                     {a.funcionario}
                   </span>
-                  <span style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}>
-                    desde {new Date(a.desde).toLocaleString('pt-BR')}
+                  <span style={metaStyle}>
+                    desde {new Date(a.desde).toLocaleDateString('pt-BR')}
                   </span>
-                </li>
+                </LinhaLista>
               ))}
-            </ul>
+            </Lista>
           )}
         </Cartao>
       </div>
 
-      <div style={{ height: 'var(--space-4)' }} />
       <ComparativoObras />
-
-      <div style={{ height: 'var(--space-4)' }} />
       <BancoHorasTool />
+    </div>
+  );
+}
+
+/* Lista vertical com divisorias (padrao dos cartoes). */
+function Lista({ children }: { children: ReactNode }) {
+  return <div style={{ display: 'flex', flexDirection: 'column' }}>{children}</div>;
+}
+function LinhaLista({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-4)',
+        padding: 'var(--space-4) 0',
+        borderBottom: '1px solid var(--color-divider)',
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -203,7 +257,6 @@ interface Presenca {
 /**
  * Presenca em tempo real (near real-time): "quem esta trabalhando agora".
  * Poll a cada 15s -- robusto, atravessa qualquer proxy, sem estado no servidor.
- * Ponto de "uau" para o RH: numero vivo + quebra por filial + nomes sob demanda.
  */
 function PresencaAgora() {
   const [p, setP] = useState<Presenca | null>(null);
@@ -233,60 +286,62 @@ function PresencaAgora() {
 
   return (
     <Cartao>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-        }}
+      <TituloCartao
+        meta={
+          <span style={metaStyle} role="status" aria-live="polite">
+            {p
+              ? `atualizado ${new Date(p.atualizadoEm).toLocaleTimeString('pt-BR')}`
+              : erro
+                ? 'sem conexão'
+                : '—'}
+          </span>
+        }
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <span
-            aria-hidden
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: 'var(--color-teal-success)',
-              boxShadow: '0 0 0 4px rgba(30, 138, 110, 0.18)',
-            }}
-          />
-          <h2 style={{ font: '600 16px var(--font-display)', margin: 0 }}>Presença agora</h2>
-        </div>
         <span
-          style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}
-          role="status"
-          aria-live="polite"
-        >
-          {p
-            ? `atualizado ${new Date(p.atualizadoEm).toLocaleTimeString('pt-BR')}`
-            : erro
-              ? 'sem conexão'
-              : '—'}
-        </span>
-      </div>
+          aria-hidden
+          style={{
+            width: 9,
+            height: 9,
+            borderRadius: '50%',
+            background: 'var(--color-success)',
+            boxShadow: '0 0 0 4px var(--color-success-tint)',
+          }}
+        />
+        Presença agora
+      </TituloCartao>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: 'var(--space-2)',
-          margin: 'var(--space-2) 0',
-        }}
-      >
-        <span style={{ font: '700 40px var(--font-display)', color: 'var(--color-teal-success)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)' }}>
+        <span
+          style={{
+            font: '700 40px var(--font-display)',
+            letterSpacing: '-0.02em',
+            color: 'var(--color-success)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
           {p?.total ?? '—'}
         </span>
-        <span style={{ font: '400 14px var(--font-body)', color: 'var(--color-text-muted)' }}>
+        <span
+          style={{
+            font: '400 var(--text-base) var(--font-body)',
+            color: 'var(--color-text-muted)',
+          }}
+        >
           trabalhando neste momento
         </span>
       </div>
 
       {p && p.porFilial.length > 0 && (
-        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 'var(--space-3)',
+            flexWrap: 'wrap',
+            marginTop: 'var(--space-4)',
+          }}
+        >
           {p.porFilial.map((x) => (
-            <Badge key={x.filial} cor="var(--color-navy-900)">
+            <Badge key={x.filial} cor="var(--color-accent)">
               {x.filial}: {x.total}
             </Badge>
           ))}
@@ -298,44 +353,35 @@ function PresencaAgora() {
           <button
             onClick={() => setExpandido((v) => !v)}
             aria-expanded={expandido}
+            className="g-link"
             style={{
-              minHeight: 44,
-              marginTop: 'var(--space-2)',
-              padding: 0,
+              display: 'block',
+              marginTop: 'var(--space-4)',
               background: 'none',
               border: 'none',
-              color: 'var(--color-accent)',
-              cursor: 'pointer',
-              font: '500 13px var(--font-body)',
+              padding: 0,
+              font: '500 var(--text-sm) var(--font-body)',
             }}
           >
             {expandido ? 'ocultar nomes' : 'ver quem está'}
           </button>
           {expandido && (
-            <ul style={{ listStyle: 'none', margin: 'var(--space-2) 0 0', padding: 0 }}>
+            <Lista>
               {p.presentes.map((x, i) => (
-                <li
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 'var(--space-2)',
-                    padding: 'var(--space-1) 0',
-                    borderBottom: '1px solid var(--color-border)',
-                    font: '400 13px var(--font-body)',
-                  }}
-                >
-                  <span>{x.funcionario}</span>
-                  <span style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
+                <LinhaLista key={i}>
+                  <span style={{ flex: 1, font: '400 var(--text-base) var(--font-body)' }}>
+                    {x.funcionario}
+                  </span>
+                  <span style={metaStyle}>
                     {x.filial} · desde{' '}
                     {new Date(x.desde).toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                   </span>
-                </li>
+                </LinhaLista>
               ))}
-            </ul>
+            </Lista>
           )}
         </>
       )}
@@ -362,10 +408,8 @@ interface AlertasExtras {
 }
 
 /**
- * Alerta PROATIVO de hora extra do dia. Diferencial de gestao: o RH ve, AINDA
- * durante o turno, quem esta prestes a estourar (ou ja estourou) o limite legal
- * de 2h/dia -- e pode agir antes do fechamento. Poll a cada 60s (dado do dia
- * muda devagar). Reusa a mesma matematica do banco de horas no servidor.
+ * Alerta PROATIVO de hora extra do dia: o RH ve, ainda durante o turno, quem
+ * esta prestes a estourar (ou ja estourou) o limite legal de 2h/dia.
  */
 function AlertaExtras() {
   const [a, setA] = useState<AlertasExtras | null>(null);
@@ -396,69 +440,41 @@ function AlertaExtras() {
 
   return (
     <Cartao>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <span aria-hidden style={{ fontSize: 18 }}>
-            ⏱️
+      <TituloCartao
+        meta={
+          <span style={metaStyle} role="status" aria-live="polite">
+            {a
+              ? `atualizado ${new Date(a.atualizadoEm).toLocaleTimeString('pt-BR')}`
+              : erro
+                ? 'sem conexão'
+                : '—'}
           </span>
-          <h2 style={{ font: '600 16px var(--font-display)', margin: 0 }}>Hora extra — hoje</h2>
-          {excedidos > 0 && <Badge cor="var(--color-red-alert)">{excedidos} no limite</Badge>}
-        </div>
-        <span
-          style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}
-          role="status"
-          aria-live="polite"
-        >
-          {a
-            ? `atualizado ${new Date(a.atualizadoEm).toLocaleTimeString('pt-BR')}`
-            : erro
-              ? 'sem conexão'
-              : '—'}
-        </span>
-      </div>
+        }
+      >
+        Hora extra · hoje
+        {excedidos > 0 && <Badge cor="var(--color-danger)">{excedidos} no limite</Badge>}
+      </TituloCartao>
 
       {!a ? (
-        <div style={{ marginTop: 'var(--space-2)' }}>
-          <EstadoVazio>{erro ? 'Sem conexão.' : 'Carregando…'}</EstadoVazio>
-        </div>
+        <EstadoVazio>{erro ? 'Sem conexão.' : 'Carregando…'}</EstadoVazio>
       ) : a.total === 0 ? (
-        <div style={{ marginTop: 'var(--space-2)' }}>
-          <EstadoVazio>Ninguém próximo do limite de extra hoje. 👍</EstadoVazio>
-        </div>
+        <EstadoVazio>Ninguém próximo do limite de extra hoje.</EstadoVazio>
       ) : (
-        <ul style={{ listStyle: 'none', margin: 'var(--space-2) 0 0', padding: 0 }}>
+        <Lista>
           {a.alertas.map((x) => (
-            <li
-              key={x.funcionarioId}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                padding: 'var(--space-2) 0',
-                borderBottom: '1px solid var(--color-border)',
-              }}
-            >
-              <Badge
-                cor={
-                  x.status === 'EXCEDIDO' ? 'var(--color-red-alert)' : 'var(--color-amber-warning)'
-                }
-              >
+            <LinhaLista key={x.funcionarioId}>
+              <Badge cor={x.status === 'EXCEDIDO' ? 'var(--color-danger)' : 'var(--color-warning)'}>
                 {x.status === 'EXCEDIDO' ? 'excedido' : 'atenção'}
               </Badge>
-              <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>{x.funcionario}</span>
-              <span style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
-                {x.filial} · extra {formatarMinutos(x.extraMin)} / {formatarMinutos(x.limiteMin)}
+              <span style={{ flex: 1, font: '500 var(--text-base) var(--font-body)' }}>
+                {x.funcionario}
               </span>
-            </li>
+              <span style={metaStyle}>
+                {x.filial} · {formatarMinutos(x.extraMin)} / {formatarMinutos(x.limiteMin)}
+              </span>
+            </LinhaLista>
           ))}
-        </ul>
+        </Lista>
       )}
     </Cartao>
   );
@@ -478,9 +494,8 @@ interface Comparativo {
 }
 
 /**
- * Comparativo executivo entre obras (canteiros). O indicador-chave e o % de
- * marcacoes FORA da REGAP (geofence) -- risco de conformidade. Ordenado do maior
- * risco para o menor, para o gestor priorizar. Periodo padrao: mes corrente.
+ * Comparativo executivo entre obras. Indicador-chave: % de marcacoes FORA da
+ * REGAP (risco de conformidade). Ordenado do maior risco para o menor.
  */
 function ComparativoObras() {
   const [c, setC] = useState<Comparativo | null>(null);
@@ -497,20 +512,13 @@ function ComparativoObras() {
   }, []);
 
   const corRisco = (pct: number) =>
-    pct >= 10
-      ? 'var(--color-red-alert)'
-      : pct >= 3
-        ? 'var(--color-amber-warning)'
-        : 'var(--color-teal-success)';
+    pct >= 10 ? 'var(--color-danger)' : pct >= 3 ? 'var(--color-warning)' : 'var(--color-success)';
 
   return (
     <Cartao>
-      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>
-        Comparativo entre obras{' '}
-        <span style={{ font: '400 12px var(--font-body)', color: 'var(--color-text-muted)' }}>
-          (mês corrente)
-        </span>
-      </h2>
+      <TituloCartao meta={<span style={metaStyle}>mês corrente</span>}>
+        Comparativo entre obras
+      </TituloCartao>
       {erro ? (
         <Feedback tom="erro">{erro}</Feedback>
       ) : !c ? (
@@ -518,50 +526,36 @@ function ComparativoObras() {
       ) : c.obras.length === 0 ? (
         <EstadoVazio>Nenhuma obra cadastrada.</EstadoVazio>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
-            <thead>
-              <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)' }}>
-                <th style={thc}>Obra</th>
-                <th style={thcNum}>Ativos</th>
-                <th style={thcNum}>Marcações</th>
-                <th style={thcNum}>Fora REGAP</th>
-                <th style={thcNum}>% fora</th>
+        <Tabela minWidth={480}>
+          <thead>
+            <tr>
+              <th>Obra</th>
+              <th className="g-num">Ativos</th>
+              <th className="g-num">Marcações</th>
+              <th className="g-num">Fora REGAP</th>
+              <th className="g-num">% fora</th>
+            </tr>
+          </thead>
+          <tbody>
+            {c.obras.map((o) => (
+              <tr key={o.filialId}>
+                <td style={{ fontWeight: 500 }}>{o.obra}</td>
+                <td className="g-num">{o.funcionariosAtivos}</td>
+                <td className="g-num">{o.marcacoes}</td>
+                <td className="g-num">{o.foraRegap}</td>
+                <td className="g-num">
+                  <Badge cor={corRisco(o.percentualForaRegap)}>
+                    {o.percentualForaRegap.toFixed(1)}%
+                  </Badge>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {c.obras.map((o) => (
-                <tr key={o.filialId} style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <td style={{ ...tdc, font: '500 13px var(--font-body)' }}>{o.obra}</td>
-                  <td style={tdcNum}>{o.funcionariosAtivos}</td>
-                  <td style={tdcNum}>{o.marcacoes}</td>
-                  <td style={tdcNum}>{o.foraRegap}</td>
-                  <td style={tdcNum}>
-                    <Badge cor={corRisco(o.percentualForaRegap)}>
-                      {o.percentualForaRegap.toFixed(1)}%
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Tabela>
       )}
     </Cartao>
   );
 }
-
-const thc: CSSProperties = {
-  padding: 'var(--space-2) var(--space-2) var(--space-1)',
-  font: '600 11px var(--font-mono)',
-};
-const thcNum: CSSProperties = { ...thc, textAlign: 'right' };
-const tdc: CSSProperties = { padding: 'var(--space-2)' };
-const tdcNum: CSSProperties = {
-  ...tdc,
-  textAlign: 'right',
-  font: '13px var(--font-mono)',
-};
 
 function BancoHorasTool() {
   const [funcionarioId, setFuncId] = useState('');
@@ -586,8 +580,15 @@ function BancoHorasTool() {
 
   return (
     <Cartao>
-      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Banco de horas</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--space-2)' }}>
+      <TituloCartao>Banco de horas</TituloCartao>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 2fr) 1fr 1fr auto',
+          gap: 'var(--space-4)',
+          alignItems: 'end',
+        }}
+      >
         <Campo
           label="Funcionário (ID)"
           value={funcionarioId}
@@ -595,45 +596,54 @@ function BancoHorasTool() {
         />
         <Campo label="Início" type="date" value={inicio} onChange={(e) => setIni(e.target.value)} />
         <Campo label="Fim" type="date" value={fim} onChange={(e) => setFim(e.target.value)} />
-      </div>
-      <Botao onClick={consultar} disabled={!funcionarioId || consultando}>
-        {consultando ? 'Consultando…' : 'Consultar'}
-      </Botao>
-      {erro && (
-        <div style={{ marginTop: 'var(--space-2)' }}>
-          <Feedback tom="erro">{erro}</Feedback>
+        <div style={{ marginBottom: 'var(--space-5)' }}>
+          <Botao onClick={consultar} disabled={!funcionarioId || consultando} bloco={false}>
+            {consultando ? 'Consultando…' : 'Consultar'}
+          </Botao>
         </div>
-      )}
+      </div>
+      {erro && <Feedback tom="erro">{erro}</Feedback>}
       {r && (
-        <div style={{ marginTop: 'var(--space-3)' }}>
-          <div style={{ font: '14px var(--font-body)', marginBottom: 'var(--space-2)' }}>
+        <div style={{ marginTop: 'var(--space-5)' }}>
+          <div
+            style={{ font: 'var(--text-base) var(--font-body)', marginBottom: 'var(--space-4)' }}
+          >
             Saldo total:{' '}
-            <strong style={{ font: '600 14px var(--font-mono)' }}>
+            <strong style={{ font: '600 var(--text-base) var(--font-mono)' }}>
               {r.saldoTotalMin === null ? 'sem jornada definida' : formatarMinutos(r.saldoTotalMin)}
             </strong>
           </div>
           {r.dias.length === 0 ? (
             <EstadoVazio>Sem marcações no período.</EstadoVazio>
           ) : (
-            r.dias.map((dia) => (
-              <div
-                key={dia.data}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  font: '12px var(--font-mono)',
-                  color: 'var(--color-text-muted)',
-                  padding: '3px 0',
-                  borderBottom: '1px solid var(--color-border)',
-                }}
-              >
-                <span>{dia.data}</span>
-                <span>trab {formatarMinutos(dia.trabalhadoMin)}</span>
-                <span>
-                  {dia.saldoMin === null ? '—' : `saldo ${formatarMinutos(dia.saldoMin)}`}
-                </span>
-              </div>
-            ))
+            <Tabela minWidth={360}>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th className="g-num">Trabalhado</th>
+                  <th className="g-num">Saldo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.dias.map((dia) => (
+                  <tr key={dia.data}>
+                    <td>{dia.data}</td>
+                    <td className="g-num">{formatarMinutos(dia.trabalhadoMin)}</td>
+                    <td
+                      className="g-num"
+                      style={{
+                        color:
+                          dia.saldoMin !== null && dia.saldoMin < 0
+                            ? 'var(--color-danger)'
+                            : undefined,
+                      }}
+                    >
+                      {dia.saldoMin === null ? '—' : formatarMinutos(dia.saldoMin)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Tabela>
           )}
         </div>
       )}

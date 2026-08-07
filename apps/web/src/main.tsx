@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './design-system/tokens.css';
+import './design-system/ui.css';
 import { App } from './App';
 
 // Auto-atualizacao: quando um novo service worker assume o controle (deploy de

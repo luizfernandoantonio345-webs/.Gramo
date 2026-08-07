@@ -1,48 +1,117 @@
 /*
- * Design System REP-P -- tema ESCURO PREMIUM (nivel produto). Profundidade via
- * gradientes/sombras; acento ciano->azul; superficies com leve realce no topo.
- * Cores de status FUNCIONAIS (nunca so cor -- badges = cor + texto).
+ * Design System .GRAMO -- tema CLARO CORPORATIVO (nivel enterprise).
+ * Referencia de linguagem: Stripe / Linear (claro) / Gusto. Autoridade via
+ * respiro, hierarquia tipografica e sombras sutis -- nunca brilho/neon.
+ * Cores de status FUNCIONAIS (tint de fundo + texto forte; nunca so cor).
  */
 :root {
-  /* Texto */
-  --color-navy-900: #eef2f8; /* TEXTO principal (claro) */
-  --color-text-muted: #8b97a9; /* secundario (datas, hashes, hints) */
+  /* --- Superficies (fundo -> elevado) --- */
+  --color-bg: #f6f7f9; /* base da pagina */
+  --color-bg-subtle: #eef1f5; /* zonas sutis (hover de linha, faixas) */
+  --color-surface: #ffffff; /* cartoes, inputs, topbar */
+  --color-surface-2: #f2f4f7; /* elevado: hover, aba/linha ativa */
+  --color-border: #e3e7 ec; /* bordas de componentes */
+  --color-border-strong: #cbd2dc; /* bordas em foco/hover */
+  --color-divider: #eef0f3; /* divisorias internas */
 
-  /* Superficies (base -> elevado) */
-  --color-navy-deep: #070b12; /* superficie de marca / texto sobre acento claro */
-  --color-neutral-bg: #090d14; /* base da pagina */
-  --color-surface: #131b27; /* cartoes */
-  --color-surface-2: #1c2634; /* elevado: hover, aba ativa, selecionado */
-  --color-border: #24324a; /* bordas sutis */
+  /* --- Texto --- */
+  --color-text: #0f172a; /* principal */
+  --color-text-secondary: #475569; /* rotulos, corpo secundario */
+  --color-text-muted: #64748b; /* datas, hashes, hints */
+  --color-text-faint: #94a3b8; /* placeholder, desabilitado */
+  --color-text-on-accent: #ffffff; /* texto sobre o acento */
 
-  /* Acao e status (vivos para brilhar no escuro) */
-  --color-accent: #22d3ee; /* ciano -- links, foco, KPIs, destaques */
-  --color-teal-success: #34d399;
-  --color-amber-warning: #fbbf24;
-  --color-red-alert: #f87171;
+  /* --- Acento (azul profundo corporativo) --- */
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-active: #1e40af;
+  --color-accent-tint: #eff4ff; /* fundo suave (selecionado, info) */
+  --color-accent-ring: rgba(37, 99, 235, 0.35);
 
-  /* Gradientes e brilhos (o "premium") */
-  --gradient-accent: linear-gradient(135deg, #22d3ee 0%, #4f8cf7 100%);
-  --gradient-marca: linear-gradient(135deg, #22d3ee 0%, #3b82f6 55%, #7c5cff 100%);
-  --realce-topo: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 40%);
-  --glow-accent: 0 10px 24px rgba(34, 211, 238, 0.22);
-  --sombra-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.4);
+  /* --- Status (par: solido p/ texto/borda + tint p/ fundo) --- */
+  --color-success: #16a34a;
+  --color-success-tint: #ecfdf3;
+  --color-warning: #d97706;
+  --color-warning-tint: #fff7ed;
+  --color-danger: #dc2626;
+  --color-danger-tint: #fef2f2;
+  --color-info: #2563eb;
+  --color-info-tint: #eff4ff;
 
-  /* Tipografia */
-  --font-display: 'Sora', system-ui, sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* --- Compat (nomes antigos ainda referenciados em telas nao migradas) --- */
+  --color-navy-900: var(--color-text);
+  --color-navy-deep: var(--color-text);
+  --color-neutral-bg: var(--color-bg);
+  --color-teal-success: var(--color-success);
+  --color-amber-warning: var(--color-warning);
+  --color-red-alert: var(--color-danger);
+  /* Efeitos antigos -> equivalentes sobrios do tema claro (evita var indefinida
+     enquanto telas nao migradas ainda os referenciam). */
+  --gradient-accent: var(--color-accent);
+  --gradient-marca: var(--color-accent);
+  --glow-accent: var(--shadow-sm);
+  --sombra-card: var(--shadow-sm);
+  --realce-topo: none;
 
-  /* Espacamento */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 16px;
-  --space-4: 24px;
+  /* --- Tipografia --- */
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
 
-  /* Raios */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+
+  /* --- Espacamento (escala completa) --- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 40px;
+  --space-10: 48px;
+  --space-12: 64px;
+
+  /* --- Raios --- */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+
+  /* --- Sombras (suaves, curtas -- elevacao real sem drama) --- */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 2px 4px rgba(15, 23, 42, 0.05), 0 6px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+
+  /* --- Layout --- */
+  --sidebar-w: 236px;
+  --topbar-h: 60px;
+
+  /* --- Z-index --- */
+  --z-sticky: 100;
+  --z-drawer: 200;
+  --z-modal: 300;
+
+  /* --- Transicao padrao --- */
+  --t-fast: 120ms ease;
+  --t-base: 160ms ease;
+}
+
+/* corrige o token de borda (evita espaco acidental) */
+:root {
+  --color-border: #e3e7ec;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -52,41 +121,59 @@
   }
 }
 
+html,
 body {
   margin: 0;
-  min-height: 100vh;
-  font-family: var(--font-body);
-  color: var(--color-navy-900);
-  /* Brilho ambiente (tech): halos de ciano/azul no topo sobre a base escura. */
-  background:
-    radial-gradient(1100px 520px at 50% -10%, rgba(34, 211, 238, 0.1), transparent 60%),
-    radial-gradient(900px 520px at 100% 0%, rgba(124, 92, 255, 0.08), transparent 55%),
-    var(--color-neutral-bg);
-  background-attachment: fixed;
-  -webkit-font-smoothing: antialiased;
 }
 
-/* Autofill do navegador NAO clareia mais o input (mantem o escuro). */
+body {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Autofill: mantem o input claro (evita o amarelo do Chrome). */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
-  -webkit-text-fill-color: var(--color-navy-900);
+  -webkit-text-fill-color: var(--color-text);
   -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
-  caret-color: var(--color-navy-900);
+  caret-color: var(--color-text);
   transition: background-color 9999s ease-in-out 0s;
 }
 
 ::placeholder {
-  color: #5b6a80;
+  color: var(--color-text-faint);
 }
 ::selection {
-  background: rgba(34, 211, 238, 0.3);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-active);
 }
 
-/* Foco visivel em ciano (acessibilidade). */
+/* Foco visivel (acessibilidade). */
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* Scrollbar discreta (webkit). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+  border: 3px solid var(--color-bg);
 }

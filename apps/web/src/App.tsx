@@ -21,6 +21,8 @@ import { SuperLogin } from './painel-admin/SuperLogin';
 import { SuperPanel } from './painel-admin/SuperPanel';
 import { TelaoPresenca } from './painel-admin/TelaoPresenca';
 import { TelaQuiosque } from './quiosque/TelaQuiosque';
+import { AppShell, type GrupoNav } from './design-system/AppShell';
+import { Icone } from './design-system/icons';
 import {
   definirSessao,
   EVENTO_SESSAO_EXPIRADA,
@@ -30,20 +32,75 @@ import {
   type ParTokens,
 } from './lib/api';
 
+// Navegacao agrupada do painel administrativo.
+const GRUPOS_ADMIN: GrupoNav[] = [
+  { itens: [{ id: 'dashboard', rotulo: 'Dashboard', icone: 'dashboard' }] },
+  {
+    titulo: 'Operação',
+    itens: [
+      { id: 'principal', rotulo: 'Gestão de ponto', icone: 'ponto' },
+      { id: 'funcionarios', rotulo: 'Funcionários', icone: 'funcionarios' },
+      { id: 'ausencias', rotulo: 'Ausências', icone: 'ausencias' },
+      { id: 'comunicados', rotulo: 'Comunicados', icone: 'comunicados' },
+    ],
+  },
+  {
+    titulo: 'Documentos',
+    itens: [
+      { id: 'assinaturas', rotulo: 'Assinaturas', icone: 'assinaturas' },
+      { id: 'relatorios', rotulo: 'Relatórios', icone: 'relatorios' },
+    ],
+  },
+  {
+    titulo: 'Sistema',
+    itens: [
+      { id: 'auditoria', rotulo: 'Auditoria', icone: 'auditoria' },
+      { id: 'config', rotulo: 'Configurações', icone: 'config' },
+      { id: 'integracoes', rotulo: 'Integrações', icone: 'integracoes' },
+      { id: 'quiosque', rotulo: 'Quiosque', icone: 'quiosque' },
+    ],
+  },
+];
+
+const GRUPOS_FUNCIONARIO: GrupoNav[] = [
+  {
+    itens: [
+      { id: 'principal', rotulo: 'Bater ponto', icone: 'ponto' },
+      { id: 'folha', rotulo: 'Folha', icone: 'folha' },
+      { id: 'documentos', rotulo: 'Documentos', icone: 'documentos' },
+      { id: 'ferias', rotulo: 'Férias', icone: 'ferias' },
+      { id: 'comunicados', rotulo: 'Comunicados', icone: 'comunicados' },
+    ],
+  },
+];
+
+const TITULOS: Record<string, string> = {
+  dashboard: 'Dashboard',
+  principal: 'Gestão de ponto',
+  funcionarios: 'Funcionários',
+  ausencias: 'Ausências',
+  comunicados: 'Comunicados',
+  assinaturas: 'Assinaturas',
+  relatorios: 'Relatórios',
+  auditoria: 'Auditoria',
+  config: 'Configurações',
+  integracoes: 'Integrações',
+  quiosque: 'Quiosque',
+  folha: 'Folha de ponto',
+  documentos: 'Documentos',
+  ferias: 'Férias e afastamentos',
+};
+
 /**
- * Navegacao (Fases 1-3): apos autenticar, o funcionario acessa Bater Ponto
- * (Tela 3) e Documentos (Tela 4); o admin acessa Gestao de Ponto (ADM 4) e
- * Gestao de Funcionarios (ADM 2).
+ * Casca de navegacao. Apos autenticar, funcionario e admin usam o AppShell
+ * (sidebar + topbar); a plataforma (super) tem painel proprio.
  */
 export function App(): JSX.Element {
   // Modos standalone (isolados do fluxo normal), por ?modo=... :
-  // - quiosque: tablet na portaria (sem login de funcionario).
-  // - presenca: telao de presenca em tempo real (usa sessao de admin).
   const modo = new URLSearchParams(window.location.search).get('modo');
   if (modo === 'quiosque') return <TelaQuiosque />;
   if (modo === 'presenca') return <TelaoPresenca />;
 
-  // Restaura a sessao apos recarregar (o token fica no localStorage).
   const sessao = sessaoAtual();
   const [contexto, setContexto] = useState<Contexto>(sessao ?? 'funcionario');
   const [autenticado, setAutenticado] = useState(sessao !== null);
@@ -51,7 +108,7 @@ export function App(): JSX.Element {
 
   function aoAutenticar(t: ParTokens) {
     definirSessao(t, contexto);
-    setSecao('principal');
+    setSecao(contexto === 'admin' ? 'dashboard' : 'principal');
     setAutenticado(true);
   }
   function sair() {
@@ -59,7 +116,6 @@ export function App(): JSX.Element {
     setAutenticado(false);
   }
 
-  // Sessao expirada sem renovacao possivel -> volta ao login.
   useEffect(() => {
     const aoExpirar = () => setAutenticado(false);
     window.addEventListener(EVENTO_SESSAO_EXPIRADA, aoExpirar);
@@ -71,121 +127,102 @@ export function App(): JSX.Element {
   }
 
   if (autenticado) {
-    const abas =
-      contexto === 'funcionario'
-        ? [
-            { id: 'principal', rotulo: 'Bater Ponto' },
-            { id: 'folha', rotulo: 'Folha' },
-            { id: 'documentos', rotulo: 'Documentos' },
-            { id: 'ferias', rotulo: 'Ferias' },
-            { id: 'comunicados', rotulo: 'Comunicados' },
-          ]
-        : [
-            { id: 'dashboard', rotulo: 'Dashboard' },
-            { id: 'principal', rotulo: 'Gestao de Ponto' },
-            { id: 'funcionarios', rotulo: 'Funcionarios' },
-            { id: 'assinaturas', rotulo: 'Assinaturas' },
-            { id: 'ausencias', rotulo: 'Ausencias' },
-            { id: 'comunicados', rotulo: 'Comunicados' },
-            { id: 'relatorios', rotulo: 'Relatorios' },
-            { id: 'auditoria', rotulo: 'Auditoria' },
-            { id: 'config', rotulo: 'Configuracoes' },
-            { id: 'integracoes', rotulo: 'Integracoes' },
-            { id: 'quiosque', rotulo: 'Quiosque' },
-          ];
-    const telas: Record<string, JSX.Element> =
-      contexto === 'funcionario'
-        ? {
-            principal: <BaterPonto />,
-            folha: <Folha />,
-            documentos: <Documentos />,
-            ferias: <Ferias />,
-            comunicados: <Comunicados />,
-          }
-        : {
-            dashboard: <PainelDashboard />,
-            principal: <GestaoPonto />,
-            funcionarios: <GestaoFuncionarios />,
-            assinaturas: <PainelAssinaturas />,
-            ausencias: <PainelAusencias />,
-            comunicados: <PainelComunicados />,
-            relatorios: <PainelRelatorios />,
-            auditoria: <PainelAuditoria />,
-            config: <PainelConfiguracoes />,
-            integracoes: <PainelIntegracoes />,
-            quiosque: <PainelQuiosque />,
-          };
+    const ehAdmin = contexto === 'admin';
+    const telas: Record<string, JSX.Element> = ehAdmin
+      ? {
+          dashboard: <PainelDashboard />,
+          principal: <GestaoPonto />,
+          funcionarios: <GestaoFuncionarios />,
+          assinaturas: <PainelAssinaturas />,
+          ausencias: <PainelAusencias />,
+          comunicados: <PainelComunicados />,
+          relatorios: <PainelRelatorios />,
+          auditoria: <PainelAuditoria />,
+          config: <PainelConfiguracoes />,
+          integracoes: <PainelIntegracoes />,
+          quiosque: <PainelQuiosque />,
+        }
+      : {
+          principal: <BaterPonto />,
+          folha: <Folha />,
+          documentos: <Documentos />,
+          ferias: <Ferias />,
+          comunicados: <Comunicados />,
+        };
+
+    const acoes = (
+      <>
+        {ehAdmin && (
+          <a
+            href="?modo=presenca"
+            target="_blank"
+            rel="noreferrer"
+            className="g-btn g-btn--sm g-btn--ghost"
+          >
+            <Icone nome="externo" tamanho={16} /> Telão
+          </a>
+        )}
+        <button onClick={sair} className="g-btn g-btn--sm g-btn--ghost">
+          <Icone nome="sair" tamanho={16} /> Sair
+        </button>
+      </>
+    );
+
     return (
-      <div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: 'var(--space-2) var(--space-3)',
-            borderBottom: '1px solid var(--color-border)',
-          }}
-        >
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            {abas.map((a) => (
-              <TabBtn key={a.id} ativo={secao === a.id} onClick={() => setSecao(a.id)}>
-                {a.rotulo}
-              </TabBtn>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-            {contexto === 'admin' && (
-              <a
-                href="?modo=presenca"
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  color: 'var(--color-accent)',
-                  font: '600 13px var(--font-body)',
-                  textDecoration: 'none',
-                }}
-              >
-                📺 Telão
-              </a>
-            )}
-            <button
-              onClick={sair}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-accent)',
-                cursor: 'pointer',
-              }}
-            >
-              Sair
-            </button>
-          </div>
-        </div>
-        {telas[secao] ?? telas.principal}
-      </div>
+      <AppShell
+        subtitulo={ehAdmin ? 'Administração' : 'Portal do colaborador'}
+        grupos={ehAdmin ? GRUPOS_ADMIN : GRUPOS_FUNCIONARIO}
+        ativo={secao}
+        aoNavegar={setSecao}
+        tituloPagina={TITULOS[secao] ?? ''}
+        acoes={acoes}
+      >
+        {telas[secao] ?? telas.principal ?? telas.dashboard}
+      </AppShell>
     );
   }
 
+  return <TelaAcesso contexto={contexto} setContexto={setContexto} aoAutenticar={aoAutenticar} />;
+}
+
+/** Tela de acesso (nao autenticado): seletor de perfil + formulario de login. */
+function TelaAcesso({
+  contexto,
+  setContexto,
+  aoAutenticar,
+}: {
+  contexto: Contexto;
+  setContexto: (c: Contexto) => void;
+  aoAutenticar: (t: ParTokens) => void;
+}) {
+  const abas: { id: Contexto; rotulo: string }[] = [
+    { id: 'funcionario', rotulo: 'Colaborador' },
+    { id: 'admin', rotulo: 'Administrador' },
+    { id: 'super', rotulo: 'Plataforma' },
+  ];
   return (
-    <>
-      <nav
-        style={{
-          display: 'flex',
-          gap: 'var(--space-2)',
-          padding: 'var(--space-3)',
-          justifyContent: 'center',
-        }}
-      >
-        <TabBtn ativo={contexto === 'funcionario'} onClick={() => setContexto('funcionario')}>
-          Funcionario
-        </TabBtn>
-        <TabBtn ativo={contexto === 'admin'} onClick={() => setContexto('admin')}>
-          Administrador
-        </TabBtn>
-        <TabBtn ativo={contexto === 'super'} onClick={() => setContexto('super')}>
-          Plataforma
-        </TabBtn>
-      </nav>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        padding: 'var(--space-9) var(--space-5)',
+      }}
+    >
+      <div className="g-seg" role="tablist" style={{ marginBottom: 'var(--space-8)' }}>
+        {abas.map((a) => (
+          <button
+            key={a.id}
+            role="tab"
+            aria-selected={contexto === a.id}
+            onClick={() => setContexto(a.id)}
+          >
+            {a.rotulo}
+          </button>
+        ))}
+      </div>
       {contexto === 'funcionario' ? (
         <TelaLogin onAutenticado={aoAutenticar} />
       ) : contexto === 'admin' ? (
@@ -193,33 +230,6 @@ export function App(): JSX.Element {
       ) : (
         <SuperLogin onAutenticado={aoAutenticar} />
       )}
-    </>
-  );
-}
-
-function TabBtn({
-  ativo,
-  onClick,
-  children,
-}: {
-  ativo: boolean;
-  onClick: () => void;
-  children: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: 'var(--space-2) var(--space-3)',
-        borderRadius: 'var(--radius-sm)',
-        border: '1px solid var(--color-border)',
-        background: ativo ? 'var(--color-accent)' : 'var(--color-surface)',
-        color: ativo ? 'var(--color-navy-deep)' : 'var(--color-navy-900)',
-        cursor: 'pointer',
-        font: '500 14px var(--font-body)',
-      }}
-    >
-      {children}
-    </button>
+    </div>
   );
 }
