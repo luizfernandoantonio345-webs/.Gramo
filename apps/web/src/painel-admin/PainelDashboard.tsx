@@ -81,6 +81,10 @@ export function PainelDashboard() {
   }, []);
   useEffect(() => {
     void carregar();
+    // Re-carrega periodicamente: um erro transitorio (ex.: API reiniciando)
+    // se resolve sozinho sem o usuario precisar recarregar a pagina.
+    const id = setInterval(() => void carregar(), 60000);
+    return () => clearInterval(id);
   }, [carregar]);
 
   const carregando = !d && !erro;
@@ -90,7 +94,18 @@ export function PainelDashboard() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <CabecalhoPagina titulo="Dashboard" subtitulo="Visão executiva da operação de ponto" />
 
-      {erro && <Feedback tom="erro">{erro}</Feedback>}
+      {erro && (
+        <Feedback tom="erro">
+          {erro}{' '}
+          <button
+            className="g-link"
+            onClick={() => void carregar()}
+            style={{ background: 'none', border: 'none', padding: 0, marginLeft: 'var(--space-2)' }}
+          >
+            Tentar novamente
+          </button>
+        </Feedback>
+      )}
 
       <div
         style={{

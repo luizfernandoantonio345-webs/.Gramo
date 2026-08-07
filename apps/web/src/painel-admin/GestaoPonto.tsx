@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   Badge,
   Botao,
@@ -32,6 +32,12 @@ interface Regap {
   raioMetros: number;
   ativo: boolean;
 }
+
+const tituloCartao: CSSProperties = {
+  font: '600 var(--text-lg) var(--font-display)',
+  letterSpacing: '-0.01em',
+  margin: '0 0 var(--space-5)',
+};
 
 /** ADM 4 -- Gestao de Ponto: dashboard, fila de excecoes e REGAP. */
 export function GestaoPonto() {
@@ -77,25 +83,19 @@ export function GestaoPonto() {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <CabecalhoPagina
         titulo="Gestão de ponto"
         subtitulo="Fila de exceções, presença do dia e áreas REGAP"
       />
 
-      {erro && (
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <Feedback tom="erro">{erro}</Feedback>
-        </div>
-      )}
+      {erro && <Feedback tom="erro">{erro}</Feedback>}
 
-      {/* Indicadores do dia */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: 'var(--space-3)',
-          margin: '0 0 var(--space-4)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 'var(--space-5)',
         }}
       >
         <Kpi rotulo="Presentes" valor={dash?.funcionariosPresentes ?? '—'} />
@@ -114,48 +114,45 @@ export function GestaoPonto() {
 
       {/* Fila de excecoes -- superficie de decisao principal do RH */}
       <Cartao>
-        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Fila de exceções</h2>
+        <h2 style={tituloCartao}>Fila de exceções</h2>
         {carregando ? (
           <EstadoVazio>Carregando…</EstadoVazio>
         ) : excecoes.length === 0 ? (
           <EstadoVazio>Nenhuma pendência — exceções em dia.</EstadoVazio>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {excecoes.map((e) => (
-              <li
-                key={e.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                  padding: 'var(--space-3) 0',
-                  borderBottom: '1px solid var(--color-border)',
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
+              <LinhaDivisor key={e.id}>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 'var(--space-2)',
+                      gap: 'var(--space-3)',
                       flexWrap: 'wrap',
                     }}
                   >
-                    <strong style={{ font: '600 15px var(--font-body)' }}>
+                    <strong style={{ font: '600 var(--text-md) var(--font-body)' }}>
                       {e.funcionario.nome}
                     </strong>
-                    <Badge cor="var(--color-amber-warning)">{e.tipo}</Badge>
+                    <Badge cor="var(--color-warning)">{e.tipo}</Badge>
                   </div>
-                  <div style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}>
+                  <div
+                    style={{
+                      font: 'var(--text-xs) var(--font-mono)',
+                      color: 'var(--color-text-muted)',
+                      marginTop: 'var(--space-2)',
+                    }}
+                  >
                     NSR {e.ponto.nsr} · {new Date(e.ponto.registradoEm).toLocaleString('pt-BR')}
                     {e.ponto.dentroRegap ? '' : ' · fora da área'}
                   </div>
                   {e.motivo && (
                     <div
                       style={{
-                        font: '400 13px var(--font-body)',
+                        font: '400 var(--text-sm) var(--font-body)',
                         color: 'var(--color-text-muted)',
+                        marginTop: 'var(--space-2)',
                       }}
                     >
                       “{e.motivo}”
@@ -163,60 +160,69 @@ export function GestaoPonto() {
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 'var(--space-2)', flex: '0 0 auto' }}>
-                  <button
-                    onClick={() => decidir(e.id, true)}
-                    style={botaoAcao('var(--color-teal-success)')}
-                  >
+                  <Botao tamanho="sm" bloco={false} onClick={() => decidir(e.id, true)}>
                     Aprovar
-                  </button>
-                  <button
+                  </Botao>
+                  <Botao
+                    tamanho="sm"
+                    variante="perigo"
+                    bloco={false}
                     onClick={() => decidir(e.id, false)}
-                    style={botaoAcao('var(--color-red-alert)')}
                   >
                     Recusar
-                  </button>
+                  </Botao>
                 </div>
-              </li>
+              </LinhaDivisor>
             ))}
-          </ul>
+          </div>
         )}
       </Cartao>
 
-      <div style={{ height: 'var(--space-4)' }} />
-
-      {/* REGAP */}
       <NovaRegap onCriada={carregar} />
-      <div style={{ height: 'var(--space-3)' }} />
+
       <Cartao>
-        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Áreas (REGAP)</h2>
+        <h2 style={tituloCartao}>Áreas (REGAP)</h2>
         {regaps.length === 0 ? (
           <EstadoVazio>Nenhuma área cadastrada.</EstadoVazio>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {regaps.map((r) => (
-              <li
-                key={r.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 'var(--space-2)',
-                  padding: 'var(--space-2) 0',
-                  borderBottom: '1px solid var(--color-border)',
-                }}
-              >
-                <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>{r.nome}</span>
-                <span style={{ font: '13px var(--font-mono)', color: 'var(--color-text-muted)' }}>
+              <LinhaDivisor key={r.id}>
+                <span style={{ flex: 1, fontWeight: 500 }}>{r.nome}</span>
+                <span
+                  style={{
+                    font: 'var(--text-sm) var(--font-mono)',
+                    color: 'var(--color-text-muted)',
+                  }}
+                >
                   raio {r.raioMetros} m
                 </span>
-                <Badge cor={r.ativo ? 'var(--color-teal-success)' : 'var(--color-border)'}>
+                <Badge cor={r.ativo ? 'var(--color-success)' : 'var(--color-text-muted)'}>
                   {r.ativo ? 'ativa' : 'inativa'}
                 </Badge>
-              </li>
+              </LinhaDivisor>
             ))}
-          </ul>
+          </div>
         )}
       </Cartao>
+    </div>
+  );
+}
+
+/** Linha de lista com divisoria inferior (padrao dos cartoes). */
+function LinhaDivisor({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 'var(--space-4)',
+        padding: 'var(--space-4) 0',
+        borderBottom: '1px solid var(--color-divider)',
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -256,9 +262,13 @@ function NovaRegap({ onCriada }: { onCriada: () => void }) {
 
   return (
     <Cartao>
-      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Nova área (REGAP)</h2>
+      <h2 style={tituloCartao}>Nova área (REGAP)</h2>
       <div
-        style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 'var(--space-2)' }}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: 'var(--space-4)',
+        }}
       >
         <Campo label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
         <Campo label="Latitude" value={lat} onChange={(e) => setLat(e.target.value)} />
@@ -266,26 +276,13 @@ function NovaRegap({ onCriada }: { onCriada: () => void }) {
         <Campo label="Raio (m)" value={raio} onChange={(e) => setRaio(e.target.value)} />
       </div>
       {erro && (
-        <div style={{ marginBottom: 'var(--space-2)' }}>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
           <Feedback tom="erro">{erro}</Feedback>
         </div>
       )}
-      <Botao onClick={criar} disabled={!nome || !lat || !lng || criando}>
+      <Botao onClick={criar} disabled={!nome || !lat || !lng || criando} bloco={false}>
         {criando ? 'Criando…' : 'Criar área'}
       </Botao>
     </Cartao>
   );
-}
-
-function botaoAcao(cor: string): CSSProperties {
-  return {
-    minHeight: 44,
-    padding: '0 var(--space-3)',
-    borderRadius: 'var(--radius-sm)',
-    border: 'none',
-    background: cor,
-    color: 'var(--color-navy-deep)',
-    cursor: 'pointer',
-    font: '600 13px var(--font-body)',
-  };
 }

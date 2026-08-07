@@ -8,6 +8,7 @@ import {
   EstadoVazio,
   Feedback,
   Selecao,
+  Tabela,
 } from '../design-system/components';
 import { apiGet, apiPost } from '../lib/api';
 
@@ -174,20 +175,23 @@ export function PainelRelatorios() {
     });
   }
 
+  const tituloCartao = {
+    font: '600 var(--text-lg) var(--font-display)',
+    letterSpacing: '-0.01em',
+    margin: '0 0 var(--space-5)',
+  } as const;
+
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <CabecalhoPagina
         titulo="Relatórios e exportações"
         subtitulo="Portaria 671: AFD, AEJ e pacote de fiscalização (com hash + assinatura do servidor)"
       />
-      {feedback && (
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <Feedback tom={feedback.tom}>{feedback.texto}</Feedback>
-        </div>
-      )}
+      {feedback && <Feedback tom={feedback.tom}>{feedback.texto}</Feedback>}
 
       <Cartao>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
+        <h2 style={tituloCartao}>Exportações legais (fiscalização)</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
           <Campo
             label="Início"
             type="date"
@@ -208,30 +212,35 @@ export function PainelRelatorios() {
             </option>
           ))}
         </Selecao>
-        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-          <Botao onClick={() => gerar('afd')}>Gerar AFD</Botao>
-          <Botao onClick={() => gerar('aej')}>Gerar AEJ</Botao>
-          <Botao variante="secundario" onClick={pacote}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          <Botao bloco={false} onClick={() => gerar('afd')}>
+            Gerar AFD
+          </Botao>
+          <Botao bloco={false} onClick={() => gerar('aej')}>
+            Gerar AEJ
+          </Botao>
+          <Botao variante="secundario" bloco={false} onClick={pacote}>
             Pacote fiscalização
           </Botao>
-          <Botao variante="secundario" onClick={baixarCsv}>
+          <Botao variante="secundario" bloco={false} onClick={baixarCsv}>
             Espelho (CSV/Excel)
           </Botao>
         </div>
       </Cartao>
 
-      <div style={{ height: 'var(--space-3)' }} />
       <Cartao>
-        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>
-          Fechamento mensal por obra (PDF gerencial)
-        </h2>
+        <h2 style={tituloCartao}>Fechamento mensal por obra (PDF gerencial)</h2>
         <p
-          style={{ font: '13px var(--font-body)', color: 'var(--color-text-muted)', marginTop: 0 }}
+          style={{
+            font: 'var(--text-sm) var(--font-body)',
+            color: 'var(--color-text-muted)',
+            margin: '0 0 var(--space-5)',
+          }}
         >
           Consolida todos os funcionários da obra na competência — trabalhado, extras, faltas, saldo
           do banco e adicional noturno. Conferência de folha do gestor. Não substitui o AFD/AEJ.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-2)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-4)' }}>
           <Selecao
             label="Obra / filial"
             value={filialId}
@@ -251,56 +260,58 @@ export function PainelRelatorios() {
             onChange={(e) => setCompetencia(e.target.value)}
           />
         </div>
-        <Botao onClick={fechamentoObra} disabled={!filialId || gerandoFechamento}>
+        <Botao bloco={false} onClick={fechamentoObra} disabled={!filialId || gerandoFechamento}>
           {gerandoFechamento ? 'Gerando…' : 'Gerar fechamento (PDF)'}
         </Botao>
       </Cartao>
 
-      <div style={{ height: 'var(--space-3)' }} />
       <Cartao>
-        <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Exportações geradas</h2>
+        <h2 style={tituloCartao}>Exportações geradas</h2>
         {carregando ? (
           <EstadoVazio>Carregando…</EstadoVazio>
         ) : lista.length === 0 ? (
           <EstadoVazio>Nenhuma exportação gerada.</EstadoVazio>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {lista.map((e) => (
-              <li
-                key={e.id}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 'var(--space-2)',
-                  padding: 'var(--space-2) 0',
-                  borderBottom: '1px solid var(--color-border)',
-                }}
-              >
-                <Badge cor="var(--color-navy-900)">{e.tipoArquivo}</Badge>
-                <span style={{ font: '12px var(--font-mono)' }}>{e.periodoReferencia}</span>
-                <span style={{ font: '12px var(--font-body)' }}>{e.totalRegistros} reg.</span>
-                <span style={{ font: '11px var(--font-mono)', color: 'var(--color-text-muted)' }}>
-                  {e.hashArquivo.slice(0, 12)}…
-                </span>
-                <button
-                  onClick={() => baixar(e.id, e.tipoArquivo)}
-                  style={{
-                    minHeight: 44,
-                    padding: '0 var(--space-3)',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--color-accent)',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-accent)',
-                    cursor: 'pointer',
-                    font: '600 13px var(--font-body)',
-                  }}
-                >
-                  Baixar
-                </button>
-              </li>
-            ))}
-          </ul>
+          <Tabela minWidth={560}>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Período</th>
+                <th className="g-num">Registros</th>
+                <th>Hash</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lista.map((e) => (
+                <tr key={e.id}>
+                  <td>
+                    <Badge cor="var(--color-accent)">{e.tipoArquivo}</Badge>
+                  </td>
+                  <td style={{ font: 'var(--text-sm) var(--font-mono)' }}>{e.periodoReferencia}</td>
+                  <td className="g-num">{e.totalRegistros}</td>
+                  <td
+                    style={{
+                      font: 'var(--text-xs) var(--font-mono)',
+                      color: 'var(--color-text-muted)',
+                    }}
+                  >
+                    {e.hashArquivo.slice(0, 12)}…
+                  </td>
+                  <td className="g-num">
+                    <Botao
+                      tamanho="sm"
+                      variante="secundario"
+                      bloco={false}
+                      onClick={() => baixar(e.id, e.tipoArquivo)}
+                    >
+                      Baixar
+                    </Botao>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Tabela>
         )}
       </Cartao>
     </div>

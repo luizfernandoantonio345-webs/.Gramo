@@ -1,5 +1,5 @@
 import { formatarCpf, isCpfValido, normalizarCpf } from '@repp/shared';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   Badge,
   Botao,
@@ -35,12 +35,29 @@ interface Documento {
 }
 
 const COR_DOC: Record<string, string> = {
-  APROVADO: 'var(--color-teal-success)',
-  REJEITADO: 'var(--color-red-alert)',
+  APROVADO: 'var(--color-success)',
+  REJEITADO: 'var(--color-danger)',
   EM_ANALISE: 'var(--color-accent)',
-  PENDENTE: 'var(--color-amber-warning)',
+  PENDENTE: 'var(--color-warning)',
 };
 const humaniza = (s: string) => s.toLowerCase().replace(/_/g, ' ');
+
+/** Subtitulo de secao dentro de um cartao. */
+function Secao({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return (
+    <h3
+      style={{
+        font: '600 var(--text-md) var(--font-display)',
+        letterSpacing: '-0.01em',
+        margin: 0,
+        color: 'var(--color-text)',
+        ...style,
+      }}
+    >
+      {children}
+    </h3>
+  );
+}
 
 /** ADM 2 -- Gestao de Funcionarios. */
 export function GestaoFuncionarios() {
@@ -86,88 +103,63 @@ export function GestaoFuncionarios() {
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'var(--space-4)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <CabecalhoPagina
-        titulo="Gestão de funcionários"
+        titulo="Funcionários"
         subtitulo="Cadastro, convite, aprovação de foto e documentos"
       />
-      {erro && (
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <Feedback tom="erro">{erro}</Feedback>
-        </div>
-      )}
+      {erro && <Feedback tom="erro">{erro}</Feedback>}
 
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 'var(--space-4)',
+          gap: 'var(--space-6)',
+          alignItems: 'start',
         }}
       >
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
           <NovoFuncionario onCriado={carregar} />
-          <div style={{ height: 'var(--space-3)' }} />
-          <Cartao>
+          <Cartao padding="var(--space-5)">
             <input
+              className="g-input"
               placeholder="Buscar por nome ou CPF"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               aria-label="Buscar funcionário"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                minHeight: 44,
-                padding: '0 var(--space-3)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                font: '400 15px var(--font-body)',
-                marginBottom: 'var(--space-2)',
-                background: 'var(--color-surface)',
-                color: 'var(--color-navy-900)',
-              }}
+              style={{ marginBottom: 'var(--space-4)' }}
             />
             {carregando ? (
               <EstadoVazio>Carregando…</EstadoVazio>
             ) : lista.length === 0 ? (
               <EstadoVazio>Nenhum funcionário encontrado.</EstadoVazio>
             ) : (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
                 {lista.map((f) => (
-                  <li key={f.id}>
-                    <button
-                      onClick={() => abrir(f)}
+                  <button
+                    key={f.id}
+                    onClick={() => abrir(f)}
+                    className={`g-nav-item${sel?.id === f.id ? ' g-nav-item--active' : ''}`}
+                  >
+                    <span style={{ flex: 1, fontWeight: 500 }}>{f.nome}</span>
+                    <span
                       style={{
-                        display: 'flex',
-                        width: '100%',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 'var(--space-2)',
-                        minHeight: 44,
-                        padding: 'var(--space-2)',
-                        border: 'none',
-                        borderBottom: '1px solid var(--color-border)',
-                        background: sel?.id === f.id ? 'var(--color-neutral-bg)' : 'transparent',
-                        cursor: 'pointer',
-                        textAlign: 'left',
+                        font: 'var(--text-xs) var(--font-mono)',
+                        color: 'var(--color-text-muted)',
                       }}
                     >
-                      <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>{f.nome}</span>
-                      <span
-                        style={{ font: '12px var(--font-mono)', color: 'var(--color-text-muted)' }}
-                      >
-                        {f.cpf}
-                      </span>
-                      <Badge
-                        cor={
-                          f.status === 'ATIVO' ? 'var(--color-teal-success)' : 'var(--color-border)'
-                        }
-                      >
-                        {humaniza(f.status)}
-                      </Badge>
-                    </button>
-                  </li>
+                      {f.cpf}
+                    </span>
+                    <Badge
+                      cor={
+                        f.status === 'ATIVO' ? 'var(--color-success)' : 'var(--color-text-muted)'
+                      }
+                    >
+                      {humaniza(f.status)}
+                    </Badge>
+                  </button>
                 ))}
-              </ul>
+              </div>
             )}
           </Cartao>
         </div>
@@ -175,71 +167,84 @@ export function GestaoFuncionarios() {
         <div>
           {sel ? (
             <Cartao>
-              <h2 style={{ font: '600 18px var(--font-display)', marginTop: 0 }}>{sel.nome}</h2>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 'var(--space-2)',
-                  alignItems: 'center',
-                  marginBottom: 'var(--space-3)',
-                }}
-              >
-                <Badge
-                  cor={
-                    sel.fotoAprovada ? 'var(--color-teal-success)' : 'var(--color-amber-warning)'
-                  }
-                >
-                  {sel.fotoAprovada ? 'foto aprovada' : 'foto pendente'}
-                </Badge>
-                {!sel.fotoAprovada && (
-                  <button onClick={() => aprovarFoto(sel)} style={acao('var(--color-accent)')}>
-                    Aprovar foto
-                  </button>
-                )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+                <div>
+                  <h2
+                    style={{
+                      font: '600 var(--text-xl) var(--font-display)',
+                      letterSpacing: '-0.01em',
+                      margin: '0 0 var(--space-3)',
+                    }}
+                  >
+                    {sel.nome}
+                  </h2>
+                  <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+                    <Badge cor={sel.fotoAprovada ? 'var(--color-success)' : 'var(--color-warning)'}>
+                      {sel.fotoAprovada ? 'foto aprovada' : 'foto pendente'}
+                    </Badge>
+                    {!sel.fotoAprovada && (
+                      <Botao
+                        tamanho="sm"
+                        variante="secundario"
+                        bloco={false}
+                        onClick={() => aprovarFoto(sel)}
+                      >
+                        Aprovar foto
+                      </Botao>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Secao style={{ marginBottom: 'var(--space-4)' }}>Documentos</Secao>
+                  {docs.length === 0 ? (
+                    <EstadoVazio>Nenhum documento enviado.</EstadoVazio>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {docs.map((d) => (
+                        <div
+                          key={d.id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 'var(--space-3)',
+                            padding: 'var(--space-4) 0',
+                            borderBottom: '1px solid var(--color-divider)',
+                          }}
+                        >
+                          <span style={{ flex: 1, fontWeight: 500 }}>{d.tipo}</span>
+                          <Badge cor={COR_DOC[d.status] ?? 'var(--color-text-muted)'}>
+                            {humaniza(d.status)}
+                          </Badge>
+                          {d.status === 'EM_ANALISE' && (
+                            <span style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                              <Botao
+                                tamanho="sm"
+                                bloco={false}
+                                onClick={() => decidirDoc(d.id, true)}
+                              >
+                                Aprovar
+                              </Botao>
+                              <Botao
+                                tamanho="sm"
+                                variante="perigo"
+                                bloco={false}
+                                onClick={() => decidirDoc(d.id, false)}
+                              >
+                                Rejeitar
+                              </Botao>
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <FechamentoMensal funcionarioId={sel.id} />
+                <BancoHoras funcionarioId={sel.id} />
               </div>
-              <h3 style={{ font: '600 15px var(--font-body)' }}>Documentos</h3>
-              {docs.length === 0 ? (
-                <EstadoVazio>Nenhum documento enviado.</EstadoVazio>
-              ) : (
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                  {docs.map((d) => (
-                    <li
-                      key={d.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 'var(--space-2)',
-                        padding: 'var(--space-2) 0',
-                        borderBottom: '1px solid var(--color-border)',
-                      }}
-                    >
-                      <span style={{ flex: 1, font: '500 14px var(--font-body)' }}>{d.tipo}</span>
-                      <Badge cor={COR_DOC[d.status] ?? 'var(--color-border)'}>
-                        {humaniza(d.status)}
-                      </Badge>
-                      {d.status === 'EM_ANALISE' && (
-                        <span style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                          <button
-                            onClick={() => decidirDoc(d.id, true)}
-                            style={acao('var(--color-teal-success)')}
-                          >
-                            Aprovar
-                          </button>
-                          <button
-                            onClick={() => decidirDoc(d.id, false)}
-                            style={acao('var(--color-red-alert)')}
-                          >
-                            Rejeitar
-                          </button>
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <FechamentoMensal funcionarioId={sel.id} />
-              <BancoHoras funcionarioId={sel.id} />
             </Cartao>
           ) : (
             <Cartao>
@@ -284,7 +289,6 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
     if (!filialId)
       return setErro('Selecione a filial (obrigatório para o funcionário bater ponto).');
     try {
-      // /convites cria o funcionario E gera o codigo de primeiro acesso de uma vez.
       const r = await apiPost<{ codigo: string; expiraEm: string }>(
         '/convites',
         {
@@ -311,7 +315,7 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
 
   return (
     <Cartao>
-      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Novo funcionário</h2>
+      <Secao style={{ marginBottom: 'var(--space-5)' }}>Novo funcionário</Secao>
       <Campo label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} />
       <Campo
         label="CPF"
@@ -338,7 +342,7 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
         ))}
       </Selecao>
       {filiais.length === 0 && (
-        <div style={{ marginBottom: 'var(--space-3)' }}>
+        <div style={{ marginBottom: 'var(--space-5)' }}>
           <Feedback tom="aviso">
             Nenhuma filial cadastrada. Crie uma em Configurações &gt; Filiais.
           </Feedback>
@@ -357,12 +361,12 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
         ))}
       </Selecao>
       {erro && (
-        <div style={{ marginBottom: 'var(--space-2)' }}>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
           <Feedback tom="erro">{erro}</Feedback>
         </div>
       )}
       {codigo && (
-        <div style={{ margin: 'var(--space-2) 0' }}>
+        <div style={{ marginBottom: 'var(--space-4)' }}>
           <Feedback tom="sucesso">
             Código de 1º acesso: <strong>{codigo}</strong> — informe ao funcionário (também enviado
             por e-mail).
@@ -403,17 +407,9 @@ function FechamentoMensal({ funcionarioId }: { funcionarioId: string }) {
   }
 
   return (
-    <div
-      style={{
-        marginTop: 'var(--space-3)',
-        borderTop: '1px solid var(--color-border)',
-        paddingTop: 'var(--space-3)',
-      }}
-    >
-      <h3 style={{ font: '600 15px var(--font-body)', marginTop: 0 }}>
-        Fechamento mensal (espelho de ponto)
-      </h3>
-      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
+    <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: 'var(--space-5)' }}>
+      <Secao style={{ marginBottom: 'var(--space-4)' }}>Fechamento mensal (espelho de ponto)</Secao>
+      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end' }}>
         <div style={{ flex: 1 }}>
           <Campo
             label="Competência"
@@ -422,8 +418,8 @@ function FechamentoMensal({ funcionarioId }: { funcionarioId: string }) {
             onChange={(e) => setCompetencia(e.target.value)}
           />
         </div>
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <Botao onClick={gerar} disabled={!competencia}>
+        <div style={{ marginBottom: 'var(--space-5)' }}>
+          <Botao onClick={gerar} disabled={!competencia} bloco={false}>
             Gerar espelho
           </Botao>
         </div>
@@ -519,40 +515,31 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
   }
 
   return (
-    <div
-      style={{
-        marginTop: 'var(--space-3)',
-        borderTop: '1px solid var(--color-border)',
-        paddingTop: 'var(--space-3)',
-      }}
-    >
+    <div style={{ borderTop: '1px solid var(--color-divider)', paddingTop: 'var(--space-5)' }}>
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: 'var(--space-2)',
+          gap: 'var(--space-3)',
+          marginBottom: 'var(--space-4)',
         }}
       >
-        <h3 style={{ font: '600 15px var(--font-body)', margin: 0 }}>Banco de horas ({comp})</h3>
-        <button
-          onClick={baixarPdf}
-          style={{
-            minHeight: 36,
-            padding: '0 var(--space-3)',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--color-accent)',
-            background: 'transparent',
-            color: 'var(--color-accent)',
-            cursor: 'pointer',
-            font: '600 12px var(--font-body)',
-          }}
-        >
-          📄 Espelho (PDF)
-        </button>
+        <Secao>Banco de horas · {comp}</Secao>
+        <Botao tamanho="sm" variante="secundario" bloco={false} onClick={baixarPdf}>
+          Espelho (PDF)
+        </Botao>
       </div>
       {dados && (
-        <div style={{ font: '13px var(--font-body)', marginBottom: 'var(--space-2)' }}>
+        <div
+          style={{
+            font: 'var(--text-sm) var(--font-body)',
+            marginBottom: 'var(--space-4)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-2)',
+          }}
+        >
           <div>
             Regime: <strong>{dados.regime}</strong>
           </div>
@@ -567,17 +554,30 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
               <strong>{dados.noturno.adicionalMin}min</strong>
             </div>
           )}
-          <div style={{ color: 'var(--color-text-muted)', font: '12px var(--font-body)' }}>
+          <div
+            style={{ color: 'var(--color-text-muted)', font: 'var(--text-xs) var(--font-body)' }}
+          >
             {dados.observacao}
           </div>
-          {dados.alertas.map((a, i) => (
-            <div key={i} style={{ marginTop: 4 }}>
-              <Badge cor="var(--color-amber-warning)">{a}</Badge>
+          {dados.alertas.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 'var(--space-2)',
+                marginTop: 'var(--space-1)',
+              }}
+            >
+              {dados.alertas.map((a, i) => (
+                <Badge key={i} cor="var(--color-warning)">
+                  {a}
+                </Badge>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'flex-end' }}>
         <div style={{ width: 120 }}>
           <Campo
             label="Ajuste (min)"
@@ -595,8 +595,8 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
             placeholder="ex.: compensação acordada"
           />
         </div>
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <Botao onClick={lancar} disabled={!min || !motivo}>
+        <div style={{ marginBottom: 'var(--space-5)' }}>
+          <Botao onClick={lancar} disabled={!min || !motivo} bloco={false}>
             Lançar
           </Botao>
         </div>
@@ -604,17 +604,4 @@ function BancoHoras({ funcionarioId }: { funcionarioId: string }) {
       {erro && <Feedback tom="erro">{erro}</Feedback>}
     </div>
   );
-}
-
-function acao(cor: string) {
-  return {
-    minHeight: 44,
-    padding: '0 var(--space-3)',
-    borderRadius: 'var(--radius-sm)',
-    border: 'none',
-    background: cor,
-    color: 'var(--color-navy-deep)',
-    cursor: 'pointer',
-    font: '600 12px var(--font-body)',
-  } as const;
 }
