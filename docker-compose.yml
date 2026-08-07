@@ -35,15 +35,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Carrega TODOS os segredos do .env (JWT, DATA_ENCRYPTION_KEY, SUPER_ADMIN_*,
+    # SUPER_DATABASE_URL exige role repp_super em producao, CORS_ORIGINS, STORAGE_*,
+    # SMTP_*, TTLs, ASSINATURA_SEED). Sem isso a API nao sobe em producao.
+    env_file: .env
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       API_PORT: ${API_PORT:-3000}
-      # Dentro da rede do compose o host do banco e "postgres".
+      # Overrides das conexoes: dentro da rede do compose o host do banco e
+      # "postgres" (o .env usa localhost, que apontaria para o proprio container).
       DATABASE_URL: postgresql://repp_app:${POSTGRES_APP_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      SUPER_DATABASE_URL: postgresql://repp_super:${POSTGRES_SUPER_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY}
+    # Persiste os arquivos do STORAGE_DRIVER=local (fotos/biometria e documentos --
+    # dado sensivel com guarda legal). Sem isto, seriam perdidos ao recriar o
+    # container. WORKDIR e /repo/apps/api e STORAGE_LOCAL_PATH e ./storage.
+    volumes:
+      - repp_storage:/repo/apps/api/storage
     ports:
       - '${API_PORT:-3000}:3000'
 
@@ -62,3 +70,4 @@ services:
 
 volumes:
   repp_pgdata:
+  repp_storage:
