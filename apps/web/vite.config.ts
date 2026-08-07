@@ -18,8 +18,8 @@ export default defineConfig({
         name: '.GRAMO - Ponto Eletronico',
         short_name: '.GRAMO',
         description: 'Registro de ponto por reconhecimento facial e geolocalizacao',
-        theme_color: '#090d14',
-        background_color: '#090d14',
+        theme_color: '#ffffff',
+        background_color: '#f6f7f9',
         display: 'standalone',
         start_url: '/',
         icons: [

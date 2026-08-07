@@ -76,9 +76,8 @@ export function TelaoPresenca() {
     <div
       style={{
         minHeight: '100vh',
-        background:
-          'radial-gradient(1200px 600px at 50% -10%, rgba(34,211,238,0.08), transparent 60%), var(--color-neutral-bg)',
-        padding: 'var(--space-4)',
+        background: 'var(--color-bg)',
+        padding: 'var(--space-7)',
       }}
     >
       {/* Cabeçalho: marca + total + relógio */}

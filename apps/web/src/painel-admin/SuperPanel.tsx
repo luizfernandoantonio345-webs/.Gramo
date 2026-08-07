@@ -30,6 +30,12 @@ interface Uso {
   documentos: number;
 }
 
+const tituloCartao = {
+  font: '600 var(--text-lg) var(--font-display)',
+  letterSpacing: '-0.01em',
+  margin: '0 0 var(--space-5)',
+} as const;
+
 /** ADM 0 -- painel do Super Admin (plataforma). */
 export function SuperPanel({ onSair }: { onSair: () => void }) {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -71,53 +77,62 @@ export function SuperPanel({ onSair }: { onSair: () => void }) {
 
   return (
     <div>
-      <div
+      <header
         style={{
-          background: 'var(--color-navy-deep)',
-          color: 'var(--color-navy-900)',
-          padding: 'var(--space-3) var(--space-4)',
+          background: '#0f172a',
+          padding: '0 var(--space-7)',
+          height: 'var(--topbar-h)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
         }}
       >
-        <span
-          style={{
-            font: '700 12px var(--font-mono)',
-            letterSpacing: '0.15em',
-            color: '#8fb0ef',
-          }}
-        >
-          SUPER ADMIN · PLATAFORMA
-        </span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)' }}>
+          <span
+            style={{
+              font: '700 var(--text-lg) var(--font-display)',
+              color: '#fff',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            <span style={{ color: 'var(--color-accent)' }}>.</span>GRAMO
+          </span>
+          <span
+            style={{
+              font: '600 10px var(--font-body)',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: '#94a3b8',
+            }}
+          >
+            Plataforma
+          </span>
+        </div>
         <button
           onClick={onSair}
-          style={{
-            minHeight: 44,
-            padding: '0 var(--space-3)',
-            background: 'none',
-            border: 'none',
-            color: '#8fb0ef',
-            cursor: 'pointer',
-            font: '600 13px var(--font-body)',
-          }}
+          className="g-btn g-btn--sm"
+          style={{ background: 'rgba(255,255,255,0.08)', color: '#fff' }}
         >
           Sair
         </button>
-      </div>
+      </header>
 
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: 'var(--space-4)' }}>
-        {erro && (
-          <div style={{ marginBottom: 'var(--space-3)' }}>
-            <Feedback tom="erro">{erro}</Feedback>
-          </div>
-        )}
+      <div
+        style={{
+          maxWidth: 1000,
+          margin: '0 auto',
+          padding: 'var(--space-8) var(--space-7)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-6)',
+        }}
+      >
+        {erro && <Feedback tom="erro">{erro}</Feedback>}
 
         <NovaEmpresa planos={planos} onCriada={carregar} />
-        <div style={{ height: 'var(--space-3)' }} />
 
         <Cartao>
-          <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Empresas-cliente</h2>
+          <h2 style={tituloCartao}>Empresas-cliente</h2>
           {carregando ? (
             <EstadoVazio>Carregando…</EstadoVazio>
           ) : empresas.length === 0 ? (
@@ -159,23 +174,27 @@ export function SuperPanel({ onSair }: { onSair: () => void }) {
                       >
                         {e.status.toLowerCase()}
                       </Badge>
-                      <button onClick={() => verUso(e.id)} style={btn()}>
+                      <Botao
+                        tamanho="sm"
+                        variante="secundario"
+                        bloco={false}
+                        onClick={() => verUso(e.id)}
+                      >
                         Uso
-                      </button>
+                      </Botao>
                       {e.status === 'ATIVA' ? (
-                        <button
+                        <Botao
+                          tamanho="sm"
+                          variante="secundario"
+                          bloco={false}
                           onClick={() => status(e.id, 'suspender')}
-                          style={btn('var(--color-amber-warning)')}
                         >
                           Suspender
-                        </button>
+                        </Botao>
                       ) : (
-                        <button
-                          onClick={() => status(e.id, 'ativar')}
-                          style={btn('var(--color-teal-success)')}
-                        >
+                        <Botao tamanho="sm" bloco={false} onClick={() => status(e.id, 'ativar')}>
                           Ativar
-                        </button>
+                        </Botao>
                       )}
                     </div>
                   </div>
@@ -197,9 +216,8 @@ export function SuperPanel({ onSair }: { onSair: () => void }) {
           )}
         </Cartao>
 
-        <div style={{ height: 'var(--space-3)' }} />
         <Cartao>
-          <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Planos</h2>
+          <h2 style={tituloCartao}>Planos</h2>
           {planos.length === 0 ? (
             <EstadoVazio>Nenhum plano cadastrado.</EstadoVazio>
           ) : (
@@ -255,10 +273,8 @@ function NovaEmpresa({ planos, onCriada }: { planos: Plano[]; onCriada: () => vo
 
   return (
     <Cartao>
-      <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>
-        Cadastrar empresa (onboarding)
-      </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--space-2)' }}>
+      <h2 style={tituloCartao}>Cadastrar empresa (onboarding)</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--space-4)' }}>
         <Campo
           label="Razão social"
           value={razaoSocial}
@@ -330,17 +346,4 @@ function NovoPlano({ onCriado }: { onCriado: () => void }) {
       </div>
     </div>
   );
-}
-
-function btn(cor?: string) {
-  return {
-    minHeight: 44,
-    padding: '0 var(--space-3)',
-    borderRadius: 'var(--radius-sm)',
-    border: cor ? 'none' : '1px solid var(--color-border)',
-    background: cor ?? 'var(--color-surface)',
-    color: cor ? '#fff' : 'var(--color-navy-900)',
-    cursor: 'pointer',
-    font: '600 12px var(--font-body)',
-  } as const;
 }
