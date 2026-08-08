@@ -51,6 +51,57 @@ export function avaliarExtraDia(
   };
 }
 
+export interface ResultadoRegime {
+  saldoBancoMin: number;
+  observacao: string;
+  /** Alerta contextual do regime (saldo elevado / pendente de compensacao). */
+  alerta?: string;
+}
+
+/**
+ * Aplica o REGIME de horas ao saldo do periodo. Puro e testavel: nao toca banco.
+ * - HORA_EXTRA: nada acumula (extras viram pagamento; faltas viram desconto).
+ * - BANCO_ANUAL / COMPENSACAO_MENSAL: saldo = (extras - faltas) + ajustes, mas
+ *   so quando ha carga definida (sem jornada, o saldo automatico nao se aplica).
+ *
+ * @param cargaDefinida true se o funcionario tem jornada com carga diaria.
+ */
+export function aplicarRegimeSaldo(
+  regime: RegimeHoras,
+  p: { extrasMin: number; faltasMin: number; ajustesMin: number; cargaDefinida: boolean },
+): ResultadoRegime {
+  const base = (p.cargaDefinida ? p.extrasMin - p.faltasMin : 0) + p.ajustesMin;
+  switch (regime) {
+    case RegimeHoras.HORA_EXTRA:
+      return {
+        saldoBancoMin: 0,
+        observacao:
+          'Regime HORA_EXTRA: nada acumula. Extras viram hora extra paga; faltas viram desconto.',
+      };
+    case RegimeHoras.BANCO_ANUAL: {
+      const LIMITE_ANUAL = 40 * 60; // alerta acima de ~40h de saldo
+      return {
+        saldoBancoMin: base,
+        observacao: 'Regime BANCO_ANUAL: acumula ate 12 meses (limite CLT).',
+        alerta:
+          base > LIMITE_ANUAL
+            ? `Saldo do banco (${formatarMinutos(base)}) elevado: avalie compensacao ou pagamento.`
+            : undefined,
+      };
+    }
+    default:
+      return {
+        saldoBancoMin: base,
+        observacao:
+          'Regime COMPENSACAO_MENSAL: o saldo deve ser compensado ate o fim do mes seguinte.',
+        alerta:
+          p.cargaDefinida && base !== 0
+            ? `Saldo de ${formatarMinutos(base)} pendente de compensacao no periodo.`
+            : undefined,
+      };
+  }
+}
+
 /**
  * ADM 4 -- Banco de horas completo. Suporta 3 regimes (configuraveis por
  * jornada): compensacao mensal, banco anual (CLT) e hora extra direta.
@@ -150,37 +201,16 @@ export class BancoHorasService {
         );
       }
 
-      // Aplica o regime.
-      let saldoBancoMin: number | null;
-      let observacao: string;
-      switch (regime) {
-        case RegimeHoras.HORA_EXTRA:
-          saldoBancoMin = 0;
-          observacao =
-            'Regime HORA_EXTRA: nada acumula. Extras viram hora extra paga; faltas viram desconto.';
-          break;
-        case RegimeHoras.BANCO_ANUAL: {
-          saldoBancoMin = (carga === null ? 0 : extrasMin - faltasMin) + ajustesMin;
-          observacao = 'Regime BANCO_ANUAL: acumula ate 12 meses (limite CLT).';
-          const LIMITE_ANUAL = 40 * 60; // alerta acima de ~40h de saldo
-          if (saldoBancoMin > LIMITE_ANUAL) {
-            alertas.push(
-              `Saldo do banco (${formatarMinutos(saldoBancoMin)}) elevado: avalie compensacao ou pagamento.`,
-            );
-          }
-          break;
-        }
-        default: {
-          saldoBancoMin = (carga === null ? 0 : extrasMin - faltasMin) + ajustesMin;
-          observacao =
-            'Regime COMPENSACAO_MENSAL: o saldo deve ser compensado ate o fim do mes seguinte.';
-          if (carga !== null && saldoBancoMin !== 0) {
-            alertas.push(
-              `Saldo de ${formatarMinutos(saldoBancoMin)} pendente de compensacao no periodo.`,
-            );
-          }
-        }
-      }
+      // Aplica o regime (logica pura e testavel).
+      const regimeAplicado = aplicarRegimeSaldo(regime, {
+        extrasMin,
+        faltasMin,
+        ajustesMin,
+        cargaDefinida: carga !== null,
+      });
+      const saldoBancoMin = regimeAplicado.saldoBancoMin;
+      const observacao = regimeAplicado.observacao;
+      if (regimeAplicado.alerta) alertas.push(regimeAplicado.alerta);
 
       return {
         regime,
