@@ -105,23 +105,6 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
                 }}
               />
             )}
-            <button
-              onClick={() => {
-                setErro(null);
-                setEtapa('cadastro');
-              }}
-              style={{
-                marginTop: 'var(--space-3)',
-                minHeight: 44,
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-accent)',
-                cursor: 'pointer',
-                font: '500 14px var(--font-body)',
-              }}
-            >
-              Não tem conta? Cadastrar minha empresa
-            </button>
           </>
         )}
 

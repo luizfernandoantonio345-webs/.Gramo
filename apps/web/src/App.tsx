@@ -195,10 +195,14 @@ function TelaAcesso({
   setContexto: (c: Contexto) => void;
   aoAutenticar: (t: ParTokens) => void;
 }) {
+  // Cliente unico (GRAMO): a aba "Plataforma" (operador do SaaS) fica OCULTA --
+  // so aparece com ?plataforma=1 (acesso do fornecedor). Assim a empresa nao ve
+  // que o sistema atende multiplas empresas.
+  const mostrarPlataforma = new URLSearchParams(window.location.search).get('plataforma') === '1';
   const abas: { id: Contexto; rotulo: string }[] = [
     { id: 'funcionario', rotulo: 'Colaborador' },
     { id: 'admin', rotulo: 'Administrador' },
-    { id: 'super', rotulo: 'Plataforma' },
+    ...(mostrarPlataforma ? [{ id: 'super' as Contexto, rotulo: 'Plataforma' }] : []),
   ];
   return (
     <div

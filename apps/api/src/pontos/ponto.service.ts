@@ -104,21 +104,21 @@ export class PontoService {
 
   /**
    * O funcionario envia/atualiza a propria selfie de referencia. Guarda cifrada e
-   * marca fotoAprovada=false: o RH precisa conferir e aprovar antes de o matching
-   * facial passar a valer (evita cadastrar o rosto de outra pessoa).
+   * ja ATIVA o reconhecimento facial na hora (fotoAprovada=true) -- sem etapa de
+   * aprovacao do RH. O RH mantem visibilidade (ve a foto) e pode revisar depois.
    */
   async salvarMinhaReferencia(
     funcionarioId: string,
     fotoBase64: string,
-  ): Promise<{ ok: true; status: 'pendente_aprovacao' }> {
+  ): Promise<{ ok: true; status: 'ativo' }> {
     const ref = await this.storage.salvarImagem(fotoBase64);
     await this.prisma.forTenant((tx) =>
       tx.funcionario.update({
         where: { id: funcionarioId },
-        data: { fotoReferenciaRef: ref, fotoAprovada: false },
+        data: { fotoReferenciaRef: ref, fotoAprovada: true },
       }),
     );
-    return { ok: true, status: 'pendente_aprovacao' };
+    return { ok: true, status: 'ativo' };
   }
 
   /**

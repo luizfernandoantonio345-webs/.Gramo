@@ -253,9 +253,12 @@ export function BaterPonto() {
       await apiPost('/pontos/minha-referencia', { fotoBase64: foto }, true);
       setFeedback({
         tom: 'sucesso',
-        texto:
-          'Foto enviada! Aguardando o RH aprovar — depois disso o reconhecimento facial fica ativo.',
+        texto: 'Rosto cadastrado! O reconhecimento facial já vale a partir da próxima batida.',
       });
+      // Recarrega a referencia recem-cadastrada para valer ja na proxima batida.
+      refDescritor.current = null;
+      setStatusRosto('idle');
+      void prepararRosto();
     } catch (e) {
       setFeedback({
         tom: 'erro',
