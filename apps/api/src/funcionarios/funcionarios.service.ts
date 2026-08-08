@@ -59,7 +59,7 @@ export class FuncionariosService {
   async listar(q: ListarFuncionariosQuery, autor: UsuarioAutenticado) {
     const busca = q.busca?.trim();
     const filialEscopo = await this.escopo.escopoFilialId(autor);
-    return this.prisma.forTenant((tx) =>
+    const rows = await this.prisma.forTenant((tx) =>
       tx.funcionario.findMany({
         where: {
           ...filialEscopo,
@@ -80,11 +80,17 @@ export class FuncionariosService {
           cargo: true,
           status: true,
           fotoAprovada: true,
+          fotoReferenciaRef: true,
           filialId: true,
         },
         orderBy: { nome: 'asc' },
       }),
     );
+    // fotoPendente = enviou selfie mas o RH ainda nao aprovou (destaque na lista).
+    return rows.map(({ fotoReferenciaRef, ...f }) => ({
+      ...f,
+      fotoPendente: !!fotoReferenciaRef && !f.fotoAprovada,
+    }));
   }
 
   async criar(dto: CriarFuncionarioDto, autor: UsuarioAutenticado) {

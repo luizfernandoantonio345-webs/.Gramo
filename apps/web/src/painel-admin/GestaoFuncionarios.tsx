@@ -25,6 +25,7 @@ interface Funcionario {
   cargo: string | null;
   status: string;
   fotoAprovada: boolean;
+  fotoPendente?: boolean;
 }
 
 interface Documento {
@@ -138,6 +139,7 @@ export function GestaoFuncionarios() {
                     className={`g-nav-item${sel?.id === f.id ? ' g-nav-item--active' : ''}`}
                   >
                     <span style={{ flex: 1, fontWeight: 500 }}>{f.nome}</span>
+                    {f.fotoPendente && <Badge cor="var(--color-warning)">foto p/ aprovar</Badge>}
                     <span
                       style={{
                         font: 'var(--text-xs) var(--font-mono)',
