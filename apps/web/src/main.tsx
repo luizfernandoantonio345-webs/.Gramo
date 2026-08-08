@@ -1,5 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+// Fontes self-hosted (empacotadas no build) -- PWA funciona offline, sem
+// depender do Google Fonts. Inter (variavel) para a UI; IBM Plex Mono p/ numeros.
+import '@fontsource-variable/inter';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
+import '@fontsource/ibm-plex-mono/600.css';
 import './design-system/tokens.css';
 import './design-system/ui.css';
 import { App } from './App';

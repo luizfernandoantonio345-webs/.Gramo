@@ -14,6 +14,11 @@ export default defineConfig({
       // antigo e limpa TODOS os caches no cliente (util em dev p/ desencalhar quem
       // ficou com versao velha). Em producao (sem a env) o PWA fica normal.
       selfDestroying: process.env.PWA_OFF === 'true',
+      // Pre-cacheia tambem as fontes self-hosted (woff2) -- o padrao nao as
+      // inclui. Sem isto, o PWA offline cairia no system-ui.
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+      },
       manifest: {
         name: '.GRAMO - Ponto Eletronico',
         short_name: '.GRAMO',

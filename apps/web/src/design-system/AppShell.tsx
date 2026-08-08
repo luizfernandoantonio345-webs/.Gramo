@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Icone, type NomeIcone } from './icons';
 import { MarcaRepp } from './components';
 
@@ -35,6 +35,17 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [aberta, setAberta] = useState(false);
+
+  // Acessibilidade: Esc fecha o drawer (menu mobile).
+  useEffect(() => {
+    if (!aberta) return;
+    const aoTecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAberta(false);
+    };
+    window.addEventListener('keydown', aoTecla);
+    return () => window.removeEventListener('keydown', aoTecla);
+  }, [aberta]);
+
   const navegar = (id: string) => {
     aoNavegar(id);
     setAberta(false);

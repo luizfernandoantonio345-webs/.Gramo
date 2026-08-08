@@ -17,8 +17,8 @@
   /* --- Texto --- */
   --color-text: #0f172a; /* principal */
   --color-text-secondary: #475569; /* rotulos, corpo secundario */
-  --color-text-muted: #64748b; /* datas, hashes, hints */
-  --color-text-faint: #94a3b8; /* placeholder, desabilitado */
+  --color-text-muted: #64748b; /* datas, hashes, hints (>= 4.5:1 em branco, AA) */
+  --color-text-faint: #6b7280; /* hints discretos -- ainda AA (~4.6:1) em branco */
   --color-text-on-accent: #ffffff; /* texto sobre o acento */
 
   /* --- Acento (azul profundo corporativo) --- */
@@ -54,8 +54,8 @@
   --realce-topo: none;
 
   /* --- Tipografia --- */
-  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
 
   --text-xs: 12px;
