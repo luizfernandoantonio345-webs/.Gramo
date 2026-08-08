@@ -39,6 +39,7 @@ export class RegistrarPontoDto {
   /** Foto da captura (base64 ou data URL). Guardada cifrada como evidencia. */
   @IsOptional()
   @IsString()
+  @MaxLength(3_500_000) // ~2,5 MB de imagem (selfie); evita upload gigante (DoS)
   fotoBase64?: string;
 
   @IsOptional()
@@ -83,6 +84,7 @@ export class SyncItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(3_500_000) // ~2,5 MB de imagem (selfie); evita upload gigante (DoS)
   fotoBase64?: string;
 
   @IsOptional()
@@ -98,6 +100,7 @@ export class SyncItemDto {
 /** Upload da foto de referencia (selfie) do proprio funcionario, p/ matching facial. */
 export class UploadReferenciaDto {
   @IsString()
+  @MaxLength(3_500_000) // ~2,5 MB (selfie de referencia)
   fotoBase64!: string;
 }
 
