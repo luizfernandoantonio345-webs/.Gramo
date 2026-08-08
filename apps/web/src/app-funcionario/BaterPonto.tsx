@@ -241,6 +241,29 @@ export function BaterPonto() {
     setEnviando(false);
   }
 
+  // Enrollment: o funcionario cadastra/atualiza a propria selfie de referencia.
+  // Fica pendente ate o RH aprovar; so entao o matching facial passa a valer.
+  async function cadastrarMeuRosto() {
+    const foto = await capturarFoto();
+    if (!foto) {
+      setFeedback({ tom: 'aviso', texto: 'Ligue a câmera e enquadre seu rosto para cadastrar.' });
+      return;
+    }
+    try {
+      await apiPost('/pontos/minha-referencia', { fotoBase64: foto }, true);
+      setFeedback({
+        tom: 'sucesso',
+        texto:
+          'Foto enviada! Aguardando o RH aprovar — depois disso o reconhecimento facial fica ativo.',
+      });
+    } catch (e) {
+      setFeedback({
+        tom: 'erro',
+        texto: e instanceof Error ? e.message : 'Falha ao enviar a foto.',
+      });
+    }
+  }
+
   async function contestar(pontoId: string) {
     const motivo = window.prompt('Motivo da contestação desta marcação:');
     if (!motivo) return;
@@ -361,6 +384,15 @@ export function BaterPonto() {
           {cameraLigada ? 'Trocar câmera' : 'Ligar câmera (opcional)'}
         </Botao>
       </div>
+      {cameraLigada && (statusRosto === 'indisponivel' || statusRosto === 'pronto') && (
+        <div style={{ marginTop: 'var(--space-2)' }}>
+          <Botao variante="secundario" onClick={cadastrarMeuRosto}>
+            {statusRosto === 'pronto'
+              ? 'Atualizar meu rosto'
+              : 'Cadastrar meu rosto (reconhecimento facial)'}
+          </Botao>
+        </div>
+      )}
 
       {/* Feedback da acao (sucesso/erro/aviso), com aria-live no componente. */}
       {feedback && (

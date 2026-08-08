@@ -4,7 +4,12 @@ import { TipoSujeito } from '@prisma/client';
 import { CurrentUser } from '../common/auth/current-user.decorator';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { JwtAuthGuard } from '../common/auth/jwt-auth.guard';
-import { RegapStatusDto, RegistrarPontoDto, SyncPontosDto } from './dto/ponto.dto';
+import {
+  RegapStatusDto,
+  RegistrarPontoDto,
+  SyncPontosDto,
+  UploadReferenciaDto,
+} from './dto/ponto.dto';
 import { PontoService } from './ponto.service';
 
 /** Tela 3 -- Bater Ponto (funcionario). */
@@ -47,6 +52,14 @@ export class PontoController {
   })
   minhaReferencia(@CurrentUser() user: UsuarioAutenticado) {
     return this.service.minhaReferencia(this.exigirFuncionario(user));
+  }
+
+  @Post('minha-referencia')
+  @ApiOperation({
+    summary: 'Envia/atualiza a selfie de referencia (fica pendente de aprovacao do RH).',
+  })
+  enviarReferencia(@Body() dto: UploadReferenciaDto, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.salvarMinhaReferencia(this.exigirFuncionario(user), dto.fotoBase64);
   }
 
   private exigirFuncionario(user: UsuarioAutenticado): string {

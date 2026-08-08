@@ -49,6 +49,11 @@ export function GestaoFuncionarios() {
   const [busca, setBusca] = useState('');
   const [sel, setSel] = useState<Funcionario | null>(null);
   const [docs, setDocs] = useState<Documento[]>([]);
+  const [fotoRef, setFotoRef] = useState<{
+    disponivel: boolean;
+    aprovada: boolean;
+    fotoBase64?: string;
+  } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -70,7 +75,13 @@ export function GestaoFuncionarios() {
 
   async function abrir(f: Funcionario) {
     setSel(f);
+    setFotoRef(null);
     setDocs(await apiGet<Documento[]>(`/admin/funcionarios/${f.id}/documentos`));
+    setFotoRef(
+      await apiGet<{ disponivel: boolean; aprovada: boolean; fotoBase64?: string }>(
+        `/admin/funcionarios/${f.id}/foto-referencia`,
+      ).catch(() => null),
+    );
   }
 
   async function decidirDoc(id: string, aprovar: boolean) {
@@ -163,20 +174,62 @@ export function GestaoFuncionarios() {
                   >
                     {sel.nome}
                   </h2>
-                  <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-                    <Badge cor={sel.fotoAprovada ? 'var(--color-success)' : 'var(--color-warning)'}>
-                      {sel.fotoAprovada ? 'foto aprovada' : 'foto pendente'}
-                    </Badge>
-                    {!sel.fotoAprovada && (
-                      <Botao
-                        tamanho="sm"
-                        variante="secundario"
-                        bloco={false}
-                        onClick={() => aprovarFoto(sel)}
+                  <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+                    {fotoRef?.disponivel && fotoRef.fotoBase64 ? (
+                      <img
+                        src={fotoRef.fotoBase64}
+                        alt={`Foto de referência de ${sel.nome}`}
+                        style={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: 'var(--radius-md)',
+                          objectFit: 'cover',
+                          border: `2px solid ${sel.fotoAprovada ? 'var(--color-success)' : 'var(--color-warning)'}`,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: 'var(--radius-md)',
+                          background: 'var(--color-surface-2)',
+                          border: '1px dashed var(--color-border-strong)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          font: 'var(--text-xs) var(--font-body)',
+                          color: 'var(--color-text-faint)',
+                          textAlign: 'center',
+                          padding: 4,
+                        }}
                       >
-                        Aprovar foto
-                      </Botao>
+                        sem foto
+                      </div>
                     )}
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 'var(--space-3)',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <Badge
+                        cor={sel.fotoAprovada ? 'var(--color-success)' : 'var(--color-warning)'}
+                      >
+                        {sel.fotoAprovada
+                          ? 'foto aprovada'
+                          : fotoRef?.disponivel
+                            ? 'aguardando aprovação'
+                            : 'sem foto de referência'}
+                      </Badge>
+                      {!sel.fotoAprovada && fotoRef?.disponivel && (
+                        <Botao tamanho="sm" bloco={false} onClick={() => aprovarFoto(sel)}>
+                          Aprovar foto
+                        </Botao>
+                      )}
+                    </div>
                   </div>
                 </div>
 

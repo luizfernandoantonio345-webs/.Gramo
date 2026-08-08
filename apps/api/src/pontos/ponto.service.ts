@@ -103,6 +103,25 @@ export class PontoService {
   }
 
   /**
+   * O funcionario envia/atualiza a propria selfie de referencia. Guarda cifrada e
+   * marca fotoAprovada=false: o RH precisa conferir e aprovar antes de o matching
+   * facial passar a valer (evita cadastrar o rosto de outra pessoa).
+   */
+  async salvarMinhaReferencia(
+    funcionarioId: string,
+    fotoBase64: string,
+  ): Promise<{ ok: true; status: 'pendente_aprovacao' }> {
+    const ref = await this.storage.salvarImagem(fotoBase64);
+    await this.prisma.forTenant((tx) =>
+      tx.funcionario.update({
+        where: { id: funcionarioId },
+        data: { fotoReferenciaRef: ref, fotoAprovada: false },
+      }),
+    );
+    return { ok: true, status: 'pendente_aprovacao' };
+  }
+
+  /**
    * Sync da fila offline. Cada item e processado de forma independente e
    * idempotente (mesmo uuidIdempotencia nunca duplica). Hora = do dispositivo.
    */

@@ -83,6 +83,15 @@ export class FuncionariosController {
   documentos(@Param('id') id: string) {
     return this.service.documentos(id);
   }
+
+  @Get(':id/foto-referencia')
+  @Roles(...LEITURA)
+  @ApiOperation({
+    summary: 'Foto de referencia (selfie) do funcionario, para o RH conferir/aprovar.',
+  })
+  fotoReferencia(@Param('id') id: string, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.fotoReferencia(id, user);
+  }
 }
 
 /** ADM 2 -- decisao sobre documentos enviados. */

@@ -11,6 +11,7 @@ import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { EscopoFilialService } from '../common/authz/escopo-filial.service';
 import { TenantContext } from '../common/tenant/tenant-context';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import type {
   AtualizarFuncionarioDto,
   CriarFuncionarioDto,
@@ -29,7 +30,31 @@ export class FuncionariosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly escopo: EscopoFilialService,
+    private readonly storage: StorageService,
   ) {}
+
+  /** Foto de referencia (selfie) do funcionario, para o RH conferir antes de aprovar. */
+  async fotoReferencia(
+    id: string,
+    autor: UsuarioAutenticado,
+  ): Promise<{ disponivel: boolean; aprovada: boolean; fotoBase64?: string }> {
+    const filiais = await this.escopo.filiaisPermitidas(autor);
+    const func = await this.prisma.forTenant((tx) =>
+      tx.funcionario.findFirst({
+        where: { id },
+        select: { fotoReferenciaRef: true, fotoAprovada: true, filialId: true },
+      }),
+    );
+    if (!func) throw new NotFoundException('Funcionario nao encontrado.');
+    this.exigirFilial(filiais, func.filialId);
+    if (!func.fotoReferenciaRef) return { disponivel: false, aprovada: func.fotoAprovada };
+    const bytes = await this.storage.lerImagem(func.fotoReferenciaRef);
+    return {
+      disponivel: true,
+      aprovada: func.fotoAprovada,
+      fotoBase64: `data:image/jpeg;base64,${bytes.toString('base64')}`,
+    };
+  }
 
   async listar(q: ListarFuncionariosQuery, autor: UsuarioAutenticado) {
     const busca = q.busca?.trim();

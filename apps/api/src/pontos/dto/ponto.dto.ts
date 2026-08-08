@@ -95,6 +95,12 @@ export class SyncItemDto {
   identidadeConfere?: boolean;
 }
 
+/** Upload da foto de referencia (selfie) do proprio funcionario, p/ matching facial. */
+export class UploadReferenciaDto {
+  @IsString()
+  fotoBase64!: string;
+}
+
 export class SyncPontosDto {
   @IsArray()
   @ArrayMaxSize(200)
