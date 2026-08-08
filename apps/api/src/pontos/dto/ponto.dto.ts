@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsISO8601,
   IsLatitude,
@@ -49,6 +50,11 @@ export class RegistrarPontoDto {
   @IsOptional()
   @IsEnum(TipoMarcacao)
   tipo?: TipoMarcacao;
+
+  /** Reconhecimento facial 1:1 (feito no dispositivo): true=confere, false=nao. */
+  @IsOptional()
+  @IsBoolean()
+  identidadeConfere?: boolean;
 }
 
 /** Item da fila offline (hora = do dispositivo, marcada como tal). */
@@ -83,6 +89,10 @@ export class SyncItemDto {
   @IsString()
   @MaxLength(500)
   justificativa?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  identidadeConfere?: boolean;
 }
 
 export class SyncPontosDto {

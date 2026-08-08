@@ -4,6 +4,14 @@ import { Badge, Botao, Cartao, EstadoVazio, Feedback } from '../design-system/co
 import { apiGet, apiPost } from '../lib/api';
 import { contarPendentes, enfileirar } from '../offline/fila-ponto';
 import { sincronizarFila } from '../offline/sync';
+import {
+  carregarModelosRosto,
+  compararRostos,
+  descritorFacial,
+  imagemDeDataUrl,
+} from '../lib/rosto';
+
+type StatusRosto = 'idle' | 'preparando' | 'pronto' | 'indisponivel' | 'confere' | 'naoConfere';
 
 type StatusAnel = 'dentro' | 'fora' | 'desconhecido';
 type TomFeedback = 'sucesso' | 'erro' | 'aviso' | 'info';
@@ -39,6 +47,9 @@ export function BaterPonto() {
   const [cameraLigada, setCameraLigada] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Reconhecimento facial 1:1: descritor da foto de referencia (aprovada) + status.
+  const refDescritor = useRef<Float32Array | null>(null);
+  const [statusRosto, setStatusRosto] = useState<StatusRosto>('idle');
 
   const carregarEspelho = useCallback(async () => {
     try {
@@ -131,11 +142,34 @@ export function BaterPonto() {
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraLigada(true);
+      void prepararRosto(); // carrega modelos + foto de referencia em background
     } catch {
       setFeedback({
         tom: 'aviso',
         texto: 'Câmera indisponível — a marcação segue normalmente sem foto.',
       });
+    }
+  }
+
+  // Prepara o reconhecimento facial: baixa a foto de referencia (aprovada) e
+  // calcula o descritor uma vez. Roda no dispositivo; se nao houver referencia
+  // aprovada, o matching fica indisponivel (a marcacao segue normalmente).
+  async function prepararRosto() {
+    if (statusRosto === 'preparando' || refDescritor.current) return;
+    setStatusRosto('preparando');
+    try {
+      const ref = await apiGet<{ disponivel: boolean; fotoBase64?: string }>(
+        '/pontos/minha-referencia',
+      );
+      if (!ref.disponivel || !ref.fotoBase64) return setStatusRosto('indisponivel');
+      await carregarModelosRosto();
+      const img = await imagemDeDataUrl(ref.fotoBase64);
+      const d = await descritorFacial(img);
+      if (!d) return setStatusRosto('indisponivel');
+      refDescritor.current = d;
+      setStatusRosto('pronto');
+    } catch {
+      setStatusRosto('indisponivel');
     }
   }
 
@@ -151,6 +185,16 @@ export function BaterPonto() {
     setEnviando(true);
     setFeedback(null);
     const foto = await capturarFoto();
+
+    // Reconhecimento facial 1:1 no dispositivo (se ha referencia aprovada e camera
+    // ligada). NUNCA bloqueia: um nao-match apenas marca a batida p/ conferencia do RH.
+    let identidadeConfere: boolean | undefined;
+    if (refDescritor.current && streamRef.current && videoRef.current) {
+      const d = await descritorFacial(videoRef.current);
+      identidadeConfere = d ? compararRostos(refDescritor.current, d).confere : false;
+      setStatusRosto(identidadeConfere ? 'confere' : 'naoConfere');
+    }
+
     const item = {
       uuidIdempotencia: crypto.randomUUID(),
       tipo: tipoSugerido,
@@ -160,6 +204,7 @@ export function BaterPonto() {
       precisaoMetros: coords?.prec ?? null,
       fotoBase64: foto,
       justificativa: anel === 'fora' ? 'Registro fora da area (REGAP).' : null,
+      identidadeConfere,
     };
     try {
       if (!navigator.onLine) throw new Error('offline');
@@ -172,6 +217,7 @@ export function BaterPonto() {
           precisaoMetros: item.precisaoMetros ?? undefined,
           fotoBase64: item.fotoBase64 ?? undefined,
           justificativa: item.justificativa ?? undefined,
+          identidadeConfere: item.identidadeConfere,
         },
         true,
       );
@@ -218,6 +264,19 @@ export function BaterPonto() {
       : anel === 'fora'
         ? 'Fora da área — registro permitido'
         : 'Localização indisponível';
+
+  const rostoInfo: { cor: string; texto: string } | null =
+    statusRosto === 'preparando'
+      ? { cor: 'var(--color-border)', texto: 'Preparando reconhecimento facial…' }
+      : statusRosto === 'pronto'
+        ? { cor: 'var(--color-accent)', texto: 'Rosto de referência carregado' }
+        : statusRosto === 'confere'
+          ? { cor: 'var(--color-teal-success)', texto: '✓ Rosto reconhecido' }
+          : statusRosto === 'naoConfere'
+            ? { cor: 'var(--color-amber-warning)', texto: 'Rosto não confere — irá p/ conferência' }
+            : statusRosto === 'indisponivel'
+              ? { cor: 'var(--color-border)', texto: 'Sem foto de referência aprovada' }
+              : null;
 
   return (
     <div style={{ maxWidth: 440, margin: '0 auto' }}>
@@ -278,11 +337,19 @@ export function BaterPonto() {
       </div>
 
       <div
-        style={{ textAlign: 'center', marginBottom: 'var(--space-4)' }}
+        style={{
+          textAlign: 'center',
+          marginBottom: 'var(--space-4)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-2)',
+          alignItems: 'center',
+        }}
         role="status"
         aria-live="polite"
       >
         <Badge cor={corAnel}>{textoAnel}</Badge>
+        {cameraLigada && rostoInfo && <Badge cor={rostoInfo.cor}>{rostoInfo.texto}</Badge>}
       </div>
 
       {/* Acao principal: grande, alvo de toque generoso. Nunca bloqueia. */}

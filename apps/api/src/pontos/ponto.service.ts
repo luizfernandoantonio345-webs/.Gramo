@@ -48,6 +48,8 @@ interface DadosCriacao {
   fotoRef: string | null;
   justificativa: string | null;
   uuidIdempotencia: string;
+  /** Resultado do reconhecimento facial 1:1 (feito no dispositivo). null = nao avaliado. */
+  identidadeConfere: boolean | null;
 }
 
 @Injectable()
@@ -77,8 +79,27 @@ export class PontoService {
         fotoRef,
         justificativa: dto.justificativa ?? null,
         uuidIdempotencia: dto.uuidIdempotencia,
+        identidadeConfere: dto.identidadeConfere ?? null,
       });
     });
+  }
+
+  /**
+   * Foto de referencia (aprovada pelo RH) do proprio funcionario, como data URL,
+   * para o reconhecimento facial 1:1 rodar no dispositivo. So devolve se aprovada.
+   */
+  async minhaReferencia(
+    funcionarioId: string,
+  ): Promise<{ disponivel: boolean; fotoBase64?: string }> {
+    const func = await this.prisma.forTenant((tx) =>
+      tx.funcionario.findFirst({
+        where: { id: funcionarioId },
+        select: { fotoReferenciaRef: true, fotoAprovada: true },
+      }),
+    );
+    if (!func?.fotoReferenciaRef || !func.fotoAprovada) return { disponivel: false };
+    const bytes = await this.storage.lerImagem(func.fotoReferenciaRef);
+    return { disponivel: true, fotoBase64: `data:image/jpeg;base64,${bytes.toString('base64')}` };
   }
 
   /**
@@ -105,6 +126,7 @@ export class PontoService {
             fotoRef,
             justificativa: item.justificativa ?? null,
             uuidIdempotencia: item.uuidIdempotencia,
+            identidadeConfere: item.identidadeConfere ?? null,
           }),
         );
         // Achata o registro no formato do contrato compartilhado (nsr/pontoId/etc).
@@ -164,9 +186,7 @@ export class PontoService {
 
   // ---- internos ----
 
-  private async carregarFuncionarioComFilial(
-    funcionarioId: string,
-  ): Promise<{ filialId: string }> {
+  private async carregarFuncionarioComFilial(funcionarioId: string): Promise<{ filialId: string }> {
     const funcionario = await this.prisma.forTenant((tx) =>
       tx.funcionario.findUniqueOrThrow({ where: { id: funcionarioId } }),
     );
@@ -220,25 +240,28 @@ export class PontoService {
     if (existente) return { ponto: this.mapear(existente), duplicado: true };
 
     // REGAP -> status. O botao NUNCA bloqueia: fora da area vira pendente.
-    const regaps = (await tx.regap.findMany({ where: { ativo: true, filialId: dados.filialId } })).map(
-      (r) => ({
-        id: r.id,
-        latitude: Number(r.latitudeCentro),
-        longitude: Number(r.longitudeCentro),
-        raioMetros: r.raioMetros,
-      }),
-    );
+    const regaps = (
+      await tx.regap.findMany({ where: { ativo: true, filialId: dados.filialId } })
+    ).map((r) => ({
+      id: r.id,
+      latitude: Number(r.latitudeCentro),
+      longitude: Number(r.longitudeCentro),
+      raioMetros: r.raioMetros,
+    }));
     const avaliacao = avaliarRegap(dados.latitude, dados.longitude, regaps);
 
     // Horario/jornada (ADM 7). Nunca bloqueia -> apenas classifica.
     const dentroHorario = await this.avaliarHorario(tx, dados);
 
-    // Prioridade: fora da area > fora do horario > valido.
+    // Prioridade: fora da area > rosto nao confere > fora do horario > valido.
+    // Nunca bloqueia: cada divergencia so classifica (e vai para a fila do RH).
     const statusValidacao = !avaliacao.dentro
       ? StatusValidacaoPonto.PENDENTE_REGAP
-      : !dentroHorario
-        ? StatusValidacaoPonto.PENDENTE_HORARIO
-        : StatusValidacaoPonto.VALIDO;
+      : dados.identidadeConfere === false
+        ? StatusValidacaoPonto.PENDENTE_IDENTIDADE
+        : !dentroHorario
+          ? StatusValidacaoPonto.PENDENTE_HORARIO
+          : StatusValidacaoPonto.VALIDO;
 
     const nsr = await this.nsr.proximo(tx, empresaId, dados.filialId);
     const registradoIso = dados.registradoEm.toISOString();
@@ -368,7 +391,10 @@ export class PontoService {
   }
 
   /** Minutos-do-dia, dia-da-semana e data local (YYYY-MM-DD) no fuso informado. */
-  private minutosEDia(date: Date, tz: string): { minutosDoDia: number; diaSemana: number; dataLocal: string } {
+  private minutosEDia(
+    date: Date,
+    tz: string,
+  ): { minutosDoDia: number; diaSemana: number; dataLocal: string } {
     const partes = new Intl.DateTimeFormat('en-CA', {
       timeZone: tz,
       hourCycle: 'h23',

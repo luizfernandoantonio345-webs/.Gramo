@@ -41,6 +41,14 @@ export class PontoController {
     return this.service.espelhoDoDia(this.exigirFuncionario(user));
   }
 
+  @Get('minha-referencia')
+  @ApiOperation({
+    summary: 'Foto de referencia (aprovada) do proprio funcionario, p/ matching facial.',
+  })
+  minhaReferencia(@CurrentUser() user: UsuarioAutenticado) {
+    return this.service.minhaReferencia(this.exigirFuncionario(user));
+  }
+
   private exigirFuncionario(user: UsuarioAutenticado): string {
     if (user.tipo !== TipoSujeito.FUNCIONARIO) {
       throw new ForbiddenException('Apenas funcionarios registram ponto.');
