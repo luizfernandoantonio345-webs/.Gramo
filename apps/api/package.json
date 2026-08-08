@@ -15,7 +15,8 @@
     "db:rls": "psql \"$MIGRATION_DATABASE_URL\" -v ON_ERROR_STOP=1 -f prisma/sql/rls-policies.sql",
     "db:setup": "npm run db:migrate && npm run db:rls",
     "migration:gen": "node scripts/gen-migration.mjs",
-    "test:e2e": "node test/e2e/run-e2e.mjs"
+    "test:e2e": "node test/e2e/run-e2e.mjs",
+    "test:e2e:http": "node test/e2e/run-e2e-http.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",
