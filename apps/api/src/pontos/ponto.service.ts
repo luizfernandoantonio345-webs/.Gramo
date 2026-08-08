@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import {
   OrigemHora,
   StatusAusencia,
@@ -107,10 +107,56 @@ export class PontoService {
    * ja ATIVA o reconhecimento facial na hora (fotoAprovada=true) -- sem etapa de
    * aprovacao do RH. O RH mantem visibilidade (ve a foto) e pode revisar depois.
    */
+  /** Consentimento LGPD vigente (biometria facial) do funcionario. */
+  async statusConsentimentoBiometria(funcionarioId: string): Promise<{ concedido: boolean }> {
+    const ultimo = await this.prisma.forTenant((tx) =>
+      tx.consentimentoLgpd.findFirst({
+        where: { funcionarioId, finalidade: 'biometria_facial' },
+        orderBy: { registradoEm: 'desc' },
+        select: { concedido: true },
+      }),
+    );
+    return { concedido: ultimo?.concedido ?? false };
+  }
+
+  /**
+   * Registra (append-only) o consentimento LGPD de biometria facial. Revogar =
+   * nova linha com concedido=false; nunca apaga o historico.
+   */
+  async registrarConsentimentoBiometria(
+    funcionarioId: string,
+    concedido: boolean,
+    ip: string | null,
+    userAgent: string | null,
+  ): Promise<{ concedido: boolean }> {
+    const empresaId = TenantContext.requireEmpresaId();
+    await this.prisma.forTenant((tx) =>
+      tx.consentimentoLgpd.create({
+        data: {
+          empresaId,
+          funcionarioId,
+          finalidade: 'biometria_facial',
+          versaoTermo: 'v1',
+          concedido,
+          ip,
+          userAgent,
+        },
+      }),
+    );
+    return { concedido };
+  }
+
   async salvarMinhaReferencia(
     funcionarioId: string,
     fotoBase64: string,
   ): Promise<{ ok: true; status: 'ativo' }> {
+    // LGPD: biometria facial e dado sensivel -> exige consentimento vigente.
+    const consent = await this.statusConsentimentoBiometria(funcionarioId);
+    if (!consent.concedido) {
+      throw new ForbiddenException(
+        'E necessario autorizar o uso da biometria facial (LGPD) antes de cadastrar o rosto.',
+      );
+    }
     const ref = await this.storage.salvarImagem(fotoBase64);
     await this.prisma.forTenant((tx) =>
       tx.funcionario.update({

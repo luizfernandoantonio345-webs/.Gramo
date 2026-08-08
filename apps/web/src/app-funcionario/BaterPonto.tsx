@@ -50,6 +50,8 @@ export function BaterPonto() {
   // Reconhecimento facial 1:1: descritor da foto de referencia (aprovada) + status.
   const refDescritor = useRef<Float32Array | null>(null);
   const [statusRosto, setStatusRosto] = useState<StatusRosto>('idle');
+  // LGPD: consentimento de biometria facial (exigido antes de cadastrar o rosto).
+  const [pedirConsent, setPedirConsent] = useState(false);
 
   const carregarEspelho = useCallback(async () => {
     try {
@@ -244,6 +246,14 @@ export function BaterPonto() {
   // Enrollment: o funcionario cadastra/atualiza a propria selfie de referencia.
   // Fica pendente ate o RH aprovar; so entao o matching facial passa a valer.
   async function cadastrarMeuRosto() {
+    // LGPD: sem consentimento vigente, abre o termo antes de capturar a biometria.
+    const c = await apiGet<{ concedido: boolean }>('/pontos/consentimento-biometria').catch(() => ({
+      concedido: false,
+    }));
+    if (!c.concedido) {
+      setPedirConsent(true);
+      return;
+    }
     const foto = await capturarFoto();
     if (!foto) {
       setFeedback({ tom: 'aviso', texto: 'Ligue a câmera e enquadre seu rosto para cadastrar.' });
@@ -264,6 +274,19 @@ export function BaterPonto() {
         tom: 'erro',
         texto: e instanceof Error ? e.message : 'Falha ao enviar a foto.',
       });
+    }
+  }
+
+  async function autorizarBiometria() {
+    try {
+      await apiPost('/pontos/consentimento-biometria', { concedido: true }, true);
+      setPedirConsent(false);
+      setFeedback({
+        tom: 'info',
+        texto: 'Autorização registrada. Toque em "Cadastrar meu rosto" para concluir.',
+      });
+    } catch (e) {
+      setFeedback({ tom: 'erro', texto: e instanceof Error ? e.message : 'Falha ao autorizar.' });
     }
   }
 
@@ -394,6 +417,42 @@ export function BaterPonto() {
               ? 'Atualizar meu rosto'
               : 'Cadastrar meu rosto (reconhecimento facial)'}
           </Botao>
+        </div>
+      )}
+
+      {pedirConsent && (
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <Cartao>
+            <h3
+              style={{
+                font: '600 var(--text-md) var(--font-display)',
+                margin: '0 0 var(--space-3)',
+              }}
+            >
+              Autorização de uso da biometria facial (LGPD)
+            </h3>
+            <p
+              style={{
+                font: 'var(--text-sm) var(--font-body)',
+                color: 'var(--color-text-secondary)',
+                margin: '0 0 var(--space-4)',
+                lineHeight: 1.5,
+              }}
+            >
+              Autorizo a GRAMO ENGENHARIA a coletar e tratar minha imagem facial exclusivamente para
+              confirmar minha identidade no registro de ponto, conforme a LGPD (Lei 13.709/2018,
+              art. 11). A imagem é armazenada de forma cifrada e o reconhecimento é feito no meu
+              aparelho. Posso revogar a autorização a qualquer momento junto ao RH.
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <Botao bloco={false} onClick={autorizarBiometria}>
+                Autorizo
+              </Botao>
+              <Botao variante="secundario" bloco={false} onClick={() => setPedirConsent(false)}>
+                Agora não
+              </Botao>
+            </div>
+          </Cartao>
         </div>
       )}
 

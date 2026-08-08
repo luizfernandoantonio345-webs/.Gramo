@@ -1,10 +1,21 @@
-import { Body, Controller, ForbiddenException, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TipoSujeito } from '@prisma/client';
+import type { Request } from 'express';
 import { CurrentUser } from '../common/auth/current-user.decorator';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { JwtAuthGuard } from '../common/auth/jwt-auth.guard';
 import {
+  ConsentimentoBiometriaDto,
   RegapStatusDto,
   RegistrarPontoDto,
   SyncPontosDto,
@@ -56,10 +67,33 @@ export class PontoController {
 
   @Post('minha-referencia')
   @ApiOperation({
-    summary: 'Envia/atualiza a selfie de referencia (fica pendente de aprovacao do RH).',
+    summary: 'Envia/atualiza a selfie de referencia (ativa o reconhecimento facial).',
   })
   enviarReferencia(@Body() dto: UploadReferenciaDto, @CurrentUser() user: UsuarioAutenticado) {
     return this.service.salvarMinhaReferencia(this.exigirFuncionario(user), dto.fotoBase64);
+  }
+
+  @Get('consentimento-biometria')
+  @ApiOperation({ summary: 'Consentimento LGPD vigente de biometria facial do funcionario.' })
+  statusConsentimento(@CurrentUser() user: UsuarioAutenticado) {
+    return this.service.statusConsentimentoBiometria(this.exigirFuncionario(user));
+  }
+
+  @Post('consentimento-biometria')
+  @ApiOperation({
+    summary: 'Registra/revoga o consentimento LGPD de biometria facial (append-only).',
+  })
+  consentir(
+    @Body() dto: ConsentimentoBiometriaDto,
+    @Req() req: Request,
+    @CurrentUser() user: UsuarioAutenticado,
+  ) {
+    return this.service.registrarConsentimentoBiometria(
+      this.exigirFuncionario(user),
+      dto.concedido,
+      req.ip ?? null,
+      req.headers['user-agent'] ?? null,
+    );
   }
 
   private exigirFuncionario(user: UsuarioAutenticado): string {

@@ -104,6 +104,12 @@ export class UploadReferenciaDto {
   fotoBase64!: string;
 }
 
+/** Consentimento LGPD de biometria facial (true=autoriza / false=revoga). */
+export class ConsentimentoBiometriaDto {
+  @IsBoolean()
+  concedido!: boolean;
+}
+
 export class SyncPontosDto {
   @IsArray()
   @ArrayMaxSize(200)
