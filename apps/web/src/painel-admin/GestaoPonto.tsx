@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import {
   Badge,
   Botao,
@@ -12,6 +12,9 @@ import {
   TituloSecao,
 } from '../design-system/components';
 import { apiGet, apiPost } from '../lib/api';
+
+// Mapa (Leaflet) carregado sob demanda -- nao pesa o bundle principal.
+const MapaObras = lazy(() => import('./MapaObras'));
 
 interface Dashboard {
   marcacoesHoje: number;
@@ -33,6 +36,8 @@ interface Regap {
   nome: string;
   raioMetros: number;
   ativo: boolean;
+  latitudeCentro: string | number;
+  longitudeCentro: string | number;
 }
 
 /** ADM 4 -- Gestao de Ponto: dashboard, fila de excecoes e REGAP. */
@@ -182,6 +187,32 @@ export function GestaoPonto() {
           <EstadoVazio>Nenhuma área cadastrada.</EstadoVazio>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <Suspense
+              fallback={
+                <div
+                  style={{
+                    height: 320,
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: 'var(--space-5)',
+                  }}
+                  className="g-skel"
+                />
+              }
+            >
+              <div style={{ marginBottom: 'var(--space-5)' }}>
+                <MapaObras
+                  obras={regaps
+                    .map((r) => ({
+                      nome: r.nome,
+                      lat: Number(r.latitudeCentro),
+                      lng: Number(r.longitudeCentro),
+                      raio: r.raioMetros,
+                      ativo: r.ativo,
+                    }))
+                    .filter((o) => Number.isFinite(o.lat) && Number.isFinite(o.lng) && o.lat !== 0)}
+                />
+              </div>
+            </Suspense>
             {regaps.map((r) => (
               <LinhaLista key={r.id}>
                 <span style={{ flex: 1, fontWeight: 500 }}>{r.nome}</span>
