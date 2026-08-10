@@ -13,7 +13,10 @@ COPY apps/web apps/web
 # URL da API embutida no build (mesma origem por padrao; Nginx faz o proxy /api).
 ARG VITE_API_BASE_URL=/api/v1
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-RUN npm run build -w @repp/web
+# Compila o pacote interno @repp/shared ANTES (gera dist/*.d.ts que o tsc do web
+# resolve). Sem isto, o `tsc -b` do web falha com TS2307 (Cannot find module
+# '@repp/shared'), pois packages/shared/dist nao e versionado.
+RUN npm run build -w @repp/shared && npm run build -w @repp/web
 
 # ---- Runtime: Nginx servindo o PWA + proxy para a API ----
 FROM nginx:alpine AS runtime
