@@ -17,8 +17,11 @@ services:
       # uma) -- sem repp_app/repp_super o db:rls falha e a API nao sobe.
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD}
       POSTGRES_SUPER_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
+    # Publica SO no loopback: o Docker fura o UFW, entao expor 5432 aqui abriria
+    # o banco para a internet. Quem precisa do banco (API) fala pela rede interna
+    # do compose (host "postgres"), nao pela porta do host.
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     volumes:
       - repp_pgdata:/var/lib/postgresql/data
       # Cria a role repp_app (NOSUPERUSER) na primeira inicializacao.
@@ -58,8 +61,11 @@ services:
     # container. WORKDIR e /repo/apps/api e STORAGE_LOCAL_PATH e ./storage.
     volumes:
       - repp_storage:/repo/apps/api/storage
+    # Publica SO no loopback (mesmo motivo do postgres): o PWA acessa a API pelo
+    # proxy /api do Nginx, dentro da rede do compose -- a porta 3000 nao precisa
+    # ficar exposta na internet.
     ports:
-      - '${API_PORT:-3000}:3000'
+      - '127.0.0.1:${API_PORT:-3000}:3000'
 
   web:
     build:
