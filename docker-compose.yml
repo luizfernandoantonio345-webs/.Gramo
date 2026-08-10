@@ -12,8 +12,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      # Consumida pelo script de init para criar a role da app (repp_app).
+      # Consumidas pelo script de init para criar as roles repp_app e repp_super.
+      # As DUAS sao obrigatorias (o init faz set -u e aborta se faltar qualquer
+      # uma) -- sem repp_app/repp_super o db:rls falha e a API nao sobe.
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD}
+      POSTGRES_SUPER_PASSWORD: ${POSTGRES_SUPER_PASSWORD}
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
