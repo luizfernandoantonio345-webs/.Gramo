@@ -46,7 +46,10 @@ services:
       # "postgres" (o .env usa localhost, que apontaria para o proprio container).
       DATABASE_URL: postgresql://repp_app:${POSTGRES_APP_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       SUPER_DATABASE_URL: postgresql://repp_super:${POSTGRES_SUPER_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      # Sem "?schema=public": esta URL tambem alimenta o `psql` do db:rls, e o
+      # libpq rejeita o parametro "schema" (erro: invalid URI query parameter).
+      # O Prisma usa o schema public por padrao, entao nada muda para ele.
+      MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     # Persiste os arquivos do STORAGE_DRIVER=local (fotos/biometria e documentos --
     # dado sensivel com guarda legal). Sem isto, seriam perdidos ao recriar o
     # container. WORKDIR e /repo/apps/api e STORAGE_LOCAL_PATH e ./storage.
