@@ -22,8 +22,9 @@ RUN npm run build -w @repp/shared \
 FROM node:22-alpine AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production
-# psql e usado por `db:rls` para aplicar as policies de RLS.
-RUN apk add --no-cache postgresql-client
+# psql e usado por `db:rls` para aplicar as policies de RLS. openssl fornece a
+# libssl que o engine do Prisma precisa para carregar no Alpine (musl).
+RUN apk add --no-cache postgresql-client openssl
 COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/packages/shared/dist ./packages/shared/dist
 COPY --from=build /repo/packages/shared/package.json ./packages/shared/

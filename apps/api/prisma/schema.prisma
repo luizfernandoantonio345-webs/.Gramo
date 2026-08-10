@@ -20,6 +20,9 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" cobre o dev; o target musl+openssl3 e necessario para rodar em
+  // producao no runtime node:*-alpine (senao o engine do Prisma nao carrega a libssl).
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
