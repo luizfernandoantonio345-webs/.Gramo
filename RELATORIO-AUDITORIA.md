@@ -23,13 +23,18 @@
 
 ## Achados
 
-| Sev.        | Área         | Achado                                                                                                                                                                                | Status                                              |
-| ----------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Médio       | IDOR/BOLA    | `GET /admin/funcionarios/:id/documentos` não validava escopo de **filial** (RLS isola por empresa, não por filial) → gestor de uma obra lia documentos de outra obra da mesma empresa | **Corrigido** `c901fbd`                             |
-| Médio       | Auth         | Rotas de auth (login/2FA/refresh) só tinham o limite global (300/min, folgado p/ quiosque) → brute force / credential stuffing                                                        | **Corrigido** `c901fbd` (`@Throttle` 10/min por IP) |
-| Médio       | Upload/DoS   | Campos `fotoBase64` sem limite de tamanho próprio (só o global de 25 MB)                                                                                                              | **Corrigido** `108ea49` (`@MaxLength` ~2,5 MB)      |
-| Médio-Baixo | IDOR/BOLA    | `GET /admin/exportacoes/:id/download` isola por tenant (RLS) mas não re-checa **filial** → gestor poderia baixar o AFD de outra obra (dado fiscal, não pessoal)                       | **Aberto** (recomendação abaixo)                    |
-| —           | Dependências | Produção: **0 vulnerabilidades**. Dev tooling: 6 (1 crítica/1 alta), **não expostas em produção**                                                                                     | Monitorar (`npm audit`)                             |
+| Sev.  | Área         | Achado                                                                                                                                                                                | Status                                              |
+| ----- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Médio | IDOR/BOLA    | `GET /admin/funcionarios/:id/documentos` não validava escopo de **filial** (RLS isola por empresa, não por filial) → gestor de uma obra lia documentos de outra obra da mesma empresa | **Corrigido** `c901fbd`                             |
+| Médio | Auth         | Rotas de auth (login/2FA/refresh) só tinham o limite global (300/min, folgado p/ quiosque) → brute force / credential stuffing                                                        | **Corrigido** `c901fbd` (`@Throttle` 10/min por IP) |
+| Médio | Upload/DoS   | Campos `fotoBase64` sem limite de tamanho próprio (só o global de 25 MB)                                                                                                              | **Corrigido** `108ea49` (`@MaxLength` ~2,5 MB)      |
+| —     | Dependências | Produção: **0 vulnerabilidades**. Dev tooling: 6 (1 crítica/1 alta), **não expostas em produção**                                                                                     | Monitorar (`npm audit`)                             |
+
+> Nota (revisão): o suposto "download de AFD sem escopo de filial" foi
+> **descartado como falso positivo** — a controller de exportações é
+> `@Roles(RH_MASTER, AUDITORIA)` (papéis de empresa; GESTOR_FILIAL nem alcança) e
+> a exportação é um artefato de **empresa** (sem `filialId` por design). Isolada
+> por tenant via RLS. Ver "Verificado como OK".
 
 ## Verificado como OK (com evidência)
 
@@ -45,17 +50,18 @@
   conta (5/15min), JWT de vida curta + refresh com rotação; helmet nos headers.
 - **LGPD:** biometria exige consentimento explícito (`ConsentimentoLgpd`,
   append-only) antes do cadastro do rosto; imagem cifrada em repouso.
+- **Exportações (AFD/AEJ):** restritas a `RH_MASTER`/`AUDITORIA` (papéis de
+  empresa); artefato de empresa (sem `filialId`); isoladas por tenant (RLS).
+- **IDOR multi-filial:** teste de regressão no e2e HTTP prova que um
+  GESTOR_FILIAL restrito à obra A recebe **403** ao ler documentos/foto de
+  referência de um funcionário da obra B, e **200** dentro do seu escopo.
 
 ## Aberto / recomendações
 
-1. **Download de exportação por filial** (Médio-Baixo): passar `autor` ao
-   `download(id)` e re-checar o escopo de filial (mesmo padrão dos demais).
-2. **Adicionar um e2e de IDOR multi-filial**: criar um GESTOR_FILIAL restrito à
-   obra A e provar que ele recebe 403 ao acessar recurso da obra B (documentos,
-   foto de referência, banco de horas). Trava a regressão do achado corrigido.
-3. **CSP no front (nginx/PWA):** helmet cobre a API (JSON); o HTML do PWA é
+1. **CSP no front (nginx/PWA):** helmet cobre a API (JSON); o HTML do PWA é
    servido pelo nginx — vale adicionar uma Content-Security-Policy lá.
-4. **`npm audit fix`** no dev tooling e rotina de atualização de dependências.
+2. **`npm audit fix`** no dev tooling e rotina de atualização de dependências.
+3. **Pentest externo** antes do go-live (ver seção final).
 
 ## O que NÃO foi coberto (honestidade)
 

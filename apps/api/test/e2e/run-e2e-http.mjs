@@ -14,6 +14,7 @@
  * Uso: node apps/api/test/e2e/run-e2e-http.mjs
  * Limpa o estado do Jose (foto + consentimento) ao final, via banco.
  */
+import { hash as argon2 } from '@node-rs/argon2';
 import pg from 'pg';
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:3000/api/v1';
@@ -60,6 +61,36 @@ async function resetJose(db) {
   await db.query('UPDATE funcionarios SET foto_referencia_ref=NULL, foto_aprovada=false WHERE id=$1', [id]);
   await db.query("DELETE FROM consentimentos_lgpd WHERE funcionario_id=$1 AND finalidade='biometria_facial'", [id]);
   return id;
+}
+
+// Cria um GESTOR_FILIAL restrito a UMA obra (Matriz) + retorna ids p/ o teste IDOR.
+async function setupIdor(db) {
+  const emp = (await db.query("SELECT id FROM empresas WHERE subdominio=$1", [TENANT])).rows[0].id;
+  const fil = (await db.query('SELECT id, nome FROM filiais WHERE empresa_id=$1', [emp])).rows;
+  const matriz = fil.find((f) => /matriz/i.test(f.nome));
+  const suape = fil.find((f) => /suape/i.test(f.nome)) ?? fil.find((f) => f.id !== matriz?.id);
+  const funcMatriz = (
+    await db.query('SELECT id FROM funcionarios WHERE empresa_id=$1 AND filial_id=$2 LIMIT 1', [emp, matriz.id])
+  ).rows[0];
+  const funcSuape = (
+    await db.query('SELECT id FROM funcionarios WHERE empresa_id=$1 AND filial_id=$2 LIMIT 1', [emp, suape.id])
+  ).rows[0];
+  const email = 'gestor.e2e@gramoengenharia.com.br';
+  const senha = 'GestorE2e@2026';
+  await db.query('DELETE FROM usuarios_admin WHERE empresa_id=$1 AND email=$2', [emp, email]);
+  const adminId = (
+    await db.query(
+      `INSERT INTO usuarios_admin (id, empresa_id, nome, email, senha_hash, papel, atualizado_em)
+       VALUES (gen_random_uuid(), $1, 'Gestor Matriz (e2e)', $2, $3, 'GESTOR_FILIAL'::"PapelAdmin", now())
+       RETURNING id`,
+      [emp, email, await argon2(senha)],
+    )
+  ).rows[0].id;
+  await db.query(
+    'INSERT INTO admin_filial_acesso (id, empresa_id, admin_id, filial_id) VALUES (gen_random_uuid(), $1, $2, $3)',
+    [emp, adminId, matriz.id],
+  );
+  return { email, senha, adminId, funcMatrizId: funcMatriz?.id, funcSuapeId: funcSuape?.id };
 }
 
 async function main() {
@@ -147,6 +178,28 @@ async function main() {
     const download = await req(`/admin/exportacoes/${id}/download`, { token: admTok });
     check('AFD gerado passa na verificacao de integridade', download.json?.integridadeOk === true);
   }
+
+  console.log('\n[6] IDOR multi-filial - gestor restrito NAO le outra obra');
+  const idor = await setupIdor(db);
+  const glog = await req('/auth/admin/login', {
+    method: 'POST',
+    body: { email: idor.email, senha: idor.senha },
+  });
+  const gtok = glog.json?.accessToken;
+  check('gestor de filial autentica', !!gtok);
+  if (gtok && idor.funcMatrizId && idor.funcSuapeId) {
+    const dentro = await req(`/admin/funcionarios/${idor.funcMatrizId}/documentos`, { token: gtok });
+    check('gestor LE documentos da propria obra (200)', dentro.status === 200);
+    const fora = await req(`/admin/funcionarios/${idor.funcSuapeId}/documentos`, { token: gtok });
+    check('gestor NAO le documentos de outra obra (403)', fora.status === 403);
+    const foraFoto = await req(`/admin/funcionarios/${idor.funcSuapeId}/foto-referencia`, {
+      token: gtok,
+    });
+    check('gestor NAO le foto de referencia de outra obra (403)', foraFoto.status === 403);
+  } else {
+    check('cenario IDOR montado (funcionarios nas 2 obras)', false);
+  }
+  await db.query('DELETE FROM usuarios_admin WHERE id=$1', [idor.adminId]); // limpa o gestor de teste
 
   await resetJose(db); // deixa o Jose limpo para a demo
   await db.end();
