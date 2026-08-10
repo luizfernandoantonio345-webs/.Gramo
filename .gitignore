@@ -36,7 +36,9 @@ Thumbs.db
 # PWA / uploads locais (dados sensiveis nunca no repo)
 apps/web/dev-dist/
 uploads/
-storage/
+# Pasta de DADOS em runtime (STORAGE_LOCAL_PATH). Ancorada para NAO ignorar o
+# codigo-fonte em apps/api/src/storage/ (regra ampla "storage/" fazia isso).
+/apps/api/storage/
 
 # Banco de desenvolvimento local (PostgreSQL embarcado)
 .devdb/
