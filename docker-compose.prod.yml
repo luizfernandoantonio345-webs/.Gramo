@@ -1,0 +1,31 @@
+# =============================================================================
+# Override de PRODUCAO: coloca o Caddy (HTTPS automatico via Let's Encrypt) na
+# frente do PWA. Combina com o base:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# No servidor, COMPOSE_FILE no .env ja encadeia os dois, entao basta
+# `docker compose up -d`.
+#
+# Requer no .env: SITE_DOMAIN (o nome que recebe o certificado) e
+# WEB_PORT=127.0.0.1:8080 (tira o PWA da porta 80 publica, que passa a ser do
+# Caddy; o Caddy alcanca o PWA pela rede interna em web:80).
+# =============================================================================
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: repp-caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

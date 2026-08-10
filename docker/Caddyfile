@@ -1,0 +1,10 @@
+# =============================================================================
+# HTTPS automatico (Let's Encrypt) para o .GRAMO.
+# O nome do site vem da variavel SITE_DOMAIN (definida no .env / ambiente).
+# O Caddy termina o TLS e repassa para o Nginx do PWA, que serve o app estatico
+# e faz o proxy /api -> api:3000 dentro da rede do compose.
+# =============================================================================
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:80
+}
