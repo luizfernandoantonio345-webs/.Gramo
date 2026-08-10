@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { PapelAdmin } from '@prisma/client';
 import type { Request } from 'express';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -9,10 +10,20 @@ import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { extrairCtx } from '../common/http/request-ctx';
 import { AdminAuthService } from './admin-auth.service';
-import { AdminLoginDto, CriarAdminDto, Desafio2faDto, RefreshDto, Verificar2faDto } from './dto/admin.dto';
+import {
+  AdminLoginDto,
+  CriarAdminDto,
+  Desafio2faDto,
+  RefreshDto,
+  Verificar2faDto,
+} from './dto/admin.dto';
 
 /** ADM 1 -- autenticacao do administrador (2FA obrigatorio). */
 @ApiTags('auth-admin')
+// Rate limit ESTRITO por IP nas rotas de auth (login/2FA/refresh) -- resiste a
+// brute force / credential stuffing, independente do lockout de conta. Fica
+// separado do limite global folgado (dimensionado para o quiosque da obra).
+@Throttle({ default: { limit: 10, ttl: 60000 } })
 @Controller({ path: 'auth/admin', version: '1' })
 export class AdminAuthController {
   constructor(private readonly service: AdminAuthService) {}
@@ -49,7 +60,11 @@ export class AdminAuthController {
   @HttpCode(204)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  async logout(@Body() dto: RefreshDto, @Req() req: Request, @CurrentUser() user: UsuarioAutenticado) {
+  async logout(
+    @Body() dto: RefreshDto,
+    @Req() req: Request,
+    @CurrentUser() user: UsuarioAutenticado,
+  ) {
     await this.service.logout(dto.refreshToken, extrairCtx(req), user.sub);
   }
 }

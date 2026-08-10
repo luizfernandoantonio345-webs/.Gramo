@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { extrairCtx } from '../common/http/request-ctx';
 import {
@@ -12,6 +13,7 @@ import { SuperAuthService } from './super-auth.service';
 
 /** ADM 0 -- autenticacao do Super Admin (plataforma). 2FA obrigatorio. */
 @ApiTags('super-auth')
+@Throttle({ default: { limit: 10, ttl: 60000 } }) // brute force / credential stuffing
 @Controller({ path: 'super/auth', version: '1' })
 export class SuperAuthController {
   constructor(private readonly service: SuperAuthService) {}

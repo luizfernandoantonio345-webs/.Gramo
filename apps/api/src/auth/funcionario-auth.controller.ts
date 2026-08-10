@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { PapelAdmin } from '@prisma/client';
 import type { Request } from 'express';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -20,6 +21,9 @@ import { FuncionarioAuthService } from './funcionario-auth.service';
 
 /** Tela 1 -- autenticacao e primeiro acesso do funcionario. */
 @ApiTags('auth-funcionario')
+// Rate limit estrito por IP (brute force / credential stuffing). Nao afeta o
+// quiosque (que usa token de dispositivo, nao login de funcionario).
+@Throttle({ default: { limit: 10, ttl: 60000 } })
 @Controller({ path: 'auth/funcionario', version: '1' })
 export class FuncionarioAuthController {
   constructor(private readonly service: FuncionarioAuthService) {}
@@ -28,7 +32,13 @@ export class FuncionarioAuthController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Primeiro acesso via codigo de convite + consentimento LGPD.' })
   primeiroAcesso(@Body() dto: PrimeiroAcessoDto, @Req() req: Request) {
-    return this.service.primeiroAcesso(dto.codigo, dto.cpf, dto.senha, dto.aceiteTermos, extrairCtx(req));
+    return this.service.primeiroAcesso(
+      dto.codigo,
+      dto.cpf,
+      dto.senha,
+      dto.aceiteTermos,
+      extrairCtx(req),
+    );
   }
 
   @Post('login')

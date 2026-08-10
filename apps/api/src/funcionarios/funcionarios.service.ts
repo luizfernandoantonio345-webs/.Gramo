@@ -191,9 +191,19 @@ export class FuncionariosService {
     });
   }
 
-  async documentos(funcionarioId: string) {
-    return this.prisma.forTenant((tx) =>
-      tx.documento.findMany({
+  async documentos(funcionarioId: string, autor: UsuarioAutenticado) {
+    const filiais = await this.escopo.filiaisPermitidas(autor);
+    return this.prisma.forTenant(async (tx) => {
+      // BOLA/IDOR: garante que o funcionario esta no escopo de filial do gestor
+      // (o RLS isola por EMPRESA, nao por filial -- sem isto um GESTOR_FILIAL
+      // leria documentos de um funcionario de outra obra da mesma empresa).
+      const func = await tx.funcionario.findFirst({
+        where: { id: funcionarioId },
+        select: { filialId: true },
+      });
+      if (!func) throw new NotFoundException('Funcionario nao encontrado.');
+      this.exigirFilial(filiais, func.filialId);
+      return tx.documento.findMany({
         where: { funcionarioId },
         orderBy: { criadoEm: 'desc' },
         select: {
@@ -205,8 +215,8 @@ export class FuncionariosService {
           dataValidade: true,
           criadoEm: true,
         },
-      }),
-    );
+      });
+    });
   }
 
   /** Aprova/rejeita um documento enviado (Central de documentos, ADM 2). */

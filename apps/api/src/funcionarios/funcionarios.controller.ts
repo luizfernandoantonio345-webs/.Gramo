@@ -80,8 +80,8 @@ export class FuncionariosController {
 
   @Get(':id/documentos')
   @Roles(...LEITURA)
-  documentos(@Param('id') id: string) {
-    return this.service.documentos(id);
+  documentos(@Param('id') id: string, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.documentos(id, user);
   }
 
   @Get(':id/foto-referencia')
