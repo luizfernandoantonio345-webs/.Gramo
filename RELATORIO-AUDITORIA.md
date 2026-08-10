@@ -58,8 +58,12 @@
 
 ## Aberto / recomendações
 
-1. **CSP no front (nginx/PWA):** helmet cobre a API (JSON); o HTML do PWA é
-   servido pelo nginx — vale adicionar uma Content-Security-Policy lá.
+1. ~~CSP no front (nginx/PWA)~~ **Feito:** `apps/web/nginx.conf` agora envia
+   Content-Security-Policy + `X-Content-Type-Options`, `X-Frame-Options`,
+   `Referrer-Policy` e `Permissions-Policy` (câmera/geo só na própria origem).
+   Ajustado ao app (estilos inline, fontes locais, tiles do OSM, face-api/WASM).
+   **Validar no 1º deploy** (o console do navegador acusa violações de CSP; dev
+   usa vite preview, não nginx). HSTS fica na camada TLS (Caddy).
 2. **`npm audit fix`** no dev tooling e rotina de atualização de dependências.
 3. **Pentest externo** antes do go-live (ver seção final).
 
