@@ -91,8 +91,13 @@ export class SuperAuthService implements OnModuleInit {
       data: { tentativasFalhas: 0, bloqueadoAte: null },
     });
 
-    // DEV ONLY: bypass de 2FA para demonstracao local (gated por env + NODE_ENV).
-    if (process.env.DEV_BYPASS_2FA === 'true' && process.env.NODE_ENV !== 'production') {
+    // Bypass de 2FA: (a) DEV local (DEV_BYPASS_2FA + NODE_ENV != production) OU
+    // (b) opt-out explicito ADMIN_2FA_OPCIONAL=true (vale ate em producao;
+    // reversivel removendo a env). 2FA e uma protecao importante -- use ciente.
+    const bypass2fa =
+      (process.env.DEV_BYPASS_2FA === 'true' && process.env.NODE_ENV !== 'production') ||
+      process.env.ADMIN_2FA_OPCIONAL === 'true';
+    if (bypass2fa) {
       await this.registrarLog(sa.id, 'super.login', 'super_admins', sa.id, {});
       return this.emitirPar(sa.id, {});
     }

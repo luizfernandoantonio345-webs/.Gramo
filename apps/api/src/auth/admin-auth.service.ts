@@ -94,9 +94,15 @@ export class AdminAuthService {
       }),
     );
 
-    // DEV ONLY: bypass de 2FA para demonstracao local. Gated por env E por
-    // NODE_ENV !== production -- NUNCA emite tokens sem 2FA em producao.
-    if (process.env.DEV_BYPASS_2FA === 'true' && process.env.NODE_ENV !== 'production') {
+    // Bypass de 2FA em duas situacoes:
+    //  (a) DEV local: DEV_BYPASS_2FA=true e NODE_ENV != production; OU
+    //  (b) opt-out explicito: ADMIN_2FA_OPCIONAL=true (vale ATE em producao).
+    // (b) e uma decisao consciente do operador -- 2FA e uma protecao importante;
+    // e totalmente reversivel (basta remover a env e reiniciar a API).
+    const bypass2fa =
+      (process.env.DEV_BYPASS_2FA === 'true' && process.env.NODE_ENV !== 'production') ||
+      process.env.ADMIN_2FA_OPCIONAL === 'true';
+    if (bypass2fa) {
       await this.log.registrar({
         evento: EventoAcesso.LOGIN_SUCESSO,
         sujeitoTipo: TipoSujeito.ADMIN,
