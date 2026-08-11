@@ -9,19 +9,19 @@ export class ErrorBoundary extends Component<
   { children: ReactNode; rotulo?: string },
   { erro: Error | null }
 > {
-  state: { erro: Error | null } = { erro: null };
+  override state: { erro: Error | null } = { erro: null };
 
   static getDerivedStateFromError(erro: Error) {
     return { erro };
   }
 
-  componentDidCatch(erro: Error) {
+  override componentDidCatch(erro: Error) {
     // Loga no console para diagnostico (o Error Boundary ja evita o crash visual).
     // eslint-disable-next-line no-console
     console.error('[ErrorBoundary] tela quebrou:', erro);
   }
 
-  render() {
+  override render() {
     if (!this.state.erro) return this.props.children;
     return (
       <div

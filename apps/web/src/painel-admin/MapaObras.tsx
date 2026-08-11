@@ -31,8 +31,9 @@ export default function MapaObras({ obras }: { obras: ObraMapa[] }) {
     // circulos, que exige a projecao do mapa ja pronta -- fazia o app quebrar
     // com "layerPointToLatLng of undefined"). latLngBounds e calculo puro.
     const pontos = obras.map((o) => L.latLng(o.lat, o.lng));
-    if (pontos.length === 1) {
-      mapa.setView(pontos[0], 14);
+    const centro = pontos[0];
+    if (pontos.length === 1 && centro) {
+      mapa.setView(centro, 14);
     } else {
       mapa.fitBounds(L.latLngBounds(pontos).pad(0.3));
     }
