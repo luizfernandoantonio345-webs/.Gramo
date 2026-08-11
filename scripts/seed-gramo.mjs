@@ -23,11 +23,16 @@ const EMPRESA = {
 const ADMIN = { nome: 'RH GRAMO', email: 'rh@gramoengenharia.com.br', senha: 'GramoRH@2026' };
 const FUNC = { nome: 'Jose da Silva', cpf: '52998224725', senha: 'Gramo@12345' };
 
-// Obras (filiais) com a cerca geografica (REGAP). Coordenadas de exemplo (PE).
+// Obra (filial) real da GRAMO com a cerca geografica (REGAP): a Refinaria
+// Gabriel Passos (REGAP) da Petrobras, em Betim/MG. Cerca ampla (~1,5 km) por
+// ser um complexo industrial grande. Coordenadas do centro do complexo.
 const OBRAS = [
-  { nome: 'Matriz - Recife', lat: -8.047562, lng: -34.876964, raio: 250 },
-  { nome: 'Canteiro Suape', lat: -8.39505, lng: -34.94902, raio: 400 },
-  { nome: 'Canteiro Porto Digital', lat: -8.057811, lng: -34.882933, raio: 300 },
+  {
+    nome: 'Petrobras - Refinaria Gabriel Passos (REGAP)',
+    lat: -19.9768,
+    lng: -44.0968,
+    raio: 1500,
+  },
 ];
 const JORNADAS = [
   // Obra: 07h-16h, seg-sab, banco anual (CCT construcao civil). 8h de carga.
@@ -105,7 +110,7 @@ async function main() {
       filialId[o.nome] = fid;
       await c.query(
         `INSERT INTO filiais (id, empresa_id, nome, timezone, criado_em)
-         VALUES ($1,$2,$3,'America/Recife', now())`,
+         VALUES ($1,$2,$3,'America/Sao_Paulo', now())`,
         [fid, empresaId, o.nome],
       );
       await c.query(
@@ -131,7 +136,7 @@ async function main() {
        VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Pedreiro', $5, $6, 'ATIVO'::"StatusFuncionario", true, now())`,
       [
         empresaId,
-        filialId['Canteiro Suape'],
+        filialId[OBRAS[0].nome],
         FUNC.cpf,
         FUNC.nome,
         jornadaId['Obra (07h-16h)'],
@@ -145,7 +150,7 @@ async function main() {
     console.log(`Obras:      ${OBRAS.map((o) => o.nome).join(' | ')} (cada uma com REGAP)`);
     console.log(`Jornadas:   ${JORNADAS.map((j) => j.nome).join(' | ')}`);
     console.log(`Admin RH:   ${ADMIN.email}  |  senha: ${ADMIN.senha}`);
-    console.log(`Funcionario:${FUNC.nome} - CPF ${FUNC.cpf} | senha: ${FUNC.senha} (obra Suape)`);
+    console.log(`Funcionario:${FUNC.nome} - CPF ${FUNC.cpf} | senha: ${FUNC.senha} (obra REGAP)`);
     console.log('=========================================================\n');
   } catch (e) {
     await c.query('ROLLBACK').catch(() => {});
