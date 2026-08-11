@@ -231,7 +231,7 @@ function TelaAcesso({
           backgroundPosition: 'center',
           backgroundSize: 'min(620px, 85vw)',
           filter: 'blur(14px)',
-          opacity: 0.1,
+          opacity: 0.4,
         }}
       />
       <div
