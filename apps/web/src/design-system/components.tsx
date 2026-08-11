@@ -471,24 +471,11 @@ export function LinhaLista({ children }: { children: ReactNode }) {
 export function MarcaRepp({ subtitulo }: { subtitulo?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-      <div
-        aria-hidden
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 10,
-          background: 'var(--color-accent)',
-          boxShadow: 'var(--shadow-sm)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          font: '700 20px var(--font-display)',
-          color: '#fff',
-          flex: '0 0 auto',
-        }}
-      >
-        G
-      </div>
+      <img
+        src="/gramo-emblema.png"
+        alt="GRAMO Engenharia"
+        style={{ height: 42, width: 'auto', display: 'block', flex: '0 0 auto' }}
+      />
       <div>
         <div
           style={{
@@ -498,7 +485,12 @@ export function MarcaRepp({ subtitulo }: { subtitulo?: string }) {
             color: 'var(--color-text)',
           }}
         >
-          <span style={{ color: 'var(--color-accent)' }}>.</span>GRAMO
+          GRAMO{' '}
+          <span
+            style={{ fontWeight: 600, color: 'var(--color-text-muted)', letterSpacing: '0.02em' }}
+          >
+            ENGENHARIA
+          </span>
         </div>
         {subtitulo && (
           <div
