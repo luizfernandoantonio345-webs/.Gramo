@@ -19,17 +19,27 @@ export default function MapaObras({ obras }: { obras: ObraMapa[] }) {
   const div = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!div.current || obras.length === 0) return;
-    const mapa = L.map(div.current, { scrollWheelZoom: false, attributionControl: true });
+    const el = div.current;
+    if (!el || obras.length === 0) return;
+    const mapa = L.map(el, { scrollWheelZoom: false, attributionControl: true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
       maxZoom: 19,
     }).addTo(mapa);
 
-    const circulos: L.Circle[] = [];
+    // Estabelece a VIEW a partir das COORDENADAS (nao do getBounds() dos
+    // circulos, que exige a projecao do mapa ja pronta -- fazia o app quebrar
+    // com "layerPointToLatLng of undefined"). latLngBounds e calculo puro.
+    const pontos = obras.map((o) => L.latLng(o.lat, o.lng));
+    if (pontos.length === 1) {
+      mapa.setView(pontos[0], 14);
+    } else {
+      mapa.fitBounds(L.latLngBounds(pontos).pad(0.3));
+    }
+
     for (const o of obras) {
       const cor = o.ativo ? '#2563eb' : '#94a3b8';
-      const c = L.circle([o.lat, o.lng], {
+      L.circle([o.lat, o.lng], {
         radius: o.raio,
         color: cor,
         fillColor: cor,
@@ -44,11 +54,14 @@ export default function MapaObras({ obras }: { obras: ObraMapa[] }) {
         fillColor: cor,
         fillOpacity: 1,
       }).addTo(mapa);
-      circulos.push(c);
     }
-    mapa.fitBounds(L.featureGroup(circulos).getBounds().pad(0.3));
+
+    // O container as vezes so ganha tamanho apos o layout; recalcula para evitar
+    // projecao invalida / mapa cinza.
+    const t = setTimeout(() => mapa.invalidateSize(), 0);
 
     return () => {
+      clearTimeout(t);
       mapa.remove();
     };
   }, [obras]);

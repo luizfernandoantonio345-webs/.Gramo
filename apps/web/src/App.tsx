@@ -22,6 +22,7 @@ import { SuperPanel } from './painel-admin/SuperPanel';
 import { TelaoPresenca } from './painel-admin/TelaoPresenca';
 import { TelaQuiosque } from './quiosque/TelaQuiosque';
 import { AppShell, type GrupoNav } from './design-system/AppShell';
+import { ErrorBoundary } from './design-system/ErrorBoundary';
 import { Icone } from './design-system/icons';
 import {
   definirSessao,
@@ -177,7 +178,9 @@ export function App(): JSX.Element {
         tituloPagina={TITULOS[secao] ?? ''}
         acoes={acoes}
       >
-        {telas[secao] ?? telas.principal ?? telas.dashboard}
+        <ErrorBoundary key={secao}>
+          {telas[secao] ?? telas.principal ?? telas.dashboard}
+        </ErrorBoundary>
       </AppShell>
     );
   }
