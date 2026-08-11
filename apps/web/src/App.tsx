@@ -207,6 +207,8 @@ function TelaAcesso({
   return (
     <div
       style={{
+        position: 'relative',
+        overflow: 'hidden',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
@@ -215,25 +217,53 @@ function TelaAcesso({
         padding: 'var(--space-9) var(--space-5)',
       }}
     >
-      <div className="g-seg" role="tablist" style={{ marginBottom: 'var(--space-8)' }}>
-        {abas.map((a) => (
-          <button
-            key={a.id}
-            role="tab"
-            aria-selected={contexto === a.id}
-            onClick={() => setContexto(a.id)}
-          >
-            {a.rotulo}
-          </button>
-        ))}
+      {/* Marca da GRAMO desfocada ao fundo -- sutil, nao compete com o formulario.
+          O blur tambem disfarca a baixa resolucao do logo. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          backgroundImage: 'url(/gramo-logo.png)',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          backgroundSize: 'min(620px, 85vw)',
+          filter: 'blur(14px)',
+          opacity: 0.1,
+        }}
+      />
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <div className="g-seg" role="tablist" style={{ marginBottom: 'var(--space-8)' }}>
+          {abas.map((a) => (
+            <button
+              key={a.id}
+              role="tab"
+              aria-selected={contexto === a.id}
+              onClick={() => setContexto(a.id)}
+            >
+              {a.rotulo}
+            </button>
+          ))}
+        </div>
+        {contexto === 'funcionario' ? (
+          <TelaLogin onAutenticado={aoAutenticar} />
+        ) : contexto === 'admin' ? (
+          <AdmLogin onAutenticado={aoAutenticar} />
+        ) : (
+          <SuperLogin onAutenticado={aoAutenticar} />
+        )}
       </div>
-      {contexto === 'funcionario' ? (
-        <TelaLogin onAutenticado={aoAutenticar} />
-      ) : contexto === 'admin' ? (
-        <AdmLogin onAutenticado={aoAutenticar} />
-      ) : (
-        <SuperLogin onAutenticado={aoAutenticar} />
-      )}
     </div>
   );
 }
