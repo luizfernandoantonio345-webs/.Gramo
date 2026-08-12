@@ -24,14 +24,16 @@ const ADMIN = { nome: 'RH GRAMO', email: 'rh@gramoengenharia.com.br', senha: 'Gr
 const FUNC = { nome: 'Jose da Silva', cpf: '52998224725', senha: 'Gramo@12345' };
 
 // Obra (filial) real da GRAMO com a cerca geografica (REGAP): a Refinaria
-// Gabriel Passos (REGAP) da Petrobras, em Betim/MG. Cerca ampla (~1,5 km) por
-// ser um complexo industrial grande. Coordenadas do centro do complexo.
+// Gabriel Passos (REGAP) da Petrobras, em Betim/MG. Area RESTRITA ao trecho da
+// Portaria 3 ate o norte do complexo: centro deslocado ~410 m ao norte do
+// centro geografico da refinaria (-19.97676, -44.09681) e raio reduzido de
+// 1500 -> 800 m. Coordenadas estimadas pelo mapa -- revisar no painel admin.
 const OBRAS = [
   {
     nome: 'Petrobras - Refinaria Gabriel Passos (REGAP)',
-    lat: -19.9768,
+    lat: -19.973,
     lng: -44.0968,
-    raio: 1500,
+    raio: 800,
   },
 ];
 const JORNADAS = [

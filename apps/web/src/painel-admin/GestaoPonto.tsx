@@ -11,7 +11,7 @@ import {
   LinhaLista,
   TituloSecao,
 } from '../design-system/components';
-import { apiGet, apiPost } from '../lib/api';
+import { apiGet, apiPatch, apiPost } from '../lib/api';
 
 // Mapa (Leaflet) carregado sob demanda -- nao pesa o bundle principal.
 const MapaObras = lazy(() => import('./MapaObras'));
@@ -47,6 +47,15 @@ export function GestaoPonto() {
   const [regaps, setRegaps] = useState<Regap[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  // Edicao da area no mapa: clicar reposiciona o centro; salvar faz PATCH.
+  const [edicao, setEdicao] = useState<{
+    id: string;
+    nome: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [raioEdicao, setRaioEdicao] = useState('150');
+  const [salvando, setSalvando] = useState(false);
 
   const carregar = useCallback(async () => {
     try {
@@ -69,6 +78,40 @@ export function GestaoPonto() {
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  function iniciarEdicao(r: Regap) {
+    setEdicao({
+      id: r.id,
+      nome: r.nome,
+      lat: Number(r.latitudeCentro),
+      lng: Number(r.longitudeCentro),
+    });
+    setRaioEdicao(String(r.raioMetros));
+    setErro(null);
+  }
+
+  async function salvarEdicao() {
+    if (!edicao) return;
+    const raio = Number(raioEdicao);
+    if (!Number.isFinite(edicao.lat) || !Number.isFinite(edicao.lng) || !(raio > 0)) {
+      setErro('Marque um ponto no mapa e informe um raio (m) válido.');
+      return;
+    }
+    setSalvando(true);
+    try {
+      await apiPatch(`/admin/regaps/${edicao.id}`, {
+        latitudeCentro: edicao.lat,
+        longitudeCentro: edicao.lng,
+        raioMetros: raio,
+      });
+      setEdicao(null);
+      await carregar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Falha ao salvar a área.');
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   async function decidir(id: string, aprovar: boolean) {
     const motivoResposta = window.prompt(
@@ -187,6 +230,12 @@ export function GestaoPonto() {
           <EstadoVazio>Nenhuma área cadastrada.</EstadoVazio>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {edicao && (
+              <Feedback tom="info">
+                Editando <strong>{edicao.nome}</strong>: clique no mapa para marcar o novo centro
+                (RH/vestiário), ajuste o raio e salve.
+              </Feedback>
+            )}
             <Suspense
               fallback={
                 <div
@@ -199,7 +248,7 @@ export function GestaoPonto() {
                 />
               }
             >
-              <div style={{ marginBottom: 'var(--space-5)' }}>
+              <div style={{ margin: 'var(--space-4) 0 var(--space-5)' }}>
                 <MapaObras
                   obras={regaps
                     .map((r) => ({
@@ -210,9 +259,61 @@ export function GestaoPonto() {
                       ativo: r.ativo,
                     }))
                     .filter((o) => Number.isFinite(o.lat) && Number.isFinite(o.lng) && o.lat !== 0)}
+                  onSelecionar={
+                    edicao
+                      ? (lat, lng) => setEdicao((e) => (e ? { ...e, lat, lng } : e))
+                      : undefined
+                  }
+                  previa={
+                    edicao
+                      ? { lat: edicao.lat, lng: edicao.lng, raio: Number(raioEdicao) || 0 }
+                      : null
+                  }
                 />
               </div>
             </Suspense>
+
+            {edicao && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  flexWrap: 'wrap',
+                  gap: 'var(--space-4)',
+                  marginBottom: 'var(--space-5)',
+                }}
+              >
+                <div style={{ minWidth: 220 }}>
+                  <span
+                    style={{
+                      font: 'var(--text-sm) var(--font-mono)',
+                      color: 'var(--color-text-muted)',
+                    }}
+                  >
+                    centro: {edicao.lat.toFixed(6)}, {edicao.lng.toFixed(6)}
+                  </span>
+                </div>
+                <div style={{ width: 120 }}>
+                  <Campo
+                    label="Raio (m)"
+                    value={raioEdicao}
+                    onChange={(e) => setRaioEdicao(e.target.value)}
+                  />
+                </div>
+                <Botao onClick={salvarEdicao} disabled={salvando} bloco={false}>
+                  {salvando ? 'Salvando…' : 'Salvar área'}
+                </Botao>
+                <Botao
+                  variante="perigo"
+                  bloco={false}
+                  disabled={salvando}
+                  onClick={() => setEdicao(null)}
+                >
+                  Cancelar
+                </Botao>
+              </div>
+            )}
+
             {regaps.map((r) => (
               <LinhaLista key={r.id}>
                 <span style={{ flex: 1, fontWeight: 500 }}>{r.nome}</span>
@@ -227,6 +328,15 @@ export function GestaoPonto() {
                 <Badge cor={r.ativo ? 'var(--color-success)' : 'var(--color-text-muted)'}>
                   {r.ativo ? 'ativa' : 'inativa'}
                 </Badge>
+                <Botao
+                  tamanho="sm"
+                  variante="secundario"
+                  bloco={false}
+                  disabled={edicao?.id === r.id}
+                  onClick={() => iniciarEdicao(r)}
+                >
+                  {edicao?.id === r.id ? 'Editando…' : 'Editar'}
+                </Botao>
               </LinhaLista>
             ))}
           </div>
