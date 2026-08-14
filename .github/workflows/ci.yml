@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    # fase-b-estabilizacao e o branch de deploy em producao: validar todo push.
+    branches: [main, master, fase-b-estabilizacao]
   pull_request:
 
 # Cancela execucoes antigas do mesmo ref (economia de minutos).
