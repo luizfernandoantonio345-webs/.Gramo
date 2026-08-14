@@ -175,7 +175,9 @@ export function validarAfd(conteudo: string): { valido: boolean; erros: string[]
       erros.push(`Linha ${i + 2}: largura ${l.length} (esperado ${LARGURA_AFD.marcacaoRepP}).`);
     const nsr = Number(l.slice(0, 9));
     if (!Number.isInteger(nsr) || nsr <= nsrAnterior)
-      erros.push(`Linha ${i + 2}: NSR ${l.slice(0, 9)} fora de sequencia (anterior ${nsrAnterior}).`);
+      erros.push(
+        `Linha ${i + 2}: NSR ${l.slice(0, 9)} fora de sequencia (anterior ${nsrAnterior}).`,
+      );
     nsrAnterior = nsr;
   }
 

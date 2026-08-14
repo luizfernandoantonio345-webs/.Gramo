@@ -32,10 +32,7 @@ export class SignatureService {
   constructor() {
     const seed = this.derivarSeed();
     // PKCS8 DER de uma chave Ed25519 = prefixo fixo + 32 bytes de seed.
-    const der = Buffer.concat([
-      Buffer.from('302e020100300506032b657004220420', 'hex'),
-      seed,
-    ]);
+    const der = Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), seed]);
     this.privateKey = createPrivateKey({ key: der, format: 'der', type: 'pkcs8' });
     this.publicKey = createPublicKey(this.privateKey);
     this.publicKeyPem = this.publicKey.export({ format: 'pem', type: 'spki' }).toString();
@@ -77,7 +74,9 @@ export class SignatureService {
     }
     const master = Buffer.from(process.env.DATA_ENCRYPTION_KEY ?? '', 'base64');
     if (master.length !== 32) {
-      throw new Error('DATA_ENCRYPTION_KEY (32 bytes) necessaria para derivar a chave de assinatura.');
+      throw new Error(
+        'DATA_ENCRYPTION_KEY (32 bytes) necessaria para derivar a chave de assinatura.',
+      );
     }
     // HKDF com info dedicado -> separacao de chave (assinatura != cifragem).
     return Buffer.from(hkdfSync('sha256', master, Buffer.alloc(0), 'repp-ed25519-assinatura', 32));

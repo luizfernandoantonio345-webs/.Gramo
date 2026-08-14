@@ -26,7 +26,9 @@ export class ComprovanteService {
         include: { funcionario: { select: { nome: true, cpf: true } } },
       });
       if (!ponto) throw new NotFoundException('Ponto nao encontrado.');
-      const empresa = await tx.empresa.findFirstOrThrow({ select: { razaoSocial: true, cnpj: true } });
+      const empresa = await tx.empresa.findFirstOrThrow({
+        select: { razaoSocial: true, cnpj: true },
+      });
       return { ponto, empresa };
     });
 
@@ -83,7 +85,13 @@ export class ComprovanteService {
     linha(`Dentro da REGAP: ${d.ponto.dentroRegap ? 'Sim' : 'Nao'}`);
     linha(`Status: ${d.ponto.statusValidacao}`);
     y -= 4;
-    page.drawText('Hash de integridade (SHA-256):', { x: 40, y, size: 9, font: fonteBold, color: navy });
+    page.drawText('Hash de integridade (SHA-256):', {
+      x: 40,
+      y,
+      size: 9,
+      font: fonteBold,
+      color: navy,
+    });
     y -= 14;
     page.drawText(d.ponto.hashIntegridade, { x: 40, y, size: 7, font: fonte, color: navy });
 

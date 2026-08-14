@@ -6,7 +6,12 @@ import { FeriasService } from './ferias.service';
 
 /** ADM 10 (Ferias/Afastamentos) + ADM 11 (Contestacao de ponto). */
 @Module({
-  controllers: [FeriasController, AdmFeriasController, ContestacaoController, AdmContestacaoController],
+  controllers: [
+    FeriasController,
+    AdmFeriasController,
+    ContestacaoController,
+    AdmContestacaoController,
+  ],
   providers: [FeriasService, ContestacaoService],
 })
 export class AusenciasModule {}

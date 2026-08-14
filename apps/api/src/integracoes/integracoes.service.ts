@@ -53,7 +53,14 @@ export class IntegracoesService {
     return this.prisma.forTenant((tx) =>
       tx.chaveApi.findMany({
         orderBy: { criadoEm: 'desc' },
-        select: { id: true, nome: true, prefixo: true, escopo: true, revogadaEm: true, criadoEm: true },
+        select: {
+          id: true,
+          nome: true,
+          prefixo: true,
+          escopo: true,
+          revogadaEm: true,
+          criadoEm: true,
+        },
       }),
     );
   }
@@ -89,7 +96,11 @@ export class IntegracoesService {
     );
   }
 
-  async atualizarConfig(tipo: TipoIntegracao, dto: AtualizarIntegracaoDto, autor: UsuarioAutenticado) {
+  async atualizarConfig(
+    tipo: TipoIntegracao,
+    dto: AtualizarIntegracaoDto,
+    autor: UsuarioAutenticado,
+  ) {
     const empresaId = TenantContext.requireEmpresaId();
     return this.prisma.forTenant(async (tx) => {
       const config = (dto.config ?? undefined) as Prisma.InputJsonValue | undefined;

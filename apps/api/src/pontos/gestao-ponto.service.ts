@@ -143,13 +143,21 @@ export class GestaoPontoService {
   }
 
   /** Espelho de ponto por funcionario/periodo, com status efetivo. */
-  async espelho(funcionarioId: string, inicioIso: string, fimIso: string, autor: UsuarioAutenticado) {
+  async espelho(
+    funcionarioId: string,
+    inicioIso: string,
+    fimIso: string,
+    autor: UsuarioAutenticado,
+  ) {
     const inicio = new Date(inicioIso);
     const fim = new Date(fimIso);
     const filiais = await this.escopo.filiaisPermitidas(autor);
     return this.prisma.forTenant(async (tx) => {
       if (filiais !== null) {
-        const f = await tx.funcionario.findFirst({ where: { id: funcionarioId }, select: { filialId: true } });
+        const f = await tx.funcionario.findFirst({
+          where: { id: funcionarioId },
+          select: { filialId: true },
+        });
         if (!f || !f.filialId || !filiais.includes(f.filialId)) {
           throw new NotFoundException('Funcionario fora do seu escopo de filial.');
         }
@@ -186,7 +194,12 @@ export class GestaoPontoService {
    * da filial), calcula horas trabalhadas liquidas e o saldo vs. a carga diaria
    * da jornada. Marcacoes esquecidas (par incompleto) ficam de fora do calculo.
    */
-  async bancoHoras(funcionarioId: string, inicioIso: string, fimIso: string, autor: UsuarioAutenticado) {
+  async bancoHoras(
+    funcionarioId: string,
+    inicioIso: string,
+    fimIso: string,
+    autor: UsuarioAutenticado,
+  ) {
     const filiais = await this.escopo.filiaisPermitidas(autor);
     const inicio = new Date(inicioIso);
     const fim = new Date(fimIso);

@@ -1,5 +1,13 @@
 import { TipoAjusteBanco } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class RegistrarAjusteDto {
   @Matches(/^[0-9a-f-]{36}$/i, { message: 'funcionarioId invalido.' })

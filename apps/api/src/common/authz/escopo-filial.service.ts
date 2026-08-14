@@ -36,7 +36,10 @@ export class EscopoFilialService {
   }
 
   /** Garante que o usuario pode agir sobre uma filial especifica (mutacoes). */
-  async garantirFilial(user: UsuarioAutenticado, filialId: string | null | undefined): Promise<void> {
+  async garantirFilial(
+    user: UsuarioAutenticado,
+    filialId: string | null | undefined,
+  ): Promise<void> {
     const filiais = await this.filiaisPermitidas(user);
     if (filiais === null) return; // sem restricao
     if (!filialId || !filiais.includes(filialId)) {

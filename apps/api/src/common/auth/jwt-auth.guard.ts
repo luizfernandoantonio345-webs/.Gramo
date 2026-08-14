@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { TenantContext } from '../tenant/tenant-context';
@@ -21,7 +16,9 @@ export class JwtAuthGuard implements CanActivate {
   constructor(private readonly jwt: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest<Request & { user?: UsuarioAutenticado; empresaId?: string }>();
+    const req = context
+      .switchToHttp()
+      .getRequest<Request & { user?: UsuarioAutenticado; empresaId?: string }>();
     const token = this.extrairBearer(req);
     if (!token) throw new UnauthorizedException('Token ausente.');
 

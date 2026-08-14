@@ -28,7 +28,11 @@ export class NotificacaoService {
     }
   }
 
-  async enviarEmail(para: string | null | undefined, assunto: string, corpo: string): Promise<void> {
+  async enviarEmail(
+    para: string | null | undefined,
+    assunto: string,
+    corpo: string,
+  ): Promise<void> {
     if (!para) {
       this.logger.warn(`E-mail "${assunto}" nao enviado: destinatario ausente.`);
       return;

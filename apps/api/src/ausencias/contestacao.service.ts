@@ -87,7 +87,10 @@ export class ContestacaoService {
         include: { funcionario: { select: { filialId: true } } },
       });
       if (!c) throw new NotFoundException('Contestacao nao encontrada.');
-      if (filiais !== null && (!c.funcionario.filialId || !filiais.includes(c.funcionario.filialId))) {
+      if (
+        filiais !== null &&
+        (!c.funcionario.filialId || !filiais.includes(c.funcionario.filialId))
+      ) {
         throw new NotFoundException('Contestacao fora do seu escopo de filial.');
       }
       if (c.status !== StatusContestacao.ABERTA) {

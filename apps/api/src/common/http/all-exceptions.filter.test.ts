@@ -21,7 +21,11 @@ describe('AllExceptionsFilter', () => {
     const { host, status, json } = hostFake();
     filtro.catch(new ConflictException('duplicado'), host);
     expect(status).toHaveBeenCalledWith(409);
-    expect(json.mock.calls[0][0]).toMatchObject({ statusCode: 409, message: 'duplicado', requestId: 'req-1' });
+    expect(json.mock.calls[0][0]).toMatchObject({
+      statusCode: 409,
+      message: 'duplicado',
+      requestId: 'req-1',
+    });
   });
 
   it('junta array de mensagens (ValidationPipe) em uma string', () => {
@@ -32,7 +36,10 @@ describe('AllExceptionsFilter', () => {
 
   it('mapeia unicidade do Prisma (P2002) para 409', () => {
     const { host, status } = hostFake();
-    const e = new Prisma.PrismaClientKnownRequestError('unique', { code: 'P2002', clientVersion: 'x' });
+    const e = new Prisma.PrismaClientKnownRequestError('unique', {
+      code: 'P2002',
+      clientVersion: 'x',
+    });
     filtro.catch(e, host);
     expect(status).toHaveBeenCalledWith(409);
   });

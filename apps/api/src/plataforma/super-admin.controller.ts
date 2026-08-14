@@ -25,7 +25,11 @@ export class SuperAdminController {
 
   @Post('empresas')
   @ApiOperation({ summary: 'Cadastra empresa-cliente (onboarding).' })
-  criarEmpresa(@Body() dto: CriarEmpresaDto, @CurrentSuperAdmin() sa: JwtPayload, @Req() req: Request) {
+  criarEmpresa(
+    @Body() dto: CriarEmpresaDto,
+    @CurrentSuperAdmin() sa: JwtPayload,
+    @Req() req: Request,
+  ) {
     return this.service.criarEmpresa(dto, sa.sub, extrairCtx(req));
   }
 
@@ -63,7 +67,11 @@ export class SuperAdminController {
   }
 
   @Post('faturas')
-  gerarFatura(@Body() dto: GerarFaturaDto, @CurrentSuperAdmin() sa: JwtPayload, @Req() req: Request) {
+  gerarFatura(
+    @Body() dto: GerarFaturaDto,
+    @CurrentSuperAdmin() sa: JwtPayload,
+    @Req() req: Request,
+  ) {
     return this.service.gerarFatura(dto, sa.sub, extrairCtx(req));
   }
 

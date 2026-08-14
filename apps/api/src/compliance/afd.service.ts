@@ -12,9 +12,15 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AfdService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async gerar(inicio: Date, fim: Date, filialId?: string): Promise<{ conteudo: string; total: number }> {
+  async gerar(
+    inicio: Date,
+    fim: Date,
+    filialId?: string,
+  ): Promise<{ conteudo: string; total: number }> {
     return this.prisma.forTenant(async (tx) => {
-      const empresa = await tx.empresa.findFirstOrThrow({ select: { cnpj: true, razaoSocial: true } });
+      const empresa = await tx.empresa.findFirstOrThrow({
+        select: { cnpj: true, razaoSocial: true },
+      });
 
       // AFD e por estabelecimento: resolve a filial (obrigatoria se houver >1).
       const filiais = await tx.filial.findMany({ select: { id: true, cnpj: true } });

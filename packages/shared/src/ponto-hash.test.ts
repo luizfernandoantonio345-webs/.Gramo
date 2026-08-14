@@ -24,9 +24,9 @@ describe('montarConteudoCanonicoPonto', () => {
     const original = montarConteudoCanonicoPonto(base);
     expect(montarConteudoCanonicoPonto({ ...base, nsr: 43 })).not.toBe(original);
     expect(montarConteudoCanonicoPonto({ ...base, dentroRegap: false })).not.toBe(original);
-    expect(montarConteudoCanonicoPonto({ ...base, registradoEm: '2026-07-30T12:00:01.000Z' })).not.toBe(
-      original,
-    );
+    expect(
+      montarConteudoCanonicoPonto({ ...base, registradoEm: '2026-07-30T12:00:01.000Z' }),
+    ).not.toBe(original);
   });
 
   it('trata NSR bigint-como-string e number igualmente', () => {

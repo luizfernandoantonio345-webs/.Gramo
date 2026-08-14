@@ -71,7 +71,10 @@ export class SuperAdminService {
 
   /** Metadados de uso (agregados via SECURITY DEFINER; NUNCA le dados operacionais). */
   async uso(empresaId: string) {
-    const emp = await this.prisma.empresa.findFirst({ where: { id: empresaId }, select: { id: true } });
+    const emp = await this.prisma.empresa.findFirst({
+      where: { id: empresaId },
+      select: { id: true },
+    });
     if (!emp) throw new NotFoundException('Empresa nao encontrada.');
     return this.prisma.metricasUso(empresaId);
   }
@@ -140,7 +143,9 @@ export class SuperAdminService {
       where: { id },
       data: { status: StatusFatura.PAGA, pagoEm: new Date() },
     });
-    await this.auth.log(superAdminId, 'fatura.pagar', 'faturas', id, ctx, { status: StatusFatura.PAGA });
+    await this.auth.log(superAdminId, 'fatura.pagar', 'faturas', id, ctx, {
+      status: StatusFatura.PAGA,
+    });
     return { id, status: StatusFatura.PAGA };
   }
 }

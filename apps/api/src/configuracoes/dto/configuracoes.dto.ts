@@ -84,7 +84,13 @@ export class AtualizarJornadaDto {
   @IsOptional() @Matches(HHMM) horaEntrada?: string;
   @IsOptional() @Matches(HHMM) horaSaida?: string;
   @IsOptional() @IsInt() @Min(0) @Max(240) toleranciaMinutos?: number;
-  @IsOptional() @IsArray() @ArrayMaxSize(7) @ArrayUnique() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(7)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
   diasSemana?: number[];
   @IsOptional() @IsInt() @Min(0) @Max(1440) cargaDiariaMinutos?: number;
   @IsOptional() @IsEnum(RegimeHoras) regimeHoras?: RegimeHoras;

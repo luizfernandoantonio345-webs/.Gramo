@@ -53,18 +53,27 @@ export class AllExceptionsFilter implements ExceptionFilter {
         typeof resp === 'string'
           ? resp
           : ((resp as { message?: string | string[] }).message ?? e.message);
-      return { status: e.getStatus(), message: Array.isArray(message) ? message.join(' ') : message };
+      return {
+        status: e.getStatus(),
+        message: Array.isArray(message) ? message.join(' ') : message,
+      };
     }
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
       switch (e.code) {
         case 'P2002':
-          return { status: HttpStatus.CONFLICT, message: 'Registro duplicado (violacao de unicidade).' };
+          return {
+            status: HttpStatus.CONFLICT,
+            message: 'Registro duplicado (violacao de unicidade).',
+          };
         case 'P2025':
           return { status: HttpStatus.NOT_FOUND, message: 'Registro nao encontrado.' };
         default:
           // 42501 = permission denied (RLS/append-only): ponto imutavel, escopo, etc.
           if (this.ehPermissao(e)) {
-            return { status: HttpStatus.FORBIDDEN, message: 'Operacao nao permitida (registro protegido).' };
+            return {
+              status: HttpStatus.FORBIDDEN,
+              message: 'Operacao nao permitida (registro protegido).',
+            };
           }
           return { status: HttpStatus.BAD_REQUEST, message: 'Requisicao invalida.' };
       }

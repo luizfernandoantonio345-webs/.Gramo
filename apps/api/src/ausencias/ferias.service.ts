@@ -86,7 +86,10 @@ export class FeriasService {
         include: { funcionario: { select: { filialId: true } } },
       });
       if (!sol) throw new NotFoundException('Solicitacao nao encontrada.');
-      if (filiais !== null && (!sol.funcionario.filialId || !filiais.includes(sol.funcionario.filialId))) {
+      if (
+        filiais !== null &&
+        (!sol.funcionario.filialId || !filiais.includes(sol.funcionario.filialId))
+      ) {
         throw new NotFoundException('Solicitacao fora do seu escopo de filial.');
       }
       if (sol.status !== StatusAusencia.PENDENTE) {

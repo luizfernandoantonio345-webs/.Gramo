@@ -62,7 +62,12 @@ describe('AFD - montagem', () => {
   });
 
   it('monta AFD: cabecalho + N marcacoes + trailer', () => {
-    const afd = montarAfd(emp, marcacoes, { inicio: marcacoes[0]!.dataHora, fim: marcacoes[1]!.dataHora }, new Date());
+    const afd = montarAfd(
+      emp,
+      marcacoes,
+      { inicio: marcacoes[0]!.dataHora, fim: marcacoes[1]!.dataHora },
+      new Date(),
+    );
     const linhas = afd.trimEnd().split('\r\n');
     expect(linhas).toHaveLength(1 + 2 + 1);
     expect(linhas[1]!.slice(9, 10)).toBe('7'); // primeira marcacao e tipo 7

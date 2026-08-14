@@ -1,4 +1,13 @@
-import { Body, Controller, ForbiddenException, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PapelAdmin, StatusContestacao, TipoSujeito } from '@prisma/client';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -47,7 +56,10 @@ export class AdmContestacaoController {
 
   @Get()
   @Roles(...LEITURA)
-  listar(@Query('status') status: StatusContestacao | undefined, @CurrentUser() user: UsuarioAutenticado) {
+  listar(
+    @Query('status') status: StatusContestacao | undefined,
+    @CurrentUser() user: UsuarioAutenticado,
+  ) {
     return this.service.listar(user, status);
   }
 

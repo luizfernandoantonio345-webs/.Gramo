@@ -24,15 +24,15 @@ administrativo com trilha de auditoria.
 
 ## Stack
 
-| Camada    | Tecnologia                                                        |
-| --------- | ----------------------------------------------------------------- |
-| Backend   | Node.js + TypeScript + **NestJS**, REST versionada `/api/v1`, OpenAPI |
-| Banco     | **PostgreSQL** + **Prisma**, `empresa_id` + **Row Level Security**  |
-| Frontend  | **React + TypeScript + Vite** como **PWA** instalável              |
-| Offline   | IndexedDB (Dexie) + sync idempotente (UUID no client)             |
-| Auth      | JWT + refresh, argon2, 2FA admin _(Fase 1)_                        |
-| Testes    | Vitest                                                            |
-| Infra     | Docker Compose (app + postgres)                                   |
+| Camada   | Tecnologia                                                            |
+| -------- | --------------------------------------------------------------------- |
+| Backend  | Node.js + TypeScript + **NestJS**, REST versionada `/api/v1`, OpenAPI |
+| Banco    | **PostgreSQL** + **Prisma**, `empresa_id` + **Row Level Security**    |
+| Frontend | **React + TypeScript + Vite** como **PWA** instalável                 |
+| Offline  | IndexedDB (Dexie) + sync idempotente (UUID no client)                 |
+| Auth     | JWT + refresh, argon2, 2FA admin _(Fase 1)_                           |
+| Testes   | Vitest                                                                |
+| Infra    | Docker Compose (app + postgres)                                       |
 
 > **Nota de decisão:** o monorepo usa **npm workspaces** (não pnpm): o ambiente de
 > desenvolvimento bloqueia a instalação do pnpm via corepack (EPERM em
@@ -88,17 +88,17 @@ Para o RLS ser realmente aplicado, a API **não** pode conectar como superusuár
 Toda requisição identifica a empresa pelo subdomínio; em dev use o header
 `X-Tenant-Subdominio: <subdominio>`. Endpoints principais (prefixo `/api/v1`):
 
-| Método | Rota | Descrição |
-| --- | --- | --- |
-| POST | `/auth/admin/login` | E-mail + senha → devolve `desafioToken` (2FA obrigatório) |
-| POST | `/auth/admin/2fa/setup` | 1º acesso: gera segredo TOTP (otpauth p/ QR) |
-| POST | `/auth/admin/2fa/verify` | Valida código TOTP → emite `accessToken`+`refreshToken` |
-| POST | `/auth/admin/refresh` · `/logout` | Rotaciona / revoga sessão |
-| POST | `/admins` · `/admins/:id/revogar` | Gestão de admins (RH Master) |
-| POST | `/convites` | RH gera convite de 1º acesso (RH Master / Gestor) |
-| POST | `/auth/funcionario/primeiro-acesso` | Convite + CPF + senha + aceite LGPD |
-| POST | `/auth/funcionario/login` | CPF + senha (bloqueia 5 falhas / 15 min) |
-| POST | `/auth/funcionario/recuperar-senha` · `/redefinir-senha` | Recuperação |
+| Método | Rota                                                     | Descrição                                                 |
+| ------ | -------------------------------------------------------- | --------------------------------------------------------- |
+| POST   | `/auth/admin/login`                                      | E-mail + senha → devolve `desafioToken` (2FA obrigatório) |
+| POST   | `/auth/admin/2fa/setup`                                  | 1º acesso: gera segredo TOTP (otpauth p/ QR)              |
+| POST   | `/auth/admin/2fa/verify`                                 | Valida código TOTP → emite `accessToken`+`refreshToken`   |
+| POST   | `/auth/admin/refresh` · `/logout`                        | Rotaciona / revoga sessão                                 |
+| POST   | `/admins` · `/admins/:id/revogar`                        | Gestão de admins (RH Master)                              |
+| POST   | `/convites`                                              | RH gera convite de 1º acesso (RH Master / Gestor)         |
+| POST   | `/auth/funcionario/primeiro-acesso`                      | Convite + CPF + senha + aceite LGPD                       |
+| POST   | `/auth/funcionario/login`                                | CPF + senha (bloqueia 5 falhas / 15 min)                  |
+| POST   | `/auth/funcionario/recuperar-senha` · `/redefinir-senha` | Recuperação                                               |
 
 Regras aplicadas: 2FA TOTP obrigatório para admin, senhas Argon2id, lockout
 5/15min, refresh rotacionado (hash no banco), consentimento LGPD no 1º acesso,
@@ -109,23 +109,23 @@ interativa em `/api/docs` (Swagger).
 
 Endpoints do funcionário (autenticados, `/api/v1`):
 
-| Método | Rota | Descrição |
-| --- | --- | --- |
-| POST | `/pontos` | Registra a marcação (online). **Nunca bloqueia**; hora do servidor |
-| POST | `/pontos/sync` | Sincroniza a fila offline (idempotente por UUID) |
-| GET | `/pontos/regap-status?latitude&longitude` | Status REGAP em tempo real (anel) |
-| GET | `/pontos/hoje` | Espelho de ponto do dia |
+| Método | Rota                                      | Descrição                                                          |
+| ------ | ----------------------------------------- | ------------------------------------------------------------------ |
+| POST   | `/pontos`                                 | Registra a marcação (online). **Nunca bloqueia**; hora do servidor |
+| POST   | `/pontos/sync`                            | Sincroniza a fila offline (idempotente por UUID)                   |
+| GET    | `/pontos/regap-status?latitude&longitude` | Status REGAP em tempo real (anel)                                  |
+| GET    | `/pontos/hoje`                            | Espelho de ponto do dia                                            |
 
 Endpoints do ADM 4 (RH Master / Gestor; Auditoria só leitura):
 
-| Método | Rota | Descrição |
-| --- | --- | --- |
-| GET | `/admin/pontos/dashboard` | Indicadores do dia |
-| GET | `/admin/pontos/excecoes` | Fila de exceções pendentes |
-| POST | `/admin/pontos/excecoes/:id/decidir` | Aprova/recusa (motivo obrigatório) |
-| POST | `/admin/pontos/:id/ajuste` | Ajuste manual (cria registro, não sobrescreve) |
-| GET | `/admin/pontos/espelho?funcionarioId&inicio&fim` | Espelho por período |
-| GET·POST·PATCH | `/admin/regaps` | CRUD de áreas (REGAP) |
+| Método         | Rota                                             | Descrição                                      |
+| -------------- | ------------------------------------------------ | ---------------------------------------------- |
+| GET            | `/admin/pontos/dashboard`                        | Indicadores do dia                             |
+| GET            | `/admin/pontos/excecoes`                         | Fila de exceções pendentes                     |
+| POST           | `/admin/pontos/excecoes/:id/decidir`             | Aprova/recusa (motivo obrigatório)             |
+| POST           | `/admin/pontos/:id/ajuste`                       | Ajuste manual (cria registro, não sobrescreve) |
+| GET            | `/admin/pontos/espelho?funcionarioId&inicio&fim` | Espelho por período                            |
+| GET·POST·PATCH | `/admin/regaps`                                  | CRUD de áreas (REGAP)                          |
 
 Garantias: botão que nunca bloqueia, **NSR atômico por estabelecimento**, **hash
 SHA-256** por registro, ponto **imutável** (correção = ajuste; exceção em tabela
@@ -138,16 +138,16 @@ Tela 4 (funcionário): `GET/POST /documentos` (status + upload cifrado até 10MB
 
 ADM 2 (RH Master / Gestor; Auditoria só leitura):
 
-| Método | Rota | Descrição |
-| --- | --- | --- |
-| GET·POST | `/admin/funcionarios` | Lista (busca/status) · cadastra (valida CPF/unicidade) |
-| PATCH | `/admin/funcionarios/:id` | Atualiza (cargo, salário, jornada, filial, status) |
-| POST | `/admin/funcionarios/:id/foto/aprovar` | Aprova foto de referência |
-| POST | `/admin/funcionarios/:id/desligar` | Soft delete (guarda 5 anos) |
-| GET | `/admin/funcionarios/:id/documentos` | Documentos do funcionário |
-| POST | `/admin/documentos/:id/decidir` | Aprova/rejeita documento (motivo) |
-| POST | `/admin/funcionarios/importar` | Importação CSV tudo-ou-nada |
-| GET | `/admin/funcionarios/alertas/vencimento` | Documentos vencendo em 30 dias |
+| Método   | Rota                                     | Descrição                                              |
+| -------- | ---------------------------------------- | ------------------------------------------------------ |
+| GET·POST | `/admin/funcionarios`                    | Lista (busca/status) · cadastra (valida CPF/unicidade) |
+| PATCH    | `/admin/funcionarios/:id`                | Atualiza (cargo, salário, jornada, filial, status)     |
+| POST     | `/admin/funcionarios/:id/foto/aprovar`   | Aprova foto de referência                              |
+| POST     | `/admin/funcionarios/:id/desligar`       | Soft delete (guarda 5 anos)                            |
+| GET      | `/admin/funcionarios/:id/documentos`     | Documentos do funcionário                              |
+| POST     | `/admin/documentos/:id/decidir`          | Aprova/rejeita documento (motivo)                      |
+| POST     | `/admin/funcionarios/importar`           | Importação CSV tudo-ou-nada                            |
+| GET      | `/admin/funcionarios/alertas/vencimento` | Documentos vencendo em 30 dias                         |
 
 ## Folha e assinatura virtual (Fase 4)
 

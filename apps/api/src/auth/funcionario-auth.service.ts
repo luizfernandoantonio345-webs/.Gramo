@@ -109,7 +109,11 @@ export class FuncionarioAuthService {
     });
   }
 
-  async login(cpf: string, senha: string, ctx: Ctx): Promise<ParParticipacao & { status: StatusFuncionario }> {
+  async login(
+    cpf: string,
+    senha: string,
+    ctx: Ctx,
+  ): Promise<ParParticipacao & { status: StatusFuncionario }> {
     const agora = new Date();
     const cpfNorm = normalizarCpf(cpf);
     const credenciaisInvalidas = new UnauthorizedException('CPF ou senha invalidos.');
@@ -117,7 +121,11 @@ export class FuncionarioAuthService {
     const funcionario = await this.prisma.forTenant((tx) =>
       tx.funcionario.findFirst({ where: { cpf: cpfNorm } }),
     );
-    if (!funcionario || !funcionario.senhaHash || funcionario.status === StatusFuncionario.DESLIGADO) {
+    if (
+      !funcionario ||
+      !funcionario.senhaHash ||
+      funcionario.status === StatusFuncionario.DESLIGADO
+    ) {
       await this.log.registrar({
         evento: EventoAcesso.LOGIN_FALHA,
         sujeitoTipo: TipoSujeito.FUNCIONARIO,
@@ -128,9 +136,14 @@ export class FuncionarioAuthService {
       throw credenciaisInvalidas;
     }
 
-    const estado = { tentativasFalhas: funcionario.tentativasFalhas, bloqueadoAte: funcionario.bloqueadoAte };
+    const estado = {
+      tentativasFalhas: funcionario.tentativasFalhas,
+      bloqueadoAte: funcionario.bloqueadoAte,
+    };
     if (estaBloqueado(estado, agora)) {
-      throw new UnauthorizedException(`Conta bloqueada. Tente novamente em ${minutosRestantes(estado, agora)} min.`);
+      throw new UnauthorizedException(
+        `Conta bloqueada. Tente novamente em ${minutosRestantes(estado, agora)} min.`,
+      );
     }
 
     if (!(await verificarSenha(funcionario.senhaHash, senha))) {
@@ -175,8 +188,11 @@ export class FuncionarioAuthService {
       refreshToken,
       async (sujeitoId, tipo) => {
         if (tipo !== TipoSujeito.FUNCIONARIO) throw new UnauthorizedException('Token invalido.');
-        const f = await this.prisma.forTenant((tx) => tx.funcionario.findFirstOrThrow({ where: { id: sujeitoId } }));
-        if (f.status === StatusFuncionario.DESLIGADO) throw new UnauthorizedException('Acesso encerrado.');
+        const f = await this.prisma.forTenant((tx) =>
+          tx.funcionario.findFirstOrThrow({ where: { id: sujeitoId } }),
+        );
+        if (f.status === StatusFuncionario.DESLIGADO)
+          throw new UnauthorizedException('Acesso encerrado.');
         return this.montarPayload(f.id);
       },
       ctx,
@@ -191,7 +207,9 @@ export class FuncionarioAuthService {
   async recuperarSenha(cpf: string, _ctx: Ctx): Promise<void> {
     const cpfNorm = normalizarCpf(cpf);
     const empresaId = TenantContext.requireEmpresaId();
-    const funcionario = await this.prisma.forTenant((tx) => tx.funcionario.findFirst({ where: { cpf: cpfNorm } }));
+    const funcionario = await this.prisma.forTenant((tx) =>
+      tx.funcionario.findFirst({ where: { cpf: cpfNorm } }),
+    );
     if (!funcionario) return;
 
     const token = gerarTokenOpaco();

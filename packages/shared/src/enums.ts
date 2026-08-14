@@ -27,8 +27,7 @@ export const StatusValidacaoPonto = {
   PENDENTE_IDENTIDADE: 'PENDENTE_IDENTIDADE',
   PENDENTE_HORARIO: 'PENDENTE_HORARIO',
 } as const;
-export type StatusValidacaoPonto =
-  (typeof StatusValidacaoPonto)[keyof typeof StatusValidacaoPonto];
+export type StatusValidacaoPonto = (typeof StatusValidacaoPonto)[keyof typeof StatusValidacaoPonto];
 
 /** Origem da hora gravada. Servidor quando online; dispositivo apenas offline. */
 export const OrigemHora = {

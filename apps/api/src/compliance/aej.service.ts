@@ -10,7 +10,11 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AejService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async gerar(inicio: Date, fim: Date, filialId?: string): Promise<{ conteudo: string; total: number }> {
+  async gerar(
+    inicio: Date,
+    fim: Date,
+    filialId?: string,
+  ): Promise<{ conteudo: string; total: number }> {
     return this.prisma.forTenant(async (tx) => {
       const empresa = await tx.empresa.findFirstOrThrow({
         select: { cnpj: true, razaoSocial: true },
@@ -34,14 +38,15 @@ export class AejService {
       });
 
       // Agrupa por funcionario.
-      const porFuncionario = new Map<
-        string,
-        { cpf: string; nome: string; marcacoes: unknown[] }
-      >();
+      const porFuncionario = new Map<string, { cpf: string; nome: string; marcacoes: unknown[] }>();
       for (const p of pontos) {
         const chave = p.funcionario.cpf;
         if (!porFuncionario.has(chave)) {
-          porFuncionario.set(chave, { cpf: p.funcionario.cpf, nome: p.funcionario.nome, marcacoes: [] });
+          porFuncionario.set(chave, {
+            cpf: p.funcionario.cpf,
+            nome: p.funcionario.nome,
+            marcacoes: [],
+          });
         }
         porFuncionario.get(chave)!.marcacoes.push({
           nsr: p.nsr.toString(),

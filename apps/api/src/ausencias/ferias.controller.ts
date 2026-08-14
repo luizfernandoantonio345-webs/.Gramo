@@ -1,4 +1,13 @@
-import { Body, Controller, ForbiddenException, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PapelAdmin, StatusAusencia, TipoSujeito } from '@prisma/client';
 import { CurrentUser } from '../common/auth/current-user.decorator';
@@ -48,7 +57,10 @@ export class AdmFeriasController {
   @Get()
   @Roles(...LEITURA)
   @ApiOperation({ summary: 'Lista solicitacoes (filtro por status; escopo por filial).' })
-  listar(@Query('status') status: StatusAusencia | undefined, @CurrentUser() user: UsuarioAutenticado) {
+  listar(
+    @Query('status') status: StatusAusencia | undefined,
+    @CurrentUser() user: UsuarioAutenticado,
+  ) {
     return this.service.listar(user, status);
   }
 
