@@ -297,6 +297,10 @@ export class DashboardService {
     // Rotatividade: janela do periodo sobre datas de cadastro/desativacao.
     const janela = { gte: inicio, lte: fim };
 
+    // Horas extras agregadas: chamada propria (forTenant proprio) para nao aninhar
+    // transacao com o bloco abaixo.
+    const horasExtras = await this.bancoHoras.extrasAgregadasPeriodo(autor, inicio, fim);
+
     return this.prisma.forTenant(async (tx) => {
       const [
         porStatus,
@@ -368,6 +372,7 @@ export class DashboardService {
         atrasos: { entradasForaHorario: atrasos },
         ausencias: resumirAusencias(ausencias),
         rotatividade: calcularTurnover(admissoes, desligamentos, headcount),
+        horasExtras,
         ranking,
       };
     });

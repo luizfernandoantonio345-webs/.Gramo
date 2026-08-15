@@ -103,6 +103,54 @@ export function aplicarRegimeSaldo(
 }
 
 /**
+ * Reduz os dias de UM funcionario a extras/faltas/dias acima do limite (puro).
+ * Reusa a mesma convencao do saldo diario: saldoMin > 0 = extra, < 0 = falta,
+ * null = sem jornada (ignorado). "Dia acima do limite" = extra que excede o
+ * limite legal diario (CLT 2h por padrao).
+ */
+export function reduzirExtrasFunc(
+  dias: Array<{ saldoMin: number | null }>,
+  limiteExtra: number,
+): { extrasMin: number; faltasMin: number; diasAcimaLimite: number } {
+  let extrasMin = 0;
+  let faltasMin = 0;
+  let diasAcimaLimite = 0;
+  for (const d of dias) {
+    if (d.saldoMin === null) continue;
+    if (d.saldoMin > 0) extrasMin += d.saldoMin;
+    else faltasMin += -d.saldoMin;
+    if (d.saldoMin > limiteExtra) diasAcimaLimite++;
+  }
+  return { extrasMin, faltasMin, diasAcimaLimite };
+}
+
+export interface FuncExtras {
+  funcionario: string;
+  filial: string;
+  extrasMin: number;
+  faltasMin: number;
+  diasAcimaLimite: number;
+}
+
+/**
+ * Consolida as horas extras da FORCA DE TRABALHO no periodo (puro/testavel):
+ * totais, quantos funcionarios fizeram extra, dias acima do limite legal e o
+ * ranking (top 8) de quem mais acumulou extra -- foco de atencao do RH/gestor.
+ */
+export function agregarExtras(porFunc: FuncExtras[]) {
+  const totalExtrasMin = porFunc.reduce((s, f) => s + f.extrasMin, 0);
+  const totalFaltasMin = porFunc.reduce((s, f) => s + f.faltasMin, 0);
+  const funcionariosComExtra = porFunc.filter((f) => f.extrasMin > 0).length;
+  const diasAcimaLimite = porFunc.reduce((s, f) => s + f.diasAcimaLimite, 0);
+  const topExtras = [...porFunc]
+    .filter((f) => f.extrasMin > 0)
+    .sort((a, b) => b.extrasMin - a.extrasMin)
+    .slice(0, 8)
+    .map((f) => ({ funcionario: f.funcionario, filial: f.filial, extrasMin: f.extrasMin }));
+  return { totalExtrasMin, totalFaltasMin, funcionariosComExtra, diasAcimaLimite, topExtras };
+}
+
+/**
  * ADM 4 -- Banco de horas completo. Suporta 3 regimes (configuraveis por
  * jornada): compensacao mensal, banco anual (CLT) e hora extra direta.
  *
@@ -302,6 +350,57 @@ export class BancoHorasService {
       }
       alertas.sort((a, b) => b.extraMin - a.extraMin);
       return { atualizadoEm: new Date().toISOString(), total: alertas.length, alertas };
+    });
+  }
+
+  /**
+   * Horas extras AGREGADAS da forca de trabalho no periodo. Reusa a matematica
+   * de saldo diario (saldosPorDia) por funcionario e consolida (agregarExtras).
+   * Escopo por filial + RLS. So leitura -- nada altera o ponto. Ignora quem nao
+   * tem jornada com carga definida (sem carga nao existe "extra").
+   */
+  async extrasAgregadasPeriodo(autor: UsuarioAutenticado, inicio: Date, fim: Date) {
+    const filialFiltro = await this.escopo.escopoFilialId(autor);
+    return this.prisma.forTenant(async (tx) => {
+      const funcs = await tx.funcionario.findMany({
+        where: { ...filialFiltro, status: StatusFuncionario.ATIVO },
+        select: {
+          id: true,
+          nome: true,
+          jornada: { select: { cargaDiariaMinutos: true, limiteExtraDiariaMin: true } },
+          filial: { select: { nome: true, timezone: true } },
+        },
+      });
+      const comCarga = funcs.filter((f) => f.jornada?.cargaDiariaMinutos != null);
+      const base = agregarExtras([]);
+      if (comCarga.length === 0) return { ...base, semJornada: funcs.length };
+
+      const pontos = await tx.ponto.findMany({
+        where: {
+          funcionarioId: { in: comCarga.map((f) => f.id) },
+          registradoEm: { gte: inicio, lte: fim },
+        },
+        orderBy: { registradoEm: 'asc' },
+        select: { funcionarioId: true, tipo: true, registradoEm: true },
+      });
+      const porFuncPontos = new Map<string, { tipo: TipoMarcacao; registradoEm: Date }[]>();
+      for (const p of pontos) {
+        if (!porFuncPontos.has(p.funcionarioId)) porFuncPontos.set(p.funcionarioId, []);
+        porFuncPontos.get(p.funcionarioId)!.push({ tipo: p.tipo, registradoEm: p.registradoEm });
+      }
+
+      const porFunc: FuncExtras[] = comCarga.map((f) => {
+        const tz = f.filial?.timezone ?? 'America/Sao_Paulo';
+        const carga = f.jornada!.cargaDiariaMinutos;
+        const limite = f.jornada?.limiteExtraDiariaMin ?? 120;
+        const dias = this.saldosPorDia(porFuncPontos.get(f.id) ?? [], tz, carga);
+        return {
+          funcionario: f.nome,
+          filial: f.filial?.nome ?? 'Sem filial',
+          ...reduzirExtrasFunc(dias, limite),
+        };
+      });
+      return { ...agregarExtras(porFunc), semJornada: funcs.length - comCarga.length };
     });
   }
 

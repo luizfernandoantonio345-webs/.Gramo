@@ -554,6 +554,14 @@ interface IndicadoresRhData {
     headcount: number;
     taxaTurnover: number;
   };
+  horasExtras: {
+    totalExtrasMin: number;
+    totalFaltasMin: number;
+    funcionariosComExtra: number;
+    diasAcimaLimite: number;
+    topExtras: Array<{ funcionario: string; filial: string; extrasMin: number }>;
+    semJornada: number;
+  };
   ranking: Array<{ funcionario: string; filial: string; naoConformes: number }>;
 }
 
@@ -693,6 +701,63 @@ function IndicadoresRh() {
                 />
                 <Kpi rotulo="Headcount ativo" valor={d.rotatividade.headcount} />
               </div>
+            </div>
+
+            <div style={{ marginTop: 'var(--space-6)' }}>
+              <TituloSecao meta={<span style={metaStyle}>banco de horas · período</span>}>
+                Horas extras
+              </TituloSecao>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: 'var(--space-5)',
+                }}
+              >
+                <Kpi
+                  rotulo="Total de extras"
+                  valor={formatarMinutos(d.horasExtras.totalExtrasMin)}
+                />
+                <Kpi
+                  rotulo="Total de faltas"
+                  valor={formatarMinutos(d.horasExtras.totalFaltasMin)}
+                  tom={d.horasExtras.totalFaltasMin > 0 ? 'aviso' : 'neutro'}
+                />
+                <Kpi rotulo="Fizeram extra" valor={d.horasExtras.funcionariosComExtra} />
+                <Kpi
+                  rotulo="Dias acima do limite"
+                  valor={d.horasExtras.diasAcimaLimite}
+                  tom={d.horasExtras.diasAcimaLimite > 0 ? 'alerta' : 'ok'}
+                />
+              </div>
+              {d.horasExtras.topExtras.length > 0 && (
+                <div style={{ marginTop: 'var(--space-5)' }}>
+                  <Tabela minWidth={320}>
+                    <thead>
+                      <tr>
+                        <th>Funcionário</th>
+                        <th>Obra</th>
+                        <th className="g-num">Extra</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.horasExtras.topExtras.map((x, i) => (
+                        <tr key={i}>
+                          <td style={{ fontWeight: 500 }}>{x.funcionario}</td>
+                          <td>{x.filial}</td>
+                          <td className="g-num">{formatarMinutos(x.extrasMin)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Tabela>
+                </div>
+              )}
+              {d.horasExtras.semJornada > 0 && (
+                <div style={{ ...metaStyle, marginTop: 'var(--space-3)' }}>
+                  {d.horasExtras.semJornada} funcionário(s) sem jornada com carga definida — fora do
+                  cálculo de extras.
+                </div>
+              )}
             </div>
 
             <div
