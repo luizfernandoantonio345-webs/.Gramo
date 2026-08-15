@@ -1,524 +1,286 @@
-// Gera a apresentacao do sistema .GRAMO em PDF (docs/APRESENTACAO-SISTEMA.pdf).
-// Uso: node scripts/gerar-apresentacao.mjs
-// Sem dependencia externa nova: usa pdfkit (ja no node_modules).
+// Gera a APRESENTACAO do sistema .GRAMO em PDF (docs/APRESENTACAO-SISTEMA.pdf).
+// Uma tela por pagina (screenshot real de docs/telas/) + guia de estudo no fim.
+// Uso: node scripts/gerar-apresentacao.mjs   (rode a captura antes: capturar-telas.mjs)
 import PDFDocument from 'pdfkit';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TELAS = path.join(__dirname, '..', 'docs', 'telas');
 const OUT = path.join(__dirname, '..', 'docs', 'APRESENTACAO-SISTEMA.pdf');
 
-const ACCENT = '#0b5563'; // teal GRAMO
+const ACCENT = '#0b5563';
 const ACCENT2 = '#12808f';
 const TEXT = '#1a2230';
 const MUTED = '#5a6572';
+const PANEL = '#eef2f4';
 const LINE = '#d7dde3';
 
 const doc = new PDFDocument({
   size: 'A4',
-  margins: { top: 64, bottom: 64, left: 60, right: 60 },
+  margins: { top: 60, bottom: 60, left: 54, right: 54 },
   bufferPages: true,
-  info: {
-    Title: 'Apresentacao do Sistema .GRAMO',
-    Author: 'GRAMO Engenharia',
-    Subject: 'Ponto Eletronico Corporativo (REP-P) — guia de telas e uso',
-  },
+  info: { Title: 'Apresentacao do Sistema .GRAMO', Author: 'GRAMO Engenharia' },
 });
 doc.pipe(fs.createWriteStream(OUT));
-
 const W = doc.page.width;
-const M = 60;
-const CW = W - M * 2; // largura util
+const H = doc.page.height;
+const M = 54;
+const CW = W - M * 2;
 
-function garanteEspaco(min = 120) {
-  if (doc.y > doc.page.height - 64 - min) doc.addPage();
+// Fonte com acentuacao (Arial do Windows); fallback para Helvetica.
+let REG = 'Helvetica';
+let BOLD = 'Helvetica-Bold';
+try {
+  const fd = 'C:\\Windows\\Fonts';
+  if (fs.existsSync(path.join(fd, 'arial.ttf'))) {
+    doc.registerFont('R', path.join(fd, 'arial.ttf'));
+    REG = 'R';
+  }
+  if (fs.existsSync(path.join(fd, 'arialbd.ttf'))) {
+    doc.registerFont('B', path.join(fd, 'arialbd.ttf'));
+    BOLD = 'B';
+  }
+} catch {
+  /* usa Helvetica */
 }
 
-function h1(txt) {
+const TELAS_IMG = [
+  { g: 'Colaborador', img: '01-colaborador-login.png', nome: 'Login do Colaborador',
+    cap: 'Entrada do colaborador no app, com CPF e senha.',
+    oque: 'Porta de entrada do colaborador (CPF + senha). No primeiro acesso, a senha e criada a partir de um convite do RH.',
+    como: ['Digite o CPF e a senha.', 'Primeiro acesso: use o codigo de convite do RH.', 'Esqueceu a senha? Recupere por e-mail.'],
+    nota: 'Apos 5 erros a conta bloqueia por 15 minutos.' },
+  { g: 'Colaborador', img: '02-colaborador-bater-ponto.png', nome: 'Bater Ponto',
+    cap: 'Registro de entrada/saida com localizacao e foto. Funciona offline.',
+    oque: 'Tela principal do colaborador. Registra entrada, saida e intervalos, com localizacao (area da obra/REGAP) e foto. Funciona OFFLINE e sincroniza sozinho depois.',
+    como: ['Toque no botao de registrar.', 'Permita localizacao e camera.', 'O comprovante mostra data, hora e o NSR.'],
+    nota: 'O botao NUNCA bloqueia: fora da area/horario, entra como pendente. O ponto e imutavel.' },
+  { g: 'Colaborador', img: '03-colaborador-folha.png', nome: 'Folha',
+    cap: 'Espelho de ponto: marcacoes do periodo e seus status.',
+    oque: 'Mostra o espelho de ponto do colaborador, com o status de cada marcacao (valida ou pendente).',
+    como: ['Veja as marcacoes por dia.', 'Toque em uma para detalhes.', 'Discorda? Use "contestar".'] },
+  { g: 'Colaborador', img: '04-colaborador-documentos.png', nome: 'Documentos',
+    cap: 'Envio e consulta de documentos (cifrados).',
+    oque: 'Espaco para enviar e ver documentos (ex.: atestados). Os arquivos sao cifrados (AES-256).',
+    como: ['Envie o arquivo (ate 10 MB).', 'Acompanhe o status (enviado/aprovado/rejeitado).'] },
+  { g: 'Colaborador', img: '05-colaborador-ferias.png', nome: 'Ferias e Afastamentos',
+    cap: 'Solicitacao de ferias/afastamentos e acompanhamento.',
+    oque: 'Onde o colaborador solicita ferias ou registra afastamentos e acompanha a aprovacao do RH.',
+    como: ['Nova solicitacao: escolha o tipo.', 'Informe datas e motivo.', 'Acompanhe o status.'],
+    nota: 'Ferias aprovadas evitam que o ponto do dia gere pendencia.' },
+  { g: 'Colaborador', img: '06-colaborador-comunicados.png', nome: 'Comunicados',
+    cap: 'Mural de avisos da empresa; a leitura e registrada.',
+    oque: 'Avisos que o RH publica. Ao abrir, a leitura e registrada (o RH mede quem leu).',
+    como: ['Abra a lista de comunicados.', 'Toque para ler (marca a leitura).'] },
+
+  { g: 'Administracao / RH', img: '07-admin-login.png', nome: 'Login do Administrador',
+    cap: 'Acesso do RH/gestor, com verificacao em duas etapas (2FA).',
+    oque: 'Acesso do RH e gestores: e-mail + senha + codigo 2FA de um app autenticador (camada extra de seguranca).',
+    como: ['Informe e-mail e senha.', 'Digite o codigo de 6 digitos do autenticador.', '1o acesso: leia o QR Code para vincular.'] },
+  { g: 'Administracao / RH', img: '08-admin-dashboard.png', nome: 'Dashboard',
+    cap: 'Visao executiva: KPIs, presenca ao vivo e Indicadores de RH.',
+    oque: 'Tela-resumo da operacao: KPIs do dia, presenca agora, alertas de hora extra, comparativo entre obras e os Indicadores de RH (conformidade, atrasos, ausencias, rotatividade e horas extras).',
+    como: ['Abra o Dashboard ao entrar.', 'Use o filtro de periodo nos Indicadores de RH.', 'Acompanhe presenca e extras em tempo quase real.'],
+    nota: 'Ideal para o gestor entender a operacao em 30 segundos.' },
+  { g: 'Administracao / RH', img: '09-admin-gestao-ponto.png', nome: 'Gestao de Ponto',
+    cap: 'Revisao de marcacoes, tratamento de pendencias e ajustes.',
+    oque: 'Onde o RH revisa marcacoes, trata pendencias (fora de area/horario) e registra ajustes vinculados (nunca apaga o original).',
+    como: ['Filtre por funcionario/obra/periodo.', 'Abra a pendencia e aprove ou ajuste.', 'Tudo fica auditado.'] },
+  { g: 'Administracao / RH', img: '10-admin-funcionarios.png', nome: 'Funcionarios',
+    cap: 'Cadastro, foto, documentos, importacao CSV e desligamento.',
+    oque: 'Gestao de colaboradores: criar/editar, aprovar foto, gerir documentos, importar em lote (CSV) e desligar (soft delete, guarda de 5 anos).',
+    como: ['Cadastre (CPF unico) ou importe CSV.', 'Aprove a foto de referencia.', 'Desligar = desativar (preserva os dados).'] },
+  { g: 'Administracao / RH', img: '11-admin-ausencias.png', nome: 'Ausencias',
+    cap: 'Aprovacao de ferias/afastamentos, com calendario.',
+    oque: 'Onde o RH decide ferias e afastamentos, com visao de calendario para planejar a equipe.',
+    como: ['Veja as pendencias.', 'Aprove ou recuse com justificativa.', 'Use o calendario para sobreposicoes.'] },
+  { g: 'Administracao / RH', img: '12-admin-comunicados.png', nome: 'Comunicados (RH)',
+    cap: 'Publicacao de avisos por publico-alvo e taxa de leitura.',
+    oque: 'Publica comunicados escolhendo o publico (todos, obra, cargo ou pessoa) e mostra a taxa de leitura.',
+    como: ['Crie o comunicado.', 'Escolha o publico-alvo.', 'Publique e acompanhe as leituras.'] },
+  { g: 'Administracao / RH', img: '13-admin-assinaturas.png', nome: 'Assinaturas',
+    cap: 'Envio de documentos para assinatura digital.',
+    oque: 'Envia documentos para o colaborador assinar (individual ou em lote), com registro imutavel e carimbo de integridade.',
+    como: ['Selecione documento e destinatarios.', 'Envie.', 'Acompanhe assinados/recusados/pendentes.'] },
+  { g: 'Administracao / RH', img: '14-admin-relatorios.png', nome: 'Relatorios',
+    cap: 'Relatorios operacionais e exportacoes legais (AFD/AEJ).',
+    oque: 'Relatorios para conferencia e fechamento, incluindo as exportacoes legais exigidas pela fiscalizacao (AFD/AEJ).',
+    como: ['Escolha relatorio e periodo.', 'Gere e exporte.'] },
+  { g: 'Administracao / RH', img: '15-admin-auditoria.png', nome: 'Auditoria',
+    cap: 'Trilha de confianca: acessos, aprovacoes e ajustes.',
+    oque: 'Registro de tudo que e sensivel (acessos, aprovacoes, ajustes) — prova, para auditoria, quem fez o que e quando.',
+    como: ['Filtre por evento/usuario/periodo.', 'Use para investigar ou comprovar.'] },
+  { g: 'Administracao / RH', img: '16-admin-configuracoes.png', nome: 'Configuracoes',
+    cap: 'Jornadas, feriados e tolerancias que regem o ponto.',
+    oque: 'Parametros que governam a validacao do ponto: jornadas (horarios, dias, carga), feriados e tolerancias.',
+    como: ['Cadastre jornadas.', 'Cadastre feriados.', 'Vincule a jornada a cada funcionario.'],
+    nota: 'Jornadas corretas tornam atrasos e horas extras precisos.' },
+  { g: 'Administracao / RH', img: '17-admin-integracoes.png', nome: 'Integracoes',
+    cap: 'Chaves de API e integracao com folha/eSocial.',
+    oque: 'Gera chaves de API (mostradas uma unica vez) e configura integracoes com folha de pagamento e eSocial.',
+    como: ['Gere a chave e guarde-a.', 'Configure a integracao.'] },
+  { g: 'Administracao / RH', img: '18-admin-quiosque.png', nome: 'Quiosque (gestao)',
+    cap: 'Cadastro dos dispositivos de ponto compartilhado.',
+    oque: 'Gerencia os dispositivos de quiosque (tablets/PCs fixos na obra), cada um com sua credencial.',
+    como: ['Cadastre o dispositivo e gere a credencial.', 'Instale o modo quiosque no aparelho.'] },
+];
+
+const TELAS_EXTRA = [
+  { g: 'Administracao / RH', nome: 'Telao de Presenca',
+    oque: 'Painel para exibir numa TV/monitor da obra mostrando quem esta presente agora, atualizando sozinho.',
+    como: ['Abra o botao "Telao" no painel.', 'Coloque em tela cheia no monitor.'] },
+  { g: 'Administracao / RH', nome: 'Mapa de Obras',
+    oque: 'Define no mapa a area valida para bater ponto de cada obra (REGAP/geofence).',
+    como: ['Localize a obra no mapa.', 'Clique para posicionar o centro.', 'Ajuste o raio e salve.'] },
+  { g: 'Plataforma (operador do SaaS)', nome: 'Login da Plataforma',
+    oque: 'Acesso do super administrador (fornecedor), com 2FA. Fica oculto do cliente e nao acessa dados operacionais.',
+    como: ['Acesse pelo endereco reservado.', 'Entre com credenciais de super admin + 2FA.'] },
+  { g: 'Plataforma (operador do SaaS)', nome: 'Painel da Plataforma',
+    oque: 'Gestao comercial do SaaS: empresas, planos, faturas e metricas de uso (nunca ve dados operacionais das empresas).',
+    como: ['Gerencie empresas e planos.', 'Acompanhe faturas e metricas.'] },
+  { g: 'Quiosque', nome: 'Tela de Quiosque',
+    oque: 'Dispositivo fixo na obra onde varios colaboradores batem ponto, identificando-se um a um.',
+    como: ['Abra em modo quiosque (?modo=quiosque).', 'Vincule com a credencial do dispositivo.', 'Cada colaborador se identifica e registra.'] },
+];
+
+// -------------------------------------------------------------- CAPA ---
+doc.rect(0, 0, W, H).fill(ACCENT);
+doc.fillColor('#ffffff').font(BOLD).fontSize(52).text('.GRAMO', M, 200);
+doc.font(REG).fontSize(19).fillColor('#d7eef0').text('Ponto Eletronico Corporativo', M, 266);
+doc.font(BOLD).fontSize(13).fillColor('#eaf6f7').text('Apresentacao do sistema', M, 300);
+doc.moveTo(M, 334).lineTo(M + 170, 334).lineWidth(2).strokeColor('#3f97a2').stroke();
+doc.font(REG).fontSize(11).fillColor('#cdeaed').text(
+  'Guia visual das telas + roteiro de estudo para apresentar o sistema.\nConforme a Portaria MTP 671/2021 (REP-P).',
+  M, 352, { width: CW - 30, lineGap: 4 },
+);
+doc.font(REG).fontSize(10).fillColor('#bfe3e7').text(
+  `Gerado em ${new Date().toLocaleDateString('pt-BR')}  ·  https://gramoengenharia.online`,
+  M, H - 84,
+);
+
+// --------------------------------------------------- COMO APRESENTAR ---
+doc.addPage();
+doc.rect(0, 0, W, 6).fill(ACCENT);
+doc.fillColor(ACCENT).font(BOLD).fontSize(22).text('Como apresentar', M, 66);
+doc.moveDown(0.8);
+doc.fillColor(TEXT).font(REG).fontSize(11.5).text(
+  'Este material tem duas partes: primeiro as TELAS (uma por pagina, com a imagem real e uma frase do que faz) — use para mostrar o sistema; e no FINAL um GUIA DE ESTUDO com o passo a passo de cada tela — use para se preparar.',
+  { width: CW, lineGap: 3 },
+);
+doc.moveDown(1);
+doc.fillColor(ACCENT).font(BOLD).fontSize(13).text('3 mensagens-chave para o chefe');
+doc.moveDown(0.4);
+[
+  ['E confiavel e legal', 'segue a Portaria 671/2021, com ponto imutavel, exportacoes fiscais e assinatura digital.'],
+  ['E seguro', 'dados isolados por empresa no banco, biometria/documentos cifrados, 2FA e trilha de auditoria.'],
+  ['Da visao de gestao', 'dashboard com presenca ao vivo e indicadores de RH (atrasos, ausencias, turnover, horas extras).'],
+].forEach(([t, d]) => {
+  doc.font(BOLD).fillColor(ACCENT).fontSize(11.5).text('• ' + t + ': ', { continued: true });
+  doc.font(REG).fillColor(TEXT).text(d);
+  doc.moveDown(0.3);
+});
+doc.moveDown(0.8);
+doc.fillColor(MUTED).font(REG).fontSize(10.5).text(
+  'Regra de ouro para citar: o botao de bater ponto NUNCA bloqueia o colaborador — fora da area/horario o registro e aceito como pendente e o RH valida depois.',
+  { width: CW, lineGap: 3 },
+);
+
+// ------------------------------------------------- PAGINAS DAS TELAS ---
+let grupoAtual = '';
+let numero = 0;
+for (const s of TELAS_IMG) {
+  if (s.g !== grupoAtual) {
+    grupoAtual = s.g;
+    doc.addPage();
+    doc.rect(0, H / 2 - 70, W, 140).fill(ACCENT);
+    doc.fillColor('#ffffff').font(BOLD).fontSize(26).text(grupoAtual, M, H / 2 - 30, {
+      width: CW,
+      align: 'center',
+    });
+  }
+  numero++;
   doc.addPage();
   doc.rect(0, 0, W, 6).fill(ACCENT);
-  doc.moveDown(0.5);
-  doc.fillColor(ACCENT).font('Helvetica-Bold').fontSize(20).text(txt, M, 72);
-  doc
-    .moveTo(M, doc.y + 6)
-    .lineTo(W - M, doc.y + 6)
-    .strokeColor(LINE)
-    .lineWidth(1)
-    .stroke();
-  doc.moveDown(1.2);
-  doc.fillColor(TEXT);
-}
-
-function intro(txt) {
-  doc.font('Helvetica').fontSize(11).fillColor(MUTED).text(txt, { width: CW, align: 'left' });
-  doc.moveDown(0.8);
-  doc.fillColor(TEXT);
-}
-
-// Bloco de uma tela: numero, nome, para que serve, como usar, nota.
-function tela({ n, nome, tag, oque, como = [], nota }) {
-  garanteEspaco(150);
-  const y0 = doc.y;
-  // selo com o numero
-  doc
-    .roundedRect(M, y0, 30, 30, 6)
-    .fill(ACCENT);
-  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(13).text(String(n), M, y0 + 8, {
-    width: 30,
-    align: 'center',
+  doc.fillColor(ACCENT2).font(BOLD).fontSize(9).text(`${grupoAtual.toUpperCase()}  ·  TELA ${numero}`, M, 40, {
+    characterSpacing: 0.5,
   });
-  // titulo + tag
-  doc.fillColor(TEXT).font('Helvetica-Bold').fontSize(14).text(nome, M + 42, y0 + 2, { width: CW - 42 });
-  if (tag) {
-    doc.fillColor(ACCENT2).font('Helvetica').fontSize(9).text(tag.toUpperCase(), M + 42, doc.y + 1, {
-      width: CW - 42,
-      characterSpacing: 0.5,
+  doc.fillColor(TEXT).font(BOLD).fontSize(19).text(s.nome, M, 54, { width: CW });
+
+  const top = 96;
+  const stageH = 600;
+  doc.roundedRect(M, top, CW, stageH, 10).fill(PANEL);
+  const pad = 16;
+  const imgPath = path.join(TELAS, s.img);
+  if (fs.existsSync(imgPath)) {
+    doc.image(imgPath, M + pad, top + pad, {
+      fit: [CW - 2 * pad, stageH - 2 * pad],
+      align: 'center',
+      valign: 'center',
+    });
+  } else {
+    doc.fillColor(MUTED).font(REG).fontSize(12).text('(captura pendente)', M, top + stageH / 2 - 6, {
+      width: CW,
+      align: 'center',
     });
   }
-  doc.moveDown(0.6);
-  doc.x = M + 42;
-  doc.fillColor(TEXT).font('Helvetica').fontSize(10.5).text(oque, { width: CW - 42 });
-  if (como.length) {
-    doc.moveDown(0.3);
-    doc.fillColor(ACCENT).font('Helvetica-Bold').fontSize(10).text('Como usar:', { width: CW - 42 });
-    doc.fillColor(TEXT).font('Helvetica').fontSize(10.5);
-    for (const passo of como) {
-      doc.text(`•  ${passo}`, M + 52, doc.y, { width: CW - 52 });
-    }
-  }
-  if (nota) {
-    doc.moveDown(0.3);
-    doc.fillColor(MUTED).font('Helvetica-Oblique').fontSize(9.5).text(`Nota: ${nota}`, M + 42, doc.y, {
-      width: CW - 42,
-    });
-  }
-  doc.x = M;
-  doc.moveDown(0.9);
-  doc
-    .moveTo(M, doc.y)
-    .lineTo(W - M, doc.y)
-    .strokeColor(LINE)
-    .lineWidth(0.5)
-    .stroke();
-  doc.moveDown(0.7);
-  doc.fillColor(TEXT);
+  doc.fillColor(TEXT).font(REG).fontSize(11.5).text(s.cap, M, top + stageH + 16, { width: CW });
 }
 
-// ---------------------------------------------------------------- CAPA ---
-doc.rect(0, 0, W, doc.page.height).fill(ACCENT);
-doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(46).text('.GRAMO', M, 190);
-doc.font('Helvetica').fontSize(18).fillColor('#d7eef0').text('Ponto Eletronico Corporativo', M, 250);
-doc
-  .font('Helvetica')
-  .fontSize(12)
-  .fillColor('#bfe3e7')
-  .text('Apresentacao do sistema — guia de telas e de uso', M, 282);
-doc
-  .moveTo(M, 320)
-  .lineTo(M + 180, 320)
-  .strokeColor('#3f97a2')
-  .lineWidth(2)
-  .stroke();
-doc
-  .font('Helvetica')
-  .fontSize(11)
-  .fillColor('#eaf6f7')
-  .text(
-    'Conforme a Portaria MTP 671/2021 (REP-P).\nMulti-tenant, PWA offline-first, seguranca de dados por padrao.',
-    M,
-    340,
-    { width: CW - 40, lineGap: 3 },
-  );
-doc
-  .font('Helvetica')
-  .fontSize(10)
-  .fillColor('#bfe3e7')
-  .text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}  ·  https://gramoengenharia.online`, M, doc.page.height - 90);
-
-// -------------------------------------------------- COMO ESTA ORGANIZADO ---
-h1('Sobre este documento');
-intro(
-  'Este guia apresenta todas as telas do sistema .GRAMO, explicando para que cada uma serve e como usa-la. ' +
-    'Ele e organizado pelos tres perfis de acesso do sistema, mais o modo quiosque:',
+// -------------------------------------------- GUIA DE ESTUDO (FINAL) ---
+doc.addPage();
+doc.rect(0, 0, W, 6).fill(ACCENT);
+doc.fillColor(ACCENT).font(BOLD).fontSize(22).text('Guia de estudo', M, 66);
+doc.fillColor(MUTED).font(REG).fontSize(11).text(
+  'Passo a passo de cada tela — para voce se preparar antes de apresentar.',
+  M, doc.y + 4, { width: CW },
 );
-doc.font('Helvetica').fontSize(11).fillColor(TEXT);
-[
-  ['Colaborador', 'aplicativo no celular (PWA) — quem bate o ponto.'],
-  ['Administracao / RH', 'painel web — quem gere pessoas, ponto e documentos.'],
-  ['Plataforma', 'operador do SaaS (super admin) — gestao de empresas.'],
-  ['Quiosque', 'ponto compartilhado por dispositivo fixo na obra.'],
-].forEach(([t, d]) => {
-  doc.font('Helvetica-Bold').text(`• ${t}: `, { continued: true }).font('Helvetica').fillColor(MUTED).text(d);
-  doc.fillColor(TEXT);
-});
 doc.moveDown(1);
-intro(
-  'Regra de ouro do sistema: o botao de bater ponto NUNCA bloqueia o colaborador. Fora da area ou do horario, ' +
-    'o registro e aceito e marcado como pendente de validacao pelo RH — o ponto e sempre um documento imutavel.',
-);
 
-// ---------------------------------------------------------- COMO ACESSAR ---
-h1('Como acessar');
-intro('O sistema roda no navegador (e instalavel como aplicativo). Endereco unico para todos os perfis:');
-doc.font('Helvetica-Bold').fontSize(13).fillColor(ACCENT).text('https://gramoengenharia.online', { align: 'left' });
-doc.moveDown(0.8);
-tela({
-  n: 'i',
-  nome: 'Instalar no celular (colaborador)',
-  tag: 'PWA — parece um aplicativo',
-  oque:
-    'Abra o endereco no navegador do celular. No menu do navegador, escolha "Adicionar a tela inicial". ' +
-    'O sistema passa a abrir como um aplicativo, funciona offline e nao da mais zoom acidental por toque.',
-  como: [
-    'Abra https://gramoengenharia.online no Chrome (Android) ou Safari (iPhone).',
-    'Toque no menu e em "Adicionar a tela inicial".',
-    'Abra pelo icone criado — pronto, e o app do colaborador.',
-  ],
-  nota: 'A camera (foto do ponto) so funciona em conexao segura (HTTPS) — por isso use sempre o endereco oficial.',
-});
+function blocoEstudo(s, idx) {
+  if (doc.y > H - 150) doc.addPage();
+  doc.fillColor(ACCENT2).font(BOLD).fontSize(9).text(s.g.toUpperCase(), { characterSpacing: 0.4 });
+  doc.fillColor(TEXT).font(BOLD).fontSize(13).text(`${idx}. ${s.nome}`);
+  doc.moveDown(0.2);
+  doc.fillColor(TEXT).font(REG).fontSize(10.5).text(s.oque, { width: CW });
+  if (s.como?.length) {
+    doc.moveDown(0.2);
+    doc.fillColor(ACCENT).font(BOLD).fontSize(10).text('Como usar:');
+    doc.fillColor(TEXT).font(REG).fontSize(10.5);
+    for (const p of s.como) doc.text(`•  ${p}`, M + 10, doc.y, { width: CW - 10 });
+  }
+  if (s.nota) {
+    doc.moveDown(0.2);
+    doc.fillColor(MUTED).font(REG).fontSize(9.5).text(`Nota: ${s.nota}`, { width: CW });
+  }
+  doc.moveDown(0.5);
+  doc.moveTo(M, doc.y).lineTo(W - M, doc.y).lineWidth(0.5).strokeColor(LINE).stroke();
+  doc.moveDown(0.6);
+}
 
-// -------------------------------------------------------- COLABORADOR ---
-h1('Perfil Colaborador (app no celular)');
-intro('Telas do dia a dia de quem bate o ponto. Simples, rapidas e funcionam mesmo sem internet no canteiro.');
+let idx = 0;
+for (const s of [...TELAS_IMG, ...TELAS_EXTRA]) {
+  idx++;
+  blocoEstudo(s, idx);
+}
 
-tela({
-  n: 1,
-  nome: 'Login do Colaborador',
-  tag: 'entrada no app',
-  oque:
-    'Porta de entrada do colaborador. O acesso e feito com CPF e senha. No primeiro acesso, a senha e definida ' +
-    'a partir de um convite enviado pelo RH.',
-  como: [
-    'Digite o CPF (so numeros) e a senha.',
-    'No primeiro acesso, siga o link de convite recebido para criar a senha.',
-    'Esqueceu a senha? Use "recuperar" — chega um link por e-mail (se cadastrado).',
-  ],
-  nota: 'Apos 5 tentativas erradas a conta bloqueia por 15 minutos (protecao contra tentativa de invasao).',
-});
-tela({
-  n: 2,
-  nome: 'Bater Ponto',
-  tag: 'tela principal',
-  oque:
-    'Registra entrada, saida e intervalos. Captura a localizacao (para conferir se esta na area da obra — a "REGAP") ' +
-    'e uma foto no momento do registro. Funciona OFFLINE: sem sinal, o ponto fica guardado no aparelho e sincroniza ' +
-    'sozinho quando a internet volta.',
-  como: [
-    'Toque no botao de registrar (entrada/saida/intervalo).',
-    'Permita a localizacao e a camera quando solicitado.',
-    'Pronto: o comprovante aparece com data, hora e numero de sequencia (NSR).',
-  ],
-  nota:
-    'O botao NUNCA bloqueia. Fora da area ou do horario, o ponto e aceito como "pendente" e o RH valida depois. ' +
-    'O registro e imutavel — correcoes viram um ajuste vinculado, nunca apagam o original.',
-});
-tela({
-  n: 3,
-  nome: 'Folha',
-  tag: 'espelho de ponto',
-  oque:
-    'Mostra o espelho de ponto do colaborador: todas as marcacoes do periodo, com o status de cada uma (valida ou ' +
-    'pendente). E onde o colaborador confere seus horarios.',
-  como: [
-    'Abra "Folha" para ver as marcacoes por dia.',
-    'Toque em uma marcacao para ver detalhes.',
-    'Discorda de algo? Use "contestar" para abrir uma contestacao ao RH.',
-  ],
-});
-tela({
-  n: 4,
-  nome: 'Documentos',
-  tag: 'arquivos do colaborador',
-  oque:
-    'Espaco para o colaborador enviar e visualizar documentos (ex.: atestados, comprovantes). Os arquivos sao ' +
-    'cifrados (AES-256) — protegidos mesmo no armazenamento.',
-  como: [
-    'Toque em enviar e escolha o arquivo (ate 10 MB).',
-    'Acompanhe o status (enviado / aprovado / rejeitado pelo RH).',
-  ],
-});
-tela({
-  n: 5,
-  nome: 'Ferias e Afastamentos',
-  tag: 'solicitacoes',
-  oque:
-    'Onde o colaborador solicita ferias ou registra afastamentos (licenca, atestado) e acompanha a aprovacao do RH. ' +
-    'Ferias aprovadas que cobrem um dia evitam que o ponto daquele dia gere pendencia.',
-  como: [
-    'Toque em nova solicitacao e escolha o tipo (ferias, licenca, atestado...).',
-    'Informe as datas e o motivo.',
-    'Acompanhe o status: pendente, aprovada ou recusada.',
-  ],
-});
-tela({
-  n: 6,
-  nome: 'Comunicados',
-  tag: 'avisos da empresa',
-  oque:
-    'Mural de avisos que o RH publica para os colaboradores. Ao abrir, a leitura e registrada — o RH consegue medir ' +
-    'quem ja leu.',
-  como: ['Abra "Comunicados" para ver os avisos.', 'Toque em um comunicado para ler (a leitura e marcada automaticamente).'],
-});
-
-// -------------------------------------------------------- ADMIN / RH ---
-h1('Perfil Administracao / RH (painel web)');
-intro(
-  'Painel completo para o RH e gestores. Recomendado usar no computador. O acesso exige 2FA (codigo de autenticacao) ' +
-    'para maxima seguranca. Os gestores de filial so enxergam as obras sob sua responsabilidade.',
-);
-
-tela({
-  n: 7,
-  nome: 'Login do Administrador',
-  tag: 'entrada no painel + 2FA',
-  oque:
-    'Acesso do RH e gestores. Alem de e-mail e senha, pede um codigo de verificacao em duas etapas (2FA) gerado por ' +
-    'um aplicativo autenticador — camada extra que impede acesso mesmo se a senha vazar.',
-  como: [
-    'Informe e-mail e senha.',
-    'Digite o codigo de 6 digitos do app autenticador (Google Authenticator, etc.).',
-    'No primeiro acesso, o sistema mostra um QR Code para vincular o autenticador.',
-  ],
-});
-tela({
-  n: 8,
-  nome: 'Dashboard',
-  tag: 'visao executiva + indicadores de RH',
-  oque:
-    'A tela-resumo da operacao. Mostra KPIs do dia (funcionarios ativos, marcacoes, exceccoes pendentes), quem esta ' +
-    'presente agora, alertas de hora extra, comparativo entre obras e o painel de INDICADORES DE RH do periodo: ' +
-    'conformidade das marcacoes, atrasos, ausencias por tipo, rotatividade (turnover) e horas extras agregadas.',
-  como: [
-    'Abra o Dashboard logo apos entrar.',
-    'Use o filtro de periodo nos Indicadores de RH (padrao: mes corrente).',
-    'Acompanhe "Presenca agora" e "Hora extra hoje" em tempo quase real.',
-  ],
-  nota: 'E a tela ideal para o gestor abrir de manha e entender a operacao em 30 segundos.',
-});
-tela({
-  n: 9,
-  nome: 'Gestao de Ponto',
-  tag: 'operacao diaria do RH',
-  oque:
-    'Onde o RH revisa as marcacoes, trata as pendencias (fora de area/horario, identidade) e aprova ou registra ' +
-    'ajustes. Todo ajuste fica vinculado ao ponto original (que nunca e apagado).',
-  como: [
-    'Filtre por funcionario, obra ou periodo.',
-    'Abra uma pendencia e aprove ou registre um ajuste justificado.',
-    'O historico de quem aprovou o que fica registrado (auditoria).',
-  ],
-});
-tela({
-  n: 10,
-  nome: 'Funcionarios',
-  tag: 'cadastro e ciclo de vida',
-  oque:
-    'Cadastro e gestao de colaboradores: criar, editar, aprovar a foto de referencia, gerir documentos, importar em ' +
-    'lote por planilha (CSV) e desligar. O desligamento e "soft delete" — nunca apaga (guarda legal de 5 anos).',
-  como: [
-    'Cadastre um funcionario (CPF unico) ou importe uma planilha CSV.',
-    'Aprove a foto de referencia para liberar o reconhecimento.',
-    'Para desligar, use "desativar" — os dados sao preservados por lei.',
-  ],
-});
-tela({
-  n: 11,
-  nome: 'Assinaturas',
-  tag: 'documentos para assinar',
-  oque:
-    'Envio de documentos para o colaborador assinar digitalmente (individual ou em lote). A assinatura gera um ' +
-    'registro imutavel com carimbo de integridade (hash) e assinatura do servidor.',
-  como: [
-    'Selecione o documento e os destinatarios.',
-    'Envie (individual ou em lote).',
-    'Acompanhe quem ja assinou, recusou ou esta pendente.',
-  ],
-});
-tela({
-  n: 12,
-  nome: 'Ausencias',
-  tag: 'aprovacao de ferias/afastamentos',
-  oque:
-    'Onde o RH decide as solicitacoes de ferias e afastamentos enviadas pelos colaboradores, com visao de calendario ' +
-    'para planejar a cobertura das equipes.',
-  como: [
-    'Veja as solicitacoes pendentes.',
-    'Aprove ou recuse (com justificativa).',
-    'Use o calendario para enxergar sobreposicoes na equipe.',
-  ],
-});
-tela({
-  n: 13,
-  nome: 'Comunicados (RH)',
-  tag: 'publicar avisos',
-  oque:
-    'Onde o RH publica comunicados e escolhe o publico-alvo (todos, uma obra, um cargo ou um funcionario). Mostra a ' +
-    'taxa de leitura de cada aviso.',
-  como: [
-    'Crie um comunicado (titulo e mensagem).',
-    'Escolha o publico-alvo.',
-    'Publique e acompanhe quantos ja leram.',
-  ],
-});
-tela({
-  n: 14,
-  nome: 'Relatorios',
-  tag: 'exportacoes e conferencia',
-  oque:
-    'Relatorios operacionais do ponto para conferencia e fechamento. Inclui as exportacoes legais (AFD/AEJ) exigidas ' +
-    'pela fiscalizacao do trabalho.',
-  como: ['Escolha o relatorio e o periodo.', 'Gere e exporte para conferencia ou entrega a fiscalizacao.'],
-});
-tela({
-  n: 15,
-  nome: 'Auditoria',
-  tag: 'trilha de confianca',
-  oque:
-    'Registro de tudo que acontece de sensivel: acessos, aprovacoes, ajustes. E a "trilha de confianca" que prova, ' +
-    'para auditoria interna ou externa, quem fez o que e quando.',
-  como: ['Filtre por tipo de evento, usuario ou periodo.', 'Use para investigar ou comprovar acoes.'],
-});
-tela({
-  n: 16,
-  nome: 'Configuracoes',
-  tag: 'jornadas, feriados, tolerancias',
-  oque:
-    'Parametros que governam a validacao do ponto: jornadas (horarios, dias, carga diaria, regime de horas), feriados ' +
-    'e tolerancias. E aqui que se define, por exemplo, o horario de cada equipe.',
-  como: [
-    'Cadastre as jornadas (entrada/saida, dias da semana, tolerancia).',
-    'Cadastre os feriados (gerais ou por obra).',
-    'Vincule cada funcionario a sua jornada na tela de Funcionarios.',
-  ],
-  nota: 'Definir as jornadas corretamente e o que torna os indicadores de atraso e hora extra precisos.',
-});
-tela({
-  n: 17,
-  nome: 'Integracoes',
-  tag: 'API e folha/eSocial',
-  oque:
-    'Geracao de chaves de API para integrar com outros sistemas (folha de pagamento, eSocial) e configuracao dessas ' +
-    'integracoes. A chave e mostrada uma unica vez, por seguranca.',
-  como: [
-    'Gere uma chave de API e guarde-a com seguranca (aparece so uma vez).',
-    'Configure a integracao desejada (folha/eSocial).',
-  ],
-});
-tela({
-  n: 18,
-  nome: 'Quiosque (gestao)',
-  tag: 'dispositivos fixos',
-  oque:
-    'Gerencia os dispositivos de quiosque — tablets/computadores fixos na obra usados como ponto compartilhado. ' +
-    'Cada dispositivo tem sua propria credencial.',
-  como: ['Cadastre um dispositivo e gere sua credencial.', 'Instale o modo quiosque no aparelho (ver tela 23).'],
-});
-tela({
-  n: 19,
-  nome: 'Telao de Presenca',
-  tag: 'painel para TV',
-  oque:
-    'Um "telao" para exibir em uma TV ou monitor na obra, mostrando quem esta presente no momento, atualizando ' +
-    'sozinho. Otimo para portaria e seguranca.',
-  como: ['Abra o botao "Telao" no painel (abre em nova aba).', 'Coloque em tela cheia no monitor da obra.'],
-});
-tela({
-  n: 20,
-  nome: 'Mapa de Obras',
-  tag: 'area de ponto (REGAP)',
-  oque:
-    'Define, no mapa, a area valida para bater ponto de cada obra (a "REGAP" — geofence). Marcacoes fora dessa area ' +
-    'entram como pendentes para o RH avaliar.',
-  como: [
-    'Abra o mapa e localize a obra.',
-    'Clique no mapa para posicionar o centro da area.',
-    'Ajuste o raio e salve.',
-  ],
-});
-
-// -------------------------------------------------------- PLATAFORMA ---
-h1('Perfil Plataforma (operador do SaaS)');
-intro(
-  'Perfil do fornecedor do sistema (super administrador), acima das empresas. Por seguranca fica OCULTO para o ' +
-    'cliente e NAO acessa dados operacionais das empresas — apenas metricas e gestao comercial.',
-);
-tela({
-  n: 21,
-  nome: 'Login da Plataforma',
-  tag: 'super admin (oculto)',
-  oque:
-    'Acesso do operador do SaaS, com 2FA. So aparece por um endereco especial — o cliente nem sabe que existe. Usa ' +
-    'uma identidade de banco de dados separada, sem permissao sobre os dados operacionais.',
-  como: ['Acesse pelo endereco reservado do fornecedor.', 'Entre com credenciais de super admin + 2FA.'],
-});
-tela({
-  n: 22,
-  nome: 'Painel da Plataforma',
-  tag: 'gestao de empresas',
-  oque:
-    'Gestao comercial do SaaS: empresas clientes, planos, faturas e metricas de uso. Nao ve pontos, funcionarios nem ' +
-    'documentos das empresas — apenas numeros agregados.',
-  como: ['Cadastre/gerencie empresas e planos.', 'Acompanhe faturas e metricas de uso.'],
-});
-
-// -------------------------------------------------------- QUIOSQUE ---
-h1('Modo Quiosque');
-intro('Ponto compartilhado por dispositivo fixo na obra — util para quem nao usa o proprio celular.');
-tela({
-  n: 23,
-  nome: 'Tela de Quiosque',
-  tag: 'ponto compartilhado',
-  oque:
-    'Um dispositivo unico (tablet/PC) na obra onde varios colaboradores batem o ponto, identificando-se um a um. O ' +
-    'dispositivo se autentica por sua propria credencial (nao por pessoa).',
-  como: [
-    'Abra o sistema em modo quiosque no dispositivo (endereco com "?modo=quiosque").',
-    'Vincule o dispositivo com a credencial gerada na tela 18.',
-    'Cada colaborador se identifica e registra o ponto.',
-  ],
-});
-
-// -------------------------------------------------- SEGURANCA / FIM ---
-h1('Seguranca e conformidade (resumo)');
-intro('O .GRAMO foi construido com seguranca e conformidade legal por padrao. Em resumo:');
-doc.font('Helvetica').fontSize(10.5).fillColor(TEXT);
-[
-  ['Ponto imutavel', 'todo registro e permanente; correcao vira ajuste vinculado. Numero de sequencia (NSR) por obra.'],
-  ['Conformidade legal', 'aderente a Portaria 671/2021; exportacoes AFD/AEJ e comprovante assinado digitalmente.'],
-  ['Isolamento entre empresas', 'cada empresa so ve os proprios dados, garantido no banco de dados (RLS), nao so no codigo.'],
-  ['Dados sensiveis cifrados', 'fotos e documentos protegidos com AES-256; senhas com algoritmo forte (Argon2).'],
-  ['2FA para administradores', 'segunda etapa de verificacao no acesso do RH e da plataforma.'],
-  ['LGPD', 'consentimento separado para dado biometrico; nada e apagado (guarda legal de 5 anos).'],
-  ['Operacao vigiada', 'backup diario verificado e monitoramento de saude 24/7 do ambiente de producao.'],
-].forEach(([t, d]) => {
-  garanteEspaco(60);
-  doc.font('Helvetica-Bold').fillColor(ACCENT).text(`${t}  `, { continued: true });
-  doc.font('Helvetica').fillColor(TEXT).text(d);
-  doc.moveDown(0.4);
-});
-doc.moveDown(1);
-intro(
-  'Este documento e uma visao funcional das telas. Detalhes tecnicos, inventario completo e roadmap estao no ' +
-    'documento de analise do sistema (docs/ANALISE-SISTEMA.md).',
-);
-
-// ------------------------------------------------ RODAPE / PAGINAS ---
+// ------------------------------------------------------ RODAPE/PAGINAS ---
 const range = doc.bufferedPageRange();
-for (let i = range.start; i < range.start + range.count; i++) {
+for (let i = range.start + 1; i < range.start + range.count; i++) {
   doc.switchToPage(i);
-  if (i === 0) continue; // capa sem rodape
-  const y = doc.page.height - 42;
-  doc
-    .moveTo(M, y)
-    .lineTo(W - M, y)
-    .strokeColor(LINE)
-    .lineWidth(0.5)
-    .stroke();
-  doc.font('Helvetica').fontSize(8.5).fillColor(MUTED);
-  doc.text('.GRAMO — Ponto Eletronico Corporativo', M, y + 6, { width: CW / 2, align: 'left' });
-  doc.text(`Pagina ${i} de ${range.count - 1}`, M + CW / 2, y + 6, { width: CW / 2, align: 'right' });
+  // Zera a margem inferior desta pagina: sem isto, escrever no rodape (abaixo da
+  // margem) faz o pdfkit ADICIONAR uma pagina por rodape (explosao de paginas).
+  doc.page.margins.bottom = 0;
+  const y = H - 40;
+  doc.font(REG).fontSize(8.5).fillColor(MUTED);
+  doc.text('.GRAMO — Ponto Eletronico Corporativo', M, y, { width: CW / 2, lineBreak: false });
+  doc.text(`${i} / ${range.count - 1}`, M + CW / 2, y, {
+    width: CW / 2,
+    align: 'right',
+    lineBreak: false,
+  });
 }
 
 doc.end();
-console.log(`PDF gerado em ${OUT}`);
+console.log('Apresentacao gerada em', OUT);

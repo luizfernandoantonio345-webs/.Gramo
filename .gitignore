@@ -42,3 +42,7 @@ uploads/
 
 # Banco de desenvolvimento local (PostgreSQL embarcado)
 .devdb/
+
+# Capturas de tela geradas (reproduziveis via scripts/capturar-telas.mjs; o PDF
+# de apresentacao ja as embute). Nao versionar imagens soltas.
+docs/telas/
