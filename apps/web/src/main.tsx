@@ -9,6 +9,10 @@ import '@fontsource/ibm-plex-mono/600.css';
 import './design-system/tokens.css';
 import './design-system/ui.css';
 import { App } from './App';
+import { bloquearZoomPincaIOS } from './lib/no-zoom-ios';
+
+// Cara de app: no iPhone, mata o zoom por pinca (o CSS ja cuida do toque duplo).
+bloquearZoomPincaIOS();
 
 // Auto-atualizacao: quando um novo service worker assume o controle (deploy de
 // versao nova), recarrega a pagina automaticamente -- o usuario nunca fica preso
