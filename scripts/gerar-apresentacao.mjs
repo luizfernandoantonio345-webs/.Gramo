@@ -212,7 +212,11 @@ for (const s of TELAS_IMG) {
   const stageH = 600;
   doc.roundedRect(M, top, CW, stageH, 10).fill(PANEL);
   const pad = 16;
-  const imgPath = path.join(TELAS, s.img);
+  // Resolve a imagem: prefere .jpg (renderiza no PDF), cai para .png.
+  const base = s.img.replace(/\.(png|jpg)$/, '');
+  const imgPath =
+    ['.jpg', '.png'].map((e) => path.join(TELAS, base + e)).find((p) => fs.existsSync(p)) ??
+    path.join(TELAS, s.img);
   if (fs.existsSync(imgPath)) {
     doc.image(imgPath, M + pad, top + pad, {
       fit: [CW - 2 * pad, stageH - 2 * pad],

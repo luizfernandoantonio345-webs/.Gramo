@@ -31,10 +31,10 @@ function exigir(...chaves) {
 }
 
 const shot = async (page, nome) => {
-  const p = path.join(OUT, `${nome}.png`);
-  // animations:disabled congela transicoes/animacoes (dashboard tem varias) para
-  // o screenshot nao ficar esperando "estabilizar". Timeout folgado.
-  await page.screenshot({ path: p, animations: 'disabled', timeout: 60000 });
+  // JPEG (nao PNG): o pdfkit embute JPEG de forma confiavel; PNG com alpha sai
+  // em branco no PDF. animations:disabled congela transicoes para nao travar.
+  const p = path.join(OUT, `${nome}.jpg`);
+  await page.screenshot({ path: p, type: 'jpeg', quality: 90, animations: 'disabled', timeout: 60000 });
   console.log('  capturado:', path.basename(p));
 };
 const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
