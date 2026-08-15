@@ -46,4 +46,16 @@ export class DashboardController {
   ) {
     return this.service.comparativoObras(user, inicio, fim);
   }
+
+  @Get('indicadores-rh')
+  @ApiOperation({
+    summary: 'Indicadores de RH do periodo: conformidade, atrasos, ausencias e ranking.',
+  })
+  indicadoresRh(
+    @CurrentUser() user: UsuarioAutenticado,
+    @Query('inicio') inicio?: string,
+    @Query('fim') fim?: string,
+  ) {
+    return this.service.indicadoresRh(user, inicio, fim);
+  }
 }

@@ -5,6 +5,8 @@ import {
   StatusDocumento,
   StatusExcecao,
   StatusFuncionario,
+  StatusValidacaoPonto,
+  TipoAusencia,
   TipoMarcacao,
 } from '@prisma/client';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
@@ -47,6 +49,49 @@ export function calcularPresenca(pontosOrdenados: PontoPresenca[]) {
     .sort((a, b) => b.total - a.total);
 
   return { total: presentes.length, porFilial, presentes };
+}
+
+export interface GrupoStatus {
+  statusValidacao: StatusValidacaoPonto;
+  _count: { _all: number };
+}
+
+/**
+ * Consolida a CONFORMIDADE das marcacoes do periodo (puro/testavel). "Fora da
+ * REGAP" vem separado porque e um flag booleano (dentroRegap), ortogonal ao
+ * statusValidacao. percentualConformidade = validas / total (1 casa decimal).
+ */
+export function resumirConformidade(porStatus: GrupoStatus[], foraRegap: number) {
+  const cont = (s: StatusValidacaoPonto) =>
+    porStatus.find((g) => g.statusValidacao === s)?._count._all ?? 0;
+  const total = porStatus.reduce((soma, g) => soma + g._count._all, 0);
+  const validas = cont(StatusValidacaoPonto.VALIDO);
+  return {
+    total,
+    validas,
+    pendenteHorario: cont(StatusValidacaoPonto.PENDENTE_HORARIO),
+    pendenteIdentidade: cont(StatusValidacaoPonto.PENDENTE_IDENTIDADE),
+    pendenteRegap: cont(StatusValidacaoPonto.PENDENTE_REGAP),
+    foraRegap,
+    percentualConformidade: total > 0 ? Math.round((validas / total) * 1000) / 10 : 0,
+  };
+}
+
+/**
+ * Consolida ausencias APROVADAS por tipo e conta funcionarios afetados (puro).
+ * Uma linha = uma ausencia que se sobrepoe ao periodo consultado.
+ */
+export function resumirAusencias(linhas: Array<{ funcionarioId: string; tipo: TipoAusencia }>) {
+  const porTipoMap = new Map<TipoAusencia, number>();
+  const funcs = new Set<string>();
+  for (const a of linhas) {
+    porTipoMap.set(a.tipo, (porTipoMap.get(a.tipo) ?? 0) + 1);
+    funcs.add(a.funcionarioId);
+  }
+  const porTipo = [...porTipoMap.entries()]
+    .map(([tipo, total]) => ({ tipo, total }))
+    .sort((a, b) => b.total - a.total);
+  return { total: linhas.length, porTipo, funcionariosAfetados: funcs.size };
 }
 
 /** ADM 5 -- Dashboard Geral (visao executiva consolidada). So leitura. */
@@ -207,6 +252,95 @@ export class DashboardService {
           desde: a.criadoEm.toISOString(),
         })),
         presenca7dias: presenca,
+      };
+    });
+  }
+
+  /**
+   * INDICADORES DE RH do periodo (default: mes corrente). Metricas que o RH usa
+   * para decidir: conformidade das marcacoes, atrasos (entradas fora do horario),
+   * ausencias aprovadas por tipo e um ranking dos funcionarios com mais
+   * marcacoes NAO conformes (foco de atencao). Agregacoes baratas (groupBy/count),
+   * escopo por filial + RLS. So leitura.
+   */
+  async indicadoresRh(autor: UsuarioAutenticado, inicioIso?: string, fimIso?: string) {
+    const agora = new Date();
+    const inicio = inicioIso
+      ? new Date(inicioIso)
+      : new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const fim = fimIso ? new Date(fimIso) : agora;
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) {
+      throw new BadRequestException('Periodo invalido.');
+    }
+    const f = await this.escopo.escopoFilialId(autor);
+    // FeriasAfastamento nao tem filialId proprio: escopa pela filial do funcionario.
+    const pf = f.filialId ? { funcionario: { is: { filialId: f.filialId } } } : {};
+    const range = { registradoEm: { gte: inicio, lte: fim } };
+    const NAO_CONFORME = [
+      StatusValidacaoPonto.PENDENTE_HORARIO,
+      StatusValidacaoPonto.PENDENTE_IDENTIDADE,
+      StatusValidacaoPonto.PENDENTE_REGAP,
+    ];
+
+    return this.prisma.forTenant(async (tx) => {
+      const [porStatus, foraRegap, atrasos, ausencias, naoConformesPorFunc] = await Promise.all([
+        tx.ponto.groupBy({
+          by: ['statusValidacao'],
+          where: { ...range, ...f },
+          _count: { _all: true },
+        }),
+        tx.ponto.count({ where: { ...range, ...f, dentroRegap: false } }),
+        tx.ponto.count({
+          where: {
+            ...range,
+            ...f,
+            tipo: TipoMarcacao.ENTRADA,
+            statusValidacao: StatusValidacaoPonto.PENDENTE_HORARIO,
+          },
+        }),
+        tx.feriasAfastamento.findMany({
+          where: {
+            ...pf,
+            status: StatusAusencia.APROVADA,
+            dataInicio: { lte: fim },
+            dataFim: { gte: inicio },
+          },
+          select: { funcionarioId: true, tipo: true },
+        }),
+        tx.ponto.groupBy({
+          by: ['funcionarioId'],
+          where: {
+            ...range,
+            ...f,
+            OR: [{ dentroRegap: false }, { statusValidacao: { in: NAO_CONFORME } }],
+          },
+          _count: { _all: true },
+        }),
+      ]);
+
+      // Top 8 funcionarios por marcacoes nao conformes -> resolve nomes numa query.
+      const top = [...naoConformesPorFunc]
+        .sort((a, b) => b._count._all - a._count._all)
+        .slice(0, 8);
+      const nomes = top.length
+        ? await tx.funcionario.findMany({
+            where: { id: { in: top.map((t) => t.funcionarioId) } },
+            select: { id: true, nome: true, filial: { select: { nome: true } } },
+          })
+        : [];
+      const nomeMap = new Map(nomes.map((n) => [n.id, n]));
+      const ranking = top.map((t) => ({
+        funcionario: nomeMap.get(t.funcionarioId)?.nome ?? '—',
+        filial: nomeMap.get(t.funcionarioId)?.filial?.nome ?? 'Sem filial',
+        naoConformes: t._count._all,
+      }));
+
+      return {
+        periodo: { inicio: inicio.toISOString(), fim: fim.toISOString() },
+        marcacoes: resumirConformidade(porStatus, foraRegap),
+        atrasos: { entradasForaHorario: atrasos },
+        ausencias: resumirAusencias(ausencias),
+        ranking,
       };
     });
   }

@@ -209,6 +209,7 @@ export function PainelDashboard() {
         </Cartao>
       </div>
 
+      <IndicadoresRh />
       <ComparativoObras />
       <BancoHorasTool />
     </div>
@@ -525,6 +526,200 @@ function ComparativoObras() {
             ))}
           </tbody>
         </Tabela>
+      )}
+    </Cartao>
+  );
+}
+
+interface IndicadoresRhData {
+  periodo: { inicio: string; fim: string };
+  marcacoes: {
+    total: number;
+    validas: number;
+    pendenteHorario: number;
+    pendenteIdentidade: number;
+    pendenteRegap: number;
+    foraRegap: number;
+    percentualConformidade: number;
+  };
+  atrasos: { entradasForaHorario: number };
+  ausencias: {
+    total: number;
+    porTipo: Array<{ tipo: string; total: number }>;
+    funcionariosAfetados: number;
+  };
+  ranking: Array<{ funcionario: string; filial: string; naoConformes: number }>;
+}
+
+const ROTULO_AUSENCIA: Record<string, string> = {
+  FERIAS: 'Férias',
+  AFASTAMENTO: 'Afastamento',
+  LICENCA: 'Licença',
+  ATESTADO: 'Atestado',
+  OUTRO: 'Outro',
+};
+
+// Primeiro dia do mes corrente e hoje, em YYYY-MM-DD (default do filtro).
+function mesCorrente(): { inicio: string; fim: string } {
+  const h = new Date();
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  return {
+    inicio: `${h.getFullYear()}-${p2(h.getMonth() + 1)}-01`,
+    fim: `${h.getFullYear()}-${p2(h.getMonth() + 1)}-${p2(h.getDate())}`,
+  };
+}
+
+/**
+ * Indicadores de RH do periodo: conformidade das marcacoes, atrasos, ausencias
+ * aprovadas por tipo e o ranking de quem tem mais marcacoes NAO conformes (foco
+ * de atencao do RH). Filtro de periodo (default: mes corrente).
+ */
+function IndicadoresRh() {
+  const inicial = mesCorrente();
+  const [inicio, setInicio] = useState(inicial.inicio);
+  const [fim, setFim] = useState(inicial.fim);
+  const [d, setD] = useState<IndicadoresRhData | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(false);
+
+  const carregar = useCallback(async (ini: string, f: string) => {
+    setCarregando(true);
+    setErro(null);
+    try {
+      const q = `?inicio=${new Date(ini).toISOString()}&fim=${new Date(`${f}T23:59:59`).toISOString()}`;
+      setD(await apiGet<IndicadoresRhData>(`/admin/dashboard/indicadores-rh${q}`));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar indicadores.');
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregar(inicial.inicio, inicial.fim);
+  }, [carregar, inicial.inicio, inicial.fim]);
+
+  const m = d?.marcacoes;
+
+  return (
+    <Cartao>
+      <TituloSecao meta={<span style={metaStyle}>indicadores de RH</span>}>
+        Indicadores de RH
+      </TituloSecao>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr auto',
+          gap: 'var(--space-4)',
+          alignItems: 'end',
+          marginBottom: 'var(--space-5)',
+        }}
+      >
+        <Campo
+          label="Início"
+          type="date"
+          value={inicio}
+          onChange={(e) => setInicio(e.target.value)}
+        />
+        <Campo label="Fim" type="date" value={fim} onChange={(e) => setFim(e.target.value)} />
+        <div style={{ marginBottom: 'var(--space-5)' }}>
+          <Botao onClick={() => void carregar(inicio, fim)} disabled={carregando} bloco={false}>
+            {carregando ? 'Carregando…' : 'Aplicar'}
+          </Botao>
+        </div>
+      </div>
+
+      {erro && <Feedback tom="erro">{erro}</Feedback>}
+
+      {!d && !erro ? (
+        <EstadoVazio>Carregando…</EstadoVazio>
+      ) : (
+        d && (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gap: 'var(--space-5)',
+              }}
+            >
+              <Kpi
+                rotulo="Conformidade"
+                valor={`${m?.percentualConformidade.toFixed(1)}%`}
+                tom={m && m.percentualConformidade >= 90 ? 'ok' : 'aviso'}
+              />
+              <Kpi rotulo="Marcações" valor={m?.total ?? '—'} />
+              <Kpi
+                rotulo="Atrasos (entrada)"
+                valor={d.atrasos.entradasForaHorario}
+                tom={d.atrasos.entradasForaHorario > 0 ? 'aviso' : 'neutro'}
+              />
+              <Kpi
+                rotulo="Fora da REGAP"
+                valor={m?.foraRegap ?? '—'}
+                tom={m && m.foraRegap > 0 ? 'aviso' : 'neutro'}
+              />
+              <Kpi rotulo="Ausências (pessoas)" valor={d.ausencias.funcionariosAfetados} />
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: 'var(--space-6)',
+                marginTop: 'var(--space-6)',
+              }}
+            >
+              <div>
+                <TituloSecao meta={<span style={metaStyle}>aprovadas no período</span>}>
+                  Ausências por tipo
+                </TituloSecao>
+                {d.ausencias.porTipo.length === 0 ? (
+                  <EstadoVazio>Nenhuma ausência aprovada no período.</EstadoVazio>
+                ) : (
+                  <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                    {d.ausencias.porTipo.map((t) => (
+                      <Badge key={t.tipo} cor="var(--color-accent)">
+                        {ROTULO_AUSENCIA[t.tipo] ?? t.tipo}: {t.total}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <TituloSecao meta={<span style={metaStyle}>foco de atenção</span>}>
+                  Ranking de não-conformidade
+                </TituloSecao>
+                {d.ranking.length === 0 ? (
+                  <EstadoVazio>Sem marcações não conformes. 👏</EstadoVazio>
+                ) : (
+                  <Tabela minWidth={320}>
+                    <thead>
+                      <tr>
+                        <th>Funcionário</th>
+                        <th>Obra</th>
+                        <th className="g-num">Não conformes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.ranking.map((r, i) => (
+                        <tr key={i}>
+                          <td style={{ fontWeight: 500 }}>{r.funcionario}</td>
+                          <td>{r.filial}</td>
+                          <td className="g-num">
+                            <Badge cor="var(--color-danger)">{r.naoConformes}</Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Tabela>
+                )}
+              </div>
+            </div>
+          </>
+        )
       )}
     </Cartao>
   );
