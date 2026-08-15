@@ -71,10 +71,27 @@ linha="[$(date '+%F %T')] $status$problemas"
 echo "$linha" >> "$LOG"
 tail -n 5000 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
 
-# --- ALERTA (pluga aqui quando escolher o canal) --------------------------
-# if [ "$status" != "OK" ]; then
-#   curl -s -X POST "$WEBHOOK_URL" --data-urlencode "text=[.GRAMO] $linha" >/dev/null
-# fi
+# --- ALERTA (Telegram) ----------------------------------------------------
+# Segredos ficam em /root/monitor.env (fora do git): TELEGRAM_BOT_TOKEN e
+# TELEGRAM_CHAT_ID. So avisa na MUDANCA de estado (evita spam a cada 15 min) e
+# manda um "recuperado" quando volta ao OK.
+ENV_FILE="/root/monitor.env"
+STATE_FILE="/root/monitor.state"
+[ -f "$ENV_FILE" ] && . "$ENV_FILE"
+ultimo=$(cat "$STATE_FILE" 2>/dev/null || echo "OK")
+if [ "$status" != "$ultimo" ]; then
+  echo "$status" > "$STATE_FILE"
+  if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+    if [ "$status" = "OK" ]; then
+      msg="✅ [.GRAMO] Recuperado: todos os checks OK novamente."
+    else
+      msg="🚨 [.GRAMO] $status$problemas"
+    fi
+    curl -s --max-time 10 "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+      --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+      --data-urlencode "text=$msg" > /dev/null || true
+  fi
+fi
 # --------------------------------------------------------------------------
 
 [ "$status" = "CRIT" ] && exit 2
