@@ -124,6 +124,13 @@
 html,
 body {
   margin: 0;
+  /* Cara de app, nao de site: mata o zoom por toque duplo (double-tap) em
+     todos os navegadores — inclusive iOS, que ignora user-scalable=no. */
+  touch-action: manipulation;
+  /* iOS nao reajusta o tamanho da fonte sozinho ao girar a tela. */
+  -webkit-text-size-adjust: 100%;
+  /* remove o flash cinza ao tocar em botoes/links. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -135,6 +142,8 @@ body {
   background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* sem o "puxar pra recarregar" e sem bounce elastico das bordas. */
+  overscroll-behavior-y: none;
 }
 
 /* Autofill: mantem o input claro (evita o amarelo do Chrome). */
