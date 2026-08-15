@@ -94,6 +94,18 @@ export function resumirAusencias(linhas: Array<{ funcionarioId: string; tipo: Ti
   return { total: linhas.length, porTipo, funcionariosAfetados: funcs.size };
 }
 
+/**
+ * Rotatividade (turnover) do periodo (puro/testavel). Taxa classica de RH:
+ * media entre admissoes e desligamentos, sobre o headcount, em %. Admissoes usa
+ * a data de cadastro (proxy de admissao) e desligamentos a data de desativacao
+ * (soft delete). headcount 0 -> taxa 0 (nao divide por zero). 1 casa decimal.
+ */
+export function calcularTurnover(admissoes: number, desligamentos: number, headcount: number) {
+  const taxa =
+    headcount > 0 ? Math.round(((admissoes + desligamentos) / 2 / headcount) * 1000) / 10 : 0;
+  return { admissoes, desligamentos, headcount, taxaTurnover: taxa };
+}
+
 /** ADM 5 -- Dashboard Geral (visao executiva consolidada). So leitura. */
 @Injectable()
 export class DashboardService {
@@ -282,8 +294,20 @@ export class DashboardService {
       StatusValidacaoPonto.PENDENTE_REGAP,
     ];
 
+    // Rotatividade: janela do periodo sobre datas de cadastro/desativacao.
+    const janela = { gte: inicio, lte: fim };
+
     return this.prisma.forTenant(async (tx) => {
-      const [porStatus, foraRegap, atrasos, ausencias, naoConformesPorFunc] = await Promise.all([
+      const [
+        porStatus,
+        foraRegap,
+        atrasos,
+        ausencias,
+        naoConformesPorFunc,
+        admissoes,
+        desligamentos,
+        headcount,
+      ] = await Promise.all([
         tx.ponto.groupBy({
           by: ['statusValidacao'],
           where: { ...range, ...f },
@@ -316,6 +340,9 @@ export class DashboardService {
           },
           _count: { _all: true },
         }),
+        tx.funcionario.count({ where: { ...f, criadoEm: janela } }),
+        tx.funcionario.count({ where: { ...f, desativadoEm: janela } }),
+        tx.funcionario.count({ where: { ...f, status: StatusFuncionario.ATIVO } }),
       ]);
 
       // Top 8 funcionarios por marcacoes nao conformes -> resolve nomes numa query.
@@ -340,6 +367,7 @@ export class DashboardService {
         marcacoes: resumirConformidade(porStatus, foraRegap),
         atrasos: { entradasForaHorario: atrasos },
         ausencias: resumirAusencias(ausencias),
+        rotatividade: calcularTurnover(admissoes, desligamentos, headcount),
         ranking,
       };
     });

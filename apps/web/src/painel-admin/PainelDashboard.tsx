@@ -548,6 +548,12 @@ interface IndicadoresRhData {
     porTipo: Array<{ tipo: string; total: number }>;
     funcionariosAfetados: number;
   };
+  rotatividade: {
+    admissoes: number;
+    desligamentos: number;
+    headcount: number;
+    taxaTurnover: number;
+  };
   ranking: Array<{ funcionario: string; filial: string; naoConformes: number }>;
 }
 
@@ -661,6 +667,32 @@ function IndicadoresRh() {
                 tom={m && m.foraRegap > 0 ? 'aviso' : 'neutro'}
               />
               <Kpi rotulo="Ausências (pessoas)" valor={d.ausencias.funcionariosAfetados} />
+            </div>
+
+            <div style={{ marginTop: 'var(--space-6)' }}>
+              <TituloSecao meta={<span style={metaStyle}>movimentação de pessoal</span>}>
+                Rotatividade
+              </TituloSecao>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: 'var(--space-5)',
+                }}
+              >
+                <Kpi
+                  rotulo="Turnover"
+                  valor={`${d.rotatividade.taxaTurnover.toFixed(1)}%`}
+                  tom={d.rotatividade.taxaTurnover >= 5 ? 'aviso' : 'ok'}
+                />
+                <Kpi rotulo="Admissões" valor={d.rotatividade.admissoes} />
+                <Kpi
+                  rotulo="Desligamentos"
+                  valor={d.rotatividade.desligamentos}
+                  tom={d.rotatividade.desligamentos > 0 ? 'aviso' : 'neutro'}
+                />
+                <Kpi rotulo="Headcount ativo" valor={d.rotatividade.headcount} />
+              </div>
             </div>
 
             <div

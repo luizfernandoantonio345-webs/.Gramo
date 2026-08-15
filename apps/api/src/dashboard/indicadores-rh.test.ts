@@ -1,6 +1,11 @@
 import { StatusValidacaoPonto, TipoAusencia } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import { resumirAusencias, resumirConformidade, type GrupoStatus } from './dashboard.service';
+import {
+  calcularTurnover,
+  resumirAusencias,
+  resumirConformidade,
+  type GrupoStatus,
+} from './dashboard.service';
 
 const g = (statusValidacao: StatusValidacaoPonto, n: number): GrupoStatus => ({
   statusValidacao,
@@ -57,5 +62,26 @@ describe('resumirAusencias — ausencias aprovadas por tipo', () => {
 
   it('lista vazia -> zeros', () => {
     expect(resumirAusencias([])).toEqual({ total: 0, porTipo: [], funcionariosAfetados: 0 });
+  });
+});
+
+describe('calcularTurnover — rotatividade de pessoal', () => {
+  it('taxa = media(admissoes, desligamentos) / headcount, em %', () => {
+    // (2 + 4) / 2 = 3 movimentacoes medias; 3/50 = 6%.
+    expect(calcularTurnover(2, 4, 50)).toEqual({
+      admissoes: 2,
+      desligamentos: 4,
+      headcount: 50,
+      taxaTurnover: 6,
+    });
+  });
+
+  it('arredonda para 1 casa decimal', () => {
+    // (1 + 0)/2 = 0.5; 0.5/30 = 1.666...% -> 1.7
+    expect(calcularTurnover(1, 0, 30).taxaTurnover).toBe(1.7);
+  });
+
+  it('headcount 0 -> taxa 0 (nao divide por zero)', () => {
+    expect(calcularTurnover(3, 1, 0).taxaTurnover).toBe(0);
   });
 });
