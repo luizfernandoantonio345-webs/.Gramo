@@ -50,6 +50,11 @@ jobs:
       - name: Testes e2e (Postgres embarcado)
         run: npm run test:e2e -w @repp/api
 
+      # e2e de FLUXO: sobe PG embarcado + seed + a API HTTP real e exercita
+      # login (admin+funcionario) -> dashboard -> bater ponto (backend real).
+      - name: Testes e2e de fluxo (API real, Postgres embarcado)
+        run: npm run test:e2e:fluxo -w @repp/api
+
       # E2E de UI (fumaca das telas): o Playwright sobe o `vite preview` do build
       # e verifica que as telas renderizam (trava regressao de "tela branca").
       - name: Instalar navegador do Playwright
