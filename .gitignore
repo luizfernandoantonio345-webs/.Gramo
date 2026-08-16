@@ -21,6 +21,10 @@ apps/api/prisma/*.db
 # Coverage / testes
 coverage/
 .vitest/
+# Playwright (E2E de UI)
+playwright-report/
+test-results/
+.playwright/
 
 # Logs
 *.log

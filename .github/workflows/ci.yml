@@ -50,6 +50,20 @@ jobs:
       - name: Testes e2e (Postgres embarcado)
         run: npm run test:e2e -w @repp/api
 
+      # E2E de UI (fumaca das telas): o Playwright sobe o `vite preview` do build
+      # e verifica que as telas renderizam (trava regressao de "tela branca").
+      - name: Instalar navegador do Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Testes E2E de UI (Playwright)
+        run: npm run test:e2e -w @repp/web
+      - name: Publicar relatorio do Playwright (se falhar)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
       # SCA: trava regressao de vulnerabilidade ALTA/CRITICA em dependencia de
       # PRODUCAO (dev-tooling nao entra). Hoje prod = 0 vulnerabilidades.
       - name: Auditoria de dependencias (producao)
