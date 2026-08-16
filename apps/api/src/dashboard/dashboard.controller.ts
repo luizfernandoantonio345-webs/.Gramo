@@ -58,4 +58,12 @@ export class DashboardController {
   ) {
     return this.service.indicadoresRh(user, inicio, fim);
   }
+
+  @Get('alertas-ponto')
+  @ApiOperation({
+    summary: 'Alerta ao vivo: marcacoes fora da REGAP ou do horario apos "desde" (polling do RH).',
+  })
+  alertasPonto(@CurrentUser() user: UsuarioAutenticado, @Query('desde') desde?: string) {
+    return this.service.alertasPontoRecentes(user, desde);
+  }
 }

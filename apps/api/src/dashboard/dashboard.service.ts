@@ -106,6 +106,23 @@ export function calcularTurnover(admissoes: number, desligamentos: number, headc
   return { admissoes, desligamentos, headcount, taxaTurnover: taxa };
 }
 
+/**
+ * Traduz um ponto nao conforme no MOTIVO legivel do alerta ao vivo (puro).
+ * Prioriza "fora da area" (REGAP) sobre "fora do horario".
+ */
+export function motivoAlertaPonto(p: {
+  dentroRegap: boolean;
+  statusValidacao: StatusValidacaoPonto;
+}): string {
+  if (!p.dentroRegap || p.statusValidacao === StatusValidacaoPonto.PENDENTE_REGAP) {
+    return 'Fora da área autorizada (REGAP)';
+  }
+  if (p.statusValidacao === StatusValidacaoPonto.PENDENTE_HORARIO) {
+    return 'Fora do horário / jornada';
+  }
+  return 'Pendente de validação';
+}
+
 /** ADM 5 -- Dashboard Geral (visao executiva consolidada). So leitura. */
 @Injectable()
 export class DashboardService {
@@ -374,6 +391,53 @@ export class DashboardService {
         rotatividade: calcularTurnover(admissoes, desligamentos, headcount),
         horasExtras,
         ranking,
+      };
+    });
+  }
+
+  /**
+   * ALERTA AO VIVO: marcacoes NAO conformes (fora da REGAP ou fora do horario)
+   * registradas apos `desde`. O painel do RH faz polling deste endpoint e avisa
+   * (som + toast) para verificacao imediata. Escopo por filial + RLS. So leitura.
+   */
+  async alertasPontoRecentes(autor: UsuarioAutenticado, desdeIso?: string) {
+    const desde = desdeIso ? new Date(desdeIso) : new Date(Date.now() - 5 * 60 * 1000);
+    if (Number.isNaN(desde.getTime())) throw new BadRequestException('Parametro "desde" invalido.');
+    const f = await this.escopo.escopoFilialId(autor);
+
+    return this.prisma.forTenant(async (tx) => {
+      const pontos = await tx.ponto.findMany({
+        where: {
+          ...f,
+          registradoEm: { gt: desde },
+          OR: [
+            { dentroRegap: false },
+            {
+              statusValidacao: {
+                in: [StatusValidacaoPonto.PENDENTE_REGAP, StatusValidacaoPonto.PENDENTE_HORARIO],
+              },
+            },
+          ],
+        },
+        orderBy: { registradoEm: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          registradoEm: true,
+          dentroRegap: true,
+          statusValidacao: true,
+          funcionario: { select: { nome: true, filial: { select: { nome: true } } } },
+        },
+      });
+      return {
+        atualizadoEm: new Date().toISOString(),
+        alertas: pontos.map((p) => ({
+          id: p.id,
+          funcionario: p.funcionario.nome,
+          obra: p.funcionario.filial?.nome ?? 'Sem obra',
+          motivo: motivoAlertaPonto(p),
+          registradoEm: p.registradoEm.toISOString(),
+        })),
       };
     });
   }

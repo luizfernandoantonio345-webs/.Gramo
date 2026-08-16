@@ -17,6 +17,7 @@ import { PainelDashboard } from './painel-admin/PainelDashboard';
 import { PainelIntegracoes } from './painel-admin/PainelIntegracoes';
 import { PainelQuiosque } from './painel-admin/PainelQuiosque';
 import { PainelRelatorios } from './painel-admin/PainelRelatorios';
+import { AlertaPontoAoVivo } from './painel-admin/AlertaPontoAoVivo';
 import { SuperLogin } from './painel-admin/SuperLogin';
 import { SuperPanel } from './painel-admin/SuperPanel';
 import { TelaoPresenca } from './painel-admin/TelaoPresenca';
@@ -170,18 +171,21 @@ export function App(): JSX.Element {
     );
 
     return (
-      <AppShell
-        subtitulo={ehAdmin ? 'Administração' : 'Portal do colaborador'}
-        grupos={ehAdmin ? GRUPOS_ADMIN : GRUPOS_FUNCIONARIO}
-        ativo={secao}
-        aoNavegar={setSecao}
-        tituloPagina={TITULOS[secao] ?? ''}
-        acoes={acoes}
-      >
-        <ErrorBoundary key={secao}>
-          {telas[secao] ?? telas.principal ?? telas.dashboard}
-        </ErrorBoundary>
-      </AppShell>
+      <>
+        {ehAdmin && <AlertaPontoAoVivo onVer={() => setSecao('principal')} />}
+        <AppShell
+          subtitulo={ehAdmin ? 'Administração' : 'Portal do colaborador'}
+          grupos={ehAdmin ? GRUPOS_ADMIN : GRUPOS_FUNCIONARIO}
+          ativo={secao}
+          aoNavegar={setSecao}
+          tituloPagina={TITULOS[secao] ?? ''}
+          acoes={acoes}
+        >
+          <ErrorBoundary key={secao}>
+            {telas[secao] ?? telas.principal ?? telas.dashboard}
+          </ErrorBoundary>
+        </AppShell>
+      </>
     );
   }
 

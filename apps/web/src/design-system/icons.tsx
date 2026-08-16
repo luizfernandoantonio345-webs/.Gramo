@@ -20,7 +20,10 @@ export type NomeIcone =
   | 'menu'
   | 'sair'
   | 'externo'
-  | 'busca';
+  | 'busca'
+  | 'sino'
+  | 'sino-off'
+  | 'fechar';
 
 const PATHS: Record<NomeIcone, JSX.Element> = {
   dashboard: (
@@ -131,6 +134,21 @@ const PATHS: Record<NomeIcone, JSX.Element> = {
       <path d="M20 20l-3.5-3.5" />
     </>
   ),
+  sino: (
+    <>
+      <path d="M18 9a6 6 0 1 0-12 0c0 6-3 8-3 8h18s-3-2-3-8" />
+      <path d="M10.5 21a2 2 0 0 0 3 0" />
+    </>
+  ),
+  'sino-off': (
+    <>
+      <path d="M18 9a6 6 0 0 0-9.3-5" />
+      <path d="M6 9c0 6-3 8-3 8h13" />
+      <path d="M10.5 21a2 2 0 0 0 3 0" />
+      <path d="M3 3l18 18" />
+    </>
+  ),
+  fechar: <path d="M6 6l12 12M18 6L6 18" />,
 };
 
 export function Icone({ nome, tamanho = 20 }: { nome: NomeIcone; tamanho?: number }) {
