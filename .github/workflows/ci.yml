@@ -61,6 +61,11 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Testes E2E de UI (Playwright)
         run: npm run test:e2e -w @repp/web
+
+      # E2E de INTEGRACAO: navegador + backend REAL (PG embarcado + seed + API).
+      # Login de verdade (admin e funcionario) -> Dashboard / Bater Ponto.
+      - name: Testes E2E de integracao (navegador + API real)
+        run: npm run test:e2e:integ -w @repp/web
       - name: Publicar relatorio do Playwright (se falhar)
         if: failure()
         uses: actions/upload-artifact@v4
