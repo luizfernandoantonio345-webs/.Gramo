@@ -109,6 +109,11 @@ const TELAS_IMG = [
     cap: 'Cadastro dos dispositivos de ponto compartilhado.',
     oque: 'Gerencia os dispositivos de quiosque — tablets ou computadores fixos na obra, usados como ponto compartilhado. Cada dispositivo possui a própria credencial.',
     como: ['Cadastre um dispositivo e gere a sua credencial.', 'Instale o modo quiosque no aparelho.'] },
+
+  { g: 'Quiosque', img: '19-quiosque.jpg', nome: 'Tela de Quiosque',
+    cap: 'Ponto compartilhado no aparelho da obra, ativado por token.',
+    oque: 'Dispositivo fixo na obra em que vários colaboradores batem o ponto, identificando-se um a um. Na primeira vez, o aparelho é ativado com um token gerado pelo RH; depois, autentica-se sozinho.',
+    como: ['No aparelho, abra o sistema em modo quiosque.', 'Cole o token do dispositivo (gerado em Painel → Quiosque) e ative.', 'Cada colaborador identifica-se e registra o ponto.'] },
 ];
 
 const TELAS_EXTRA = [
@@ -124,9 +129,6 @@ const TELAS_EXTRA = [
   { g: 'Plataforma (operador do sistema)', nome: 'Painel da Plataforma',
     oque: 'Gestão comercial do serviço: empresas, planos, faturas e métricas de uso. Não visualiza pontos, colaboradores nem documentos das empresas — apenas números agregados.',
     como: ['Cadastre e gerencie empresas e planos.', 'Acompanhe as faturas e as métricas de uso.'] },
-  { g: 'Quiosque', nome: 'Tela de Quiosque',
-    oque: 'Dispositivo fixo na obra em que vários colaboradores batem o ponto, identificando‑se um a um. O dispositivo autentica‑se pela própria credencial.',
-    como: ['Abra o sistema em modo quiosque no dispositivo.', 'Vincule o dispositivo com a credencial gerada.', 'Cada colaborador identifica‑se e registra o ponto.'] },
 ];
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
