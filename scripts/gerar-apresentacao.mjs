@@ -123,12 +123,6 @@ const TELAS_EXTRA = [
   { g: 'Administração / RH', nome: 'Mapa de Obras',
     oque: 'Define, no mapa, a área válida para bater ponto de cada obra (a REGAP). Marcações fora dessa área entram como pendentes para o RH avaliar.',
     como: ['Localize a obra no mapa.', 'Clique no mapa para posicionar o centro da área.', 'Ajuste o raio e salve.'] },
-  { g: 'Plataforma (operador do sistema)', nome: 'Login da Plataforma',
-    oque: 'Acesso do super administrador (fornecedor do sistema), com 2FA. Fica oculto para o cliente e não acessa os dados operacionais das empresas.',
-    como: ['Acesse pelo endereço reservado do fornecedor.', 'Entre com as credenciais de super administrador e o 2FA.'] },
-  { g: 'Plataforma (operador do sistema)', nome: 'Painel da Plataforma',
-    oque: 'Gestão comercial do serviço: empresas, planos, faturas e métricas de uso. Não visualiza pontos, colaboradores nem documentos das empresas — apenas números agregados.',
-    como: ['Cadastre e gerencie empresas e planos.', 'Acompanhe as faturas e as métricas de uso.'] },
 ];
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
