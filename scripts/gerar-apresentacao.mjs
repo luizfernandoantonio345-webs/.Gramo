@@ -19,6 +19,16 @@ const img64 = (file) => {
     return '';
   }
 };
+const png64 = (abs) => {
+  try {
+    return 'data:image/png;base64,' + fs.readFileSync(abs).toString('base64');
+  } catch {
+    return '';
+  }
+};
+const PUB = path.join(__dirname, '..', 'apps', 'web', 'public');
+const LOGO = png64(path.join(PUB, 'gramo-logo.png'));
+const EMBLEMA = png64(path.join(PUB, 'gramo-emblema.png'));
 
 const TELAS_IMG = [
   { g: 'Colaborador', img: '01-colaborador-login.jpg', nome: 'Login do Colaborador',
@@ -195,8 +205,10 @@ const corpo = paginas
       return `<section class="divider"><div class="divider-inner">${esc(nome)}</div></section>`;
     }
     const pdfPage = idx + 2; // capa e a pagina 1
+    const marca = EMBLEMA ? `<img class="hdr-logo" src="${EMBLEMA}" alt="GRAMO"/>` : '';
     return `
   <section class="page">
+    ${marca}
     ${entry}
     <div class="pfoot"><span>.GRAMO — Ponto Eletrônico Corporativo</span><span>${pdfPage} / ${totalPdf}</span></div>
   </section>`;
@@ -244,7 +256,10 @@ const css = `
   .cover{position:relative;width:210mm;height:297mm;page-break-after:always;background:linear-gradient(150deg,#0a4a58 0%,#0b5563 45%,#12808f 100%);color:#fff;overflow:hidden}
   .cover .mark{position:absolute;right:-60mm;top:-60mm;width:180mm;height:180mm;border-radius:50%;background:rgba(255,255,255,.05)}
   .cover .mark2{position:absolute;left:-40mm;bottom:-50mm;width:130mm;height:130mm;border-radius:50%;background:rgba(255,255,255,.04)}
-  .cover .inner{position:absolute;left:22mm;right:22mm;top:78mm}
+  .cover .logocard{position:absolute;left:22mm;top:24mm;background:#fff;border-radius:8px;padding:5mm 7mm;box-shadow:0 8px 22px rgba(0,0,0,.20)}
+  .cover .logocard img{height:15mm;display:block}
+  .hdr-logo{position:absolute;top:12mm;right:20mm;height:9mm;border-radius:2px;z-index:5}
+  .cover .inner{position:absolute;left:22mm;right:22mm;top:88mm}
   .cover .brand{font-size:58pt;font-weight:800;letter-spacing:-.02em}
   .cover .sub{font-size:19pt;color:#d5eef1;margin-top:2mm}
   .cover .kicker{margin-top:9mm;font-size:13pt;font-weight:700;color:#eafafb;text-transform:uppercase;letter-spacing:.12em}
@@ -256,6 +271,7 @@ const css = `
 const capa = `
   <section class="cover">
     <div class="mark"></div><div class="mark2"></div>
+    ${LOGO ? `<div class="logocard"><img src="${LOGO}" alt="GRAMO Engenharia"/></div>` : ''}
     <div class="inner">
       <div class="brand">.GRAMO</div>
       <div class="sub">Ponto Eletrônico Corporativo</div>
