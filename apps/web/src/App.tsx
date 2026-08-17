@@ -18,6 +18,7 @@ import { PainelIntegracoes } from './painel-admin/PainelIntegracoes';
 import { PainelQuiosque } from './painel-admin/PainelQuiosque';
 import { PainelRelatorios } from './painel-admin/PainelRelatorios';
 import { AlertaPontoAoVivo } from './painel-admin/AlertaPontoAoVivo';
+import { PainelApuracao } from './painel-admin/PainelApuracao';
 import { SuperLogin } from './painel-admin/SuperLogin';
 import { SuperPanel } from './painel-admin/SuperPanel';
 import { TelaoPresenca } from './painel-admin/TelaoPresenca';
@@ -41,6 +42,7 @@ const GRUPOS_ADMIN: GrupoNav[] = [
     titulo: 'Operação',
     itens: [
       { id: 'principal', rotulo: 'Gestão de ponto', icone: 'ponto' },
+      { id: 'apuracao', rotulo: 'Apuração de horas', icone: 'folha' },
       { id: 'funcionarios', rotulo: 'Funcionários', icone: 'funcionarios' },
       { id: 'ausencias', rotulo: 'Ausências', icone: 'ausencias' },
       { id: 'comunicados', rotulo: 'Comunicados', icone: 'comunicados' },
@@ -79,6 +81,7 @@ const GRUPOS_FUNCIONARIO: GrupoNav[] = [
 const TITULOS: Record<string, string> = {
   dashboard: 'Dashboard',
   principal: 'Gestão de ponto',
+  apuracao: 'Apuração de horas',
   funcionarios: 'Funcionários',
   ausencias: 'Ausências',
   comunicados: 'Comunicados',
@@ -134,6 +137,7 @@ export function App(): JSX.Element {
       ? {
           dashboard: <PainelDashboard />,
           principal: <GestaoPonto />,
+          apuracao: <PainelApuracao />,
           funcionarios: <GestaoFuncionarios />,
           assinaturas: <PainelAssinaturas />,
           ausencias: <PainelAusencias />,

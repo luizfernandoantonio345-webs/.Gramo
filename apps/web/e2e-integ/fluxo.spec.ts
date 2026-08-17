@@ -18,6 +18,18 @@ test('admin faz login real e chega ao Dashboard', async ({ page }) => {
   await expect(page.getByText('Funcionários ativos')).toBeVisible();
 });
 
+test('admin abre a Apuração de horas e vê o demonstrativo', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Administrador' }).click();
+  await page.locator('input[type="email"]').fill('rh@gramoengenharia.com.br');
+  await page.locator('input[type="password"]').fill('GramoRH@2026');
+  await page.getByRole('button', { name: 'Continuar' }).click();
+
+  await page.getByRole('button', { name: 'Apuração de horas', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Apurar' })).toBeVisible();
+  await expect(page.getByText('Demonstrativo por funcionário')).toBeVisible();
+});
+
 test('colaborador faz login real e chega ao Bater Ponto', async ({ page }) => {
   await page.goto('/');
   await page.getByPlaceholder('000.000.000-00').fill('52998224725');
