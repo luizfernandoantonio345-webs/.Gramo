@@ -70,6 +70,18 @@ async function main() {
       body: { uuidIdempotencia: crypto.randomUUID(), latitude: -19.973, longitude: -44.0968 },
     });
     check('ponto registrado com NSR (backend real)', typeof batida.json?.nsr === 'number');
+
+    console.log('\n[fluxo] apuracao da competencia (horas valoradas)');
+    const q =
+      '?inicio=2026-07-21T00:00:00Z&fim=2026-08-20T23:59:59Z&valorHoraPadrao=12.14&percentualPericulosidade=0.3';
+    const apur = await req(baseUrl, `/admin/banco-horas/apuracao${q}`, { token: admTok });
+    check('apuracao responde 200', apur.status === 200);
+    check('apuracao traz itens por funcionario', Array.isArray(apur.json?.itens));
+    check('apuracao traz consolidado com total', typeof apur.json?.consolidado?.total === 'number');
+    check(
+      'apuracao ecoa os parametros (periculosidade 30%)',
+      apur.json?.parametros?.percentualPericulosidade === 0.3,
+    );
   } finally {
     await stop();
   }

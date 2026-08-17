@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { RegimeHoras, StatusFuncionario, TipoAjusteBanco, TipoMarcacao } from '@prisma/client';
 import {
   ADICIONAL_NOTURNO_PADRAO,
+  apurarValores,
   calcularHorasDia,
   formatarMinutos,
   minutosNoturnosReduzidos,
@@ -148,6 +149,21 @@ export function agregarExtras(porFunc: FuncExtras[]) {
     .slice(0, 8)
     .map((f) => ({ funcionario: f.funcionario, filial: f.filial, extrasMin: f.extrasMin }));
   return { totalExtrasMin, totalFaltasMin, funcionariosComExtra, diasAcimaLimite, topExtras };
+}
+
+/**
+ * Decompoe o trabalhado de UM dia em normais / extras / noturnas (puro). Normal
+ * = ate a carga diaria; extra = o que passa dela; noturna = o trecho na faixa
+ * noturna (usado para o adicional). Sem carga definida, tudo e normal.
+ */
+export function decomporDia(
+  trabalhadoMin: number,
+  noturnoMin: number,
+  cargaMin: number | null,
+): { normaisMin: number; extrasMin: number; noturnasMin: number } {
+  const carga = cargaMin ?? trabalhadoMin;
+  const extrasMin = Math.max(0, trabalhadoMin - carga);
+  return { normaisMin: trabalhadoMin - extrasMin, extrasMin, noturnasMin: noturnoMin };
 }
 
 /**
@@ -401,6 +417,124 @@ export class BancoHorasService {
         };
       });
       return { ...agregarExtras(porFunc), semJornada: funcs.length - comCarga.length };
+    });
+  }
+
+  /**
+   * APURACAO da competencia (ex.: 21->20): por funcionario, decompoe as horas do
+   * periodo (normais/extras/noturnas via saldosPorDia) e VALORA com o motor
+   * apurarValores (@repp/shared) -- normais, extras e adicionais em separado,
+   * pronto para a folha conferir. Percentuais e divisor sao CONFIGURAVEIS. O
+   * valor-hora vem do salario base do funcionario / divisor (ou de um padrao
+   * quando o salario nao esta cadastrado). Escopo por filial + RLS. So leitura.
+   */
+  async apuracaoPeriodo(
+    autor: UsuarioAutenticado,
+    p: {
+      inicioIso: string;
+      fimIso: string;
+      percentualExtra?: number;
+      percentualPericulosidade?: number;
+      percentualNoturno?: number;
+      divisorMensal?: number;
+      valorHoraPadrao?: number;
+    },
+  ) {
+    const inicio = new Date(p.inicioIso);
+    const fim = new Date(p.fimIso);
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) {
+      throw new BadRequestException('Periodo invalido.');
+    }
+    const percentualExtra = p.percentualExtra ?? 0.5;
+    const percentualPericulosidade = p.percentualPericulosidade ?? 0;
+    const percentualNoturno = p.percentualNoturno ?? 0.2;
+    const divisorMensal = p.divisorMensal && p.divisorMensal > 0 ? p.divisorMensal : 220;
+    const valorHoraPadrao = p.valorHoraPadrao ?? 0;
+    const filialFiltro = await this.escopo.escopoFilialId(autor);
+
+    return this.prisma.forTenant(async (tx) => {
+      const funcs = await tx.funcionario.findMany({
+        where: { ...filialFiltro, status: StatusFuncionario.ATIVO },
+        select: {
+          id: true,
+          nome: true,
+          salarioBase: true,
+          jornada: { select: { cargaDiariaMinutos: true } },
+          filial: { select: { nome: true, timezone: true } },
+        },
+        orderBy: { nome: 'asc' },
+      });
+      const pontos = funcs.length
+        ? await tx.ponto.findMany({
+            where: {
+              funcionarioId: { in: funcs.map((f) => f.id) },
+              registradoEm: { gte: inicio, lte: fim },
+            },
+            orderBy: { registradoEm: 'asc' },
+            select: { funcionarioId: true, tipo: true, registradoEm: true },
+          })
+        : [];
+      const porFunc = new Map<string, { tipo: TipoMarcacao; registradoEm: Date }[]>();
+      for (const pt of pontos) {
+        if (!porFunc.has(pt.funcionarioId)) porFunc.set(pt.funcionarioId, []);
+        porFunc.get(pt.funcionarioId)!.push({ tipo: pt.tipo, registradoEm: pt.registradoEm });
+      }
+
+      const itens = funcs.map((f) => {
+        const carga = f.jornada?.cargaDiariaMinutos ?? null;
+        const tz = f.filial?.timezone ?? 'America/Sao_Paulo';
+        const dias = this.saldosPorDia(porFunc.get(f.id) ?? [], tz, carga);
+        let normaisMin = 0;
+        let extrasMin = 0;
+        let noturnasMin = 0;
+        for (const d of dias) {
+          const dd = decomporDia(d.trabalhadoMin, d.noturnoMin, carga);
+          normaisMin += dd.normaisMin;
+          extrasMin += dd.extrasMin;
+          noturnasMin += dd.noturnasMin;
+        }
+        const valorHora = f.salarioBase ? Number(f.salarioBase) / divisorMensal : valorHoraPadrao;
+        const valores = apurarValores(
+          { minutosNormais: normaisMin, minutosExtras: extrasMin, minutosNoturnos: noturnasMin },
+          {
+            valorHora: Math.round(valorHora * 100) / 100,
+            percentualExtra,
+            percentualPericulosidade,
+            percentualNoturno,
+          },
+        );
+        return { funcionario: f.nome, obra: f.filial?.nome ?? 'Sem obra', ...valores };
+      });
+
+      const consolidado = itens.reduce(
+        (acc, i) => ({
+          valorNormais: acc.valorNormais + i.normais.valor,
+          valorExtras: acc.valorExtras + i.extras.valor,
+          adicionalPericulosidade: acc.adicionalPericulosidade + i.adicionalPericulosidade,
+          valorNoturno: acc.valorNoturno + i.adicionalNoturno.valor,
+          total: acc.total + i.total,
+        }),
+        { valorNormais: 0, valorExtras: 0, adicionalPericulosidade: 0, valorNoturno: 0, total: 0 },
+      );
+      const round2 = (n: number) => Math.round(n * 100) / 100;
+
+      return {
+        periodo: { inicio: inicio.toISOString(), fim: fim.toISOString() },
+        parametros: {
+          percentualExtra,
+          percentualPericulosidade,
+          percentualNoturno,
+          divisorMensal,
+        },
+        itens,
+        consolidado: {
+          valorNormais: round2(consolidado.valorNormais),
+          valorExtras: round2(consolidado.valorExtras),
+          adicionalPericulosidade: round2(consolidado.adicionalPericulosidade),
+          valorNoturno: round2(consolidado.valorNoturno),
+          total: round2(consolidado.total),
+        },
+      };
     });
   }
 

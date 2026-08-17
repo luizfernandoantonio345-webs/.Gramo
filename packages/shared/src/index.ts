@@ -1,5 +1,6 @@
 /** Ponto de entrada publico do pacote @repp/shared. */
 export * from './afd';
+export * from './apuracao';
 export * from './arquivo';
 export * from './assinatura';
 export * from './ausencia';
