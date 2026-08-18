@@ -1,6 +1,16 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PapelAdmin } from '@prisma/client';
+import { PapelAdmin, TipoSujeito } from '@prisma/client';
 import { CurrentUser } from '../common/auth/current-user.decorator';
 import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { JwtAuthGuard } from '../common/auth/jwt-auth.guard';
@@ -111,5 +121,21 @@ export class DocumentoAdminController {
     @CurrentUser() user: UsuarioAutenticado,
   ) {
     return this.service.decidirDocumento(id, dto, user);
+  }
+}
+
+/** Tela Perfil -- dados do proprio funcionario (auto-consulta). */
+@ApiTags('funcionario-perfil')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller({ path: 'funcionario', version: '1' })
+export class FuncionarioSelfController {
+  constructor(private readonly service: FuncionariosService) {}
+
+  @Get('me')
+  @ApiOperation({ summary: 'Dados basicos do proprio funcionario (nome, cargo, foto).' })
+  me(@CurrentUser() user: UsuarioAutenticado) {
+    if (user.tipo !== TipoSujeito.FUNCIONARIO) throw new ForbiddenException('Apenas funcionarios.');
+    return this.service.meuPerfil(user.sub);
   }
 }

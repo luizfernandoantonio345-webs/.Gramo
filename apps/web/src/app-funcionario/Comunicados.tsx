@@ -6,6 +6,7 @@ interface Comunicado {
   id: string;
   titulo: string;
   mensagem: string;
+  imagem?: string;
   criadoEm: string;
   lido: boolean;
 }
@@ -103,17 +104,30 @@ export function Comunicados() {
                     {!c.lido && <Badge cor="var(--color-accent)">novo</Badge>}
                   </button>
                   {expandido && (
-                    <p
-                      style={{
-                        font: '400 14px var(--font-body)',
-                        lineHeight: 1.5,
-                        marginTop: 'var(--space-2)',
-                        marginBottom: 0,
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      {c.mensagem}
-                    </p>
+                    <div style={{ marginTop: 'var(--space-2)' }}>
+                      {c.imagem && (
+                        <img
+                          src={c.imagem}
+                          alt="Arte do comunicado"
+                          style={{
+                            width: '100%',
+                            borderRadius: 'var(--radius-md)',
+                            marginBottom: 'var(--space-2)',
+                            display: 'block',
+                          }}
+                        />
+                      )}
+                      <p
+                        style={{
+                          font: '400 14px var(--font-body)',
+                          lineHeight: 1.5,
+                          margin: 0,
+                          whiteSpace: 'pre-wrap',
+                        }}
+                      >
+                        {c.mensagem}
+                      </p>
+                    </div>
                   )}
                 </Cartao>
               </li>

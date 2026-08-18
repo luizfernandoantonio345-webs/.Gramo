@@ -33,6 +33,38 @@ export class FuncionariosService {
     private readonly storage: StorageService,
   ) {}
 
+  /** Dados basicos do proprio funcionario (perfil auto-consulta). */
+  async meuPerfil(funcionarioId: string) {
+    const func = await this.prisma.forTenant((tx) =>
+      tx.funcionario.findUniqueOrThrow({
+        where: { id: funcionarioId },
+        select: {
+          nome: true,
+          cargo: true,
+          email: true,
+          fotoReferenciaRef: true,
+          fotoAprovada: true,
+        },
+      }),
+    );
+    let fotoBase64: string | undefined;
+    if (func.fotoReferenciaRef) {
+      try {
+        const bytes = await this.storage.lerImagem(func.fotoReferenciaRef);
+        fotoBase64 = `data:image/jpeg;base64,${bytes.toString('base64')}`;
+      } catch {
+        /* foto referenciada mas nao encontrada no storage — ignora */
+      }
+    }
+    return {
+      nome: func.nome,
+      cargo: func.cargo ?? null,
+      email: func.email ?? null,
+      fotoAprovada: func.fotoAprovada,
+      fotoBase64,
+    };
+  }
+
   /** Foto de referencia (selfie) do funcionario, para o RH conferir antes de aprovar. */
   async fotoReferencia(
     id: string,

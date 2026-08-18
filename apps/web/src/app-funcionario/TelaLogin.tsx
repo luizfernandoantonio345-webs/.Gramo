@@ -11,7 +11,7 @@ import {
 } from '../design-system/components';
 import { apiGet, apiPost, type ParTokens } from '../lib/api';
 
-type Modo = 'login' | 'primeiro-acesso';
+type Modo = 'login' | 'primeiro-acesso' | 'recuperar' | 'redefinir';
 
 interface AvatarInfo {
   nome?: string;
@@ -19,22 +19,42 @@ interface AvatarInfo {
 }
 
 /**
- * Tela 1 -- Login / Cadastrar (funcionario). Login com CPF+senha; primeiro
- * acesso via codigo de convite + aceite LGPD. Login exige internet.
+ * Tela 1 -- Login / Cadastrar / Recuperar senha (funcionario).
+ * - autoComplete attributes para o gerenciador de senhas do dispositivo salvar as credenciais.
+ * - Fluxo "Esqueceu a senha?": envia token ao e-mail → funcionario digita token + nova senha.
+ * - Token de redefinicao pre-preenchido se ?token= estiver na URL (link do e-mail).
  */
 export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => void }) {
-  const [modo, setModo] = useState<Modo>('login');
+  // Detecta token de redefinicao na URL (link enviado por email).
+  const tokenUrl = new URLSearchParams(window.location.search).get('token') ?? '';
+
+  const [modo, setModo] = useState<Modo>(tokenUrl ? 'redefinir' : 'login');
   const [cpf, setCpf] = useState('');
   const [senha, setSenha] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [tokenRedefinir, setTokenRedefinir] = useState(tokenUrl);
   const [codigo, setCodigo] = useState('');
   const [aceite, setAceite] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [avatar, setAvatar] = useState<AvatarInfo | null>(null);
   const timerAvatar = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cpfValido = isCpfValido(cpf);
   const senhaCheck = validarSenha(senha);
+  const novaSenhaCheck = validarSenha(novaSenha);
+
+  // Limpa o ?token= da URL sem recarregar; tokenUrl e constante derivada do
+  // href no momento da montagem — nao muda apos isso, ref e o padrao correto.
+  const tokenLimpoRef = useRef(false);
+  if (!tokenLimpoRef.current && tokenUrl) {
+    tokenLimpoRef.current = true;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('token');
+    window.history.replaceState({}, '', url.toString());
+  }
 
   // Busca avatar com debounce ao completar 11 dígitos válidos.
   useEffect(() => {
@@ -53,6 +73,14 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     };
   }, [cpf, cpfValido, modo]);
 
+  function trocarModo(m: Modo) {
+    setModo(m);
+    setErro(null);
+    setSucesso(null);
+    setAvatar(null);
+  }
+
+  // ---- Login / Primeiro acesso ----
   async function enviar() {
     setErro(null);
     if (!cpfValido) return setErro('CPF inválido.');
@@ -84,13 +112,56 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     }
   }
 
+  // ---- Recuperar senha: envia e-mail com link de redefinição ----
+  async function recuperar() {
+    setErro(null);
+    if (!cpfValido) return setErro('CPF inválido.');
+    setCarregando(true);
+    try {
+      await apiPost('/auth/funcionario/recuperar-senha', { cpf: normalizarCpf(cpf) });
+      setSucesso(
+        'Se o CPF estiver cadastrado, enviaremos um link de redefinição para o e-mail do cadastro. Verifique a caixa de entrada.',
+      );
+    } catch {
+      // Sempre exibe a mensagem neutra — não revela se o CPF existe.
+      setSucesso(
+        'Se o CPF estiver cadastrado, enviaremos um link de redefinição para o e-mail do cadastro. Verifique a caixa de entrada.',
+      );
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  // ---- Redefinir senha: token + nova senha ----
+  async function redefinir() {
+    setErro(null);
+    if (!tokenRedefinir) return setErro('Informe o código recebido por e-mail.');
+    if (!novaSenhaCheck.valido) return setErro(novaSenhaCheck.erros.join(' '));
+    if (novaSenha !== confirmarSenha) return setErro('As senhas não conferem.');
+    setCarregando(true);
+    try {
+      await apiPost('/auth/funcionario/redefinir-senha', {
+        token: tokenRedefinir.trim(),
+        novaSenha,
+      });
+      setSucesso('Senha redefinida com sucesso! Faça login com a nova senha.');
+      setTimeout(() => trocarModo('login'), 2500);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Código inválido ou expirado.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────
+
   return (
     <div style={{ maxWidth: 420, margin: '0 auto' }}>
       <div style={{ marginBottom: 'var(--space-3)' }}>
         <MarcaRepp subtitulo="Ponto Eletrônico" />
       </div>
 
-      {/* Avatar de boas-vindas — aparece quando o CPF é reconhecido */}
+      {/* Avatar de boas-vindas */}
       {avatar && modo === 'login' && (
         <div
           style={{
@@ -158,7 +229,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         </div>
       )}
 
-      {!avatar && (
+      {!avatar && modo !== 'recuperar' && modo !== 'redefinir' && (
         <p
           style={{ color: 'var(--color-text-muted)', marginTop: 0, marginBottom: 'var(--space-3)' }}
         >
@@ -166,101 +237,314 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         </p>
       )}
 
-      <Cartao>
-        {modo === 'primeiro-acesso' && (
-          <Campo
-            label="Código de convite"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-            placeholder="8 caracteres"
-            maxLength={8}
-          />
-        )}
-        <Campo
-          label="CPF"
-          inputMode="numeric"
-          value={cpf.length ? formatarCpf(cpf) : ''}
-          onChange={(e) => setCpf(normalizarCpf(e.target.value))}
-          onKeyDown={(e) => e.key === 'Enter' && void enviar()}
-          erro={cpf.length >= 11 && !cpfValido ? 'Dígito verificador inválido' : undefined}
-          placeholder="000.000.000-00"
-        />
-        <Campo
-          label="Senha"
-          type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && void enviar()}
-          erro={
-            modo === 'primeiro-acesso' && senha.length > 0 && !senhaCheck.valido
-              ? senhaCheck.erros[0]
-              : undefined
-          }
-          placeholder="mínimo 8 caracteres, letra + número"
-        />
+      {/* ── LOGIN ── */}
+      {(modo === 'login' || modo === 'primeiro-acesso') && (
+        <Cartao>
+          {/* Nome do formulário para o gerenciador de senhas do dispositivo identificar */}
+          <form
+            name={modo === 'login' ? 'login' : 'cadastro'}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void enviar();
+            }}
+            autoComplete="on"
+          >
+            {modo === 'primeiro-acesso' && (
+              <Campo
+                label="Código de convite"
+                name="invitation-code"
+                autoComplete="one-time-code"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+                placeholder="8 caracteres"
+                maxLength={8}
+              />
+            )}
+            <Campo
+              label="CPF"
+              name="username"
+              autoComplete="username"
+              inputMode="numeric"
+              value={cpf.length ? formatarCpf(cpf) : ''}
+              onChange={(e) => setCpf(normalizarCpf(e.target.value))}
+              onKeyDown={(e) => e.key === 'Enter' && void enviar()}
+              erro={cpf.length >= 11 && !cpfValido ? 'Dígito verificador inválido' : undefined}
+              placeholder="000.000.000-00"
+            />
+            <Campo
+              label="Senha"
+              name="password"
+              type="password"
+              autoComplete={modo === 'login' ? 'current-password' : 'new-password'}
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void enviar()}
+              erro={
+                modo === 'primeiro-acesso' && senha.length > 0 && !senhaCheck.valido
+                  ? senhaCheck.erros[0]
+                  : undefined
+              }
+              placeholder="mínimo 8 caracteres, letra + número"
+            />
 
-        {modo === 'primeiro-acesso' && (
-          <label
+            {modo === 'primeiro-acesso' && (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-2)',
+                  minHeight: 44,
+                  marginBottom: 'var(--space-3)',
+                  font: '400 13px var(--font-body)',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={aceite}
+                  onChange={(e) => setAceite(e.target.checked)}
+                  style={{ width: 20, height: 20, flex: '0 0 auto' }}
+                />
+                <span>
+                  Aceito o termo de uso e o <strong>consentimento LGPD</strong> para biometria
+                  facial.
+                </span>
+              </label>
+            )}
+
+            {erro && (
+              <div style={{ marginBottom: 'var(--space-3)' }}>
+                <Feedback tom="erro">{erro}</Feedback>
+              </div>
+            )}
+
+            <Botao onClick={enviar} disabled={carregando}>
+              {carregando ? 'Aguarde…' : modo === 'login' ? 'Entrar' : 'Cadastrar'}
+            </Botao>
+
+            {modo === 'login' && ambienteDemo() && (
+              <BotaoDemo
+                onClick={() => {
+                  setCpf('52998224725');
+                  setSenha('Gramo@12345');
+                }}
+              />
+            )}
+          </form>
+
+          {/* Esqueceu a senha — só aparece no login */}
+          {modo === 'login' && (
+            <button
+              type="button"
+              onClick={() => trocarModo('recuperar')}
+              style={{
+                marginTop: 'var(--space-3)',
+                display: 'block',
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-text-muted)',
+                font: '400 13px var(--font-body)',
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: 'underline',
+              }}
+            >
+              Esqueceu a senha?
+            </button>
+          )}
+        </Cartao>
+      )}
+
+      {/* ── RECUPERAR SENHA ── */}
+      {modo === 'recuperar' && (
+        <Cartao>
+          <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Recuperar senha</h2>
+          <p
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
-              minHeight: 44,
-              marginBottom: 'var(--space-3)',
               font: '400 13px var(--font-body)',
+              color: 'var(--color-text-muted)',
+              marginTop: 0,
             }}
           >
-            <input
-              type="checkbox"
-              checked={aceite}
-              onChange={(e) => setAceite(e.target.checked)}
-              style={{ width: 20, height: 20, flex: '0 0 auto' }}
-            />
-            <span>
-              Aceito o termo de uso e o <strong>consentimento LGPD</strong> para biometria facial.
-            </span>
-          </label>
-        )}
+            Informe seu CPF. Enviaremos um link de redefinição para o e-mail cadastrado pelo RH.
+          </p>
 
-        {erro && (
-          <div style={{ marginBottom: 'var(--space-3)' }}>
-            <Feedback tom="erro">{erro}</Feedback>
-          </div>
-        )}
+          {sucesso ? (
+            <Feedback tom="sucesso">{sucesso}</Feedback>
+          ) : (
+            <form
+              name="recuperar-senha"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void recuperar();
+              }}
+            >
+              <Campo
+                label="CPF"
+                name="username"
+                autoComplete="username"
+                inputMode="numeric"
+                value={cpf.length ? formatarCpf(cpf) : ''}
+                onChange={(e) => setCpf(normalizarCpf(e.target.value))}
+                onKeyDown={(e) => e.key === 'Enter' && void recuperar()}
+                erro={cpf.length >= 11 && !cpfValido ? 'Dígito verificador inválido' : undefined}
+                placeholder="000.000.000-00"
+              />
+              {erro && (
+                <div style={{ marginBottom: 'var(--space-3)' }}>
+                  <Feedback tom="erro">{erro}</Feedback>
+                </div>
+              )}
+              <Botao onClick={recuperar} disabled={carregando || !cpfValido}>
+                {carregando ? 'Enviando…' : 'Enviar link de recuperação'}
+              </Botao>
+            </form>
+          )}
 
-        <Botao onClick={enviar} disabled={carregando}>
-          {carregando ? 'Aguarde…' : modo === 'login' ? 'Entrar' : 'Cadastrar'}
-        </Botao>
-        {modo === 'login' && ambienteDemo() && (
-          <BotaoDemo
-            onClick={() => {
-              setCpf('52998224725');
-              setSenha('Gramo@12345');
+          {/* Link para digitar o código manualmente (caso o e-mail não chegue com link) */}
+          {sucesso && (
+            <button
+              type="button"
+              onClick={() => {
+                setSucesso(null);
+                trocarModo('redefinir');
+              }}
+              style={{
+                marginTop: 'var(--space-3)',
+                display: 'block',
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-accent)',
+                font: '400 13px var(--font-body)',
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: 'underline',
+              }}
+            >
+              Já tenho o código — digitar manualmente
+            </button>
+          )}
+        </Cartao>
+      )}
+
+      {/* ── REDEFINIR SENHA ── */}
+      {modo === 'redefinir' && (
+        <Cartao>
+          <h2 style={{ font: '600 16px var(--font-display)', marginTop: 0 }}>Nova senha</h2>
+          <p
+            style={{
+              font: '400 13px var(--font-body)',
+              color: 'var(--color-text-muted)',
+              marginTop: 0,
             }}
-          />
-        )}
-      </Cartao>
+          >
+            Cole o código recebido por e-mail e escolha uma nova senha.
+          </p>
 
-      <button
-        onClick={() => {
-          setModo(modo === 'login' ? 'primeiro-acesso' : 'login');
-          setErro(null);
-          setAvatar(null);
-        }}
+          {sucesso ? (
+            <Feedback tom="sucesso">{sucesso}</Feedback>
+          ) : (
+            <form
+              name="redefinir-senha"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void redefinir();
+              }}
+            >
+              <Campo
+                label="Código de recuperação"
+                name="recovery-token"
+                autoComplete="one-time-code"
+                value={tokenRedefinir}
+                onChange={(e) => setTokenRedefinir(e.target.value)}
+                placeholder="Cole o código do e-mail"
+              />
+              <Campo
+                label="Nova senha"
+                name="new-password"
+                type="password"
+                autoComplete="new-password"
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && void redefinir()}
+                erro={
+                  novaSenha.length > 0 && !novaSenhaCheck.valido
+                    ? novaSenhaCheck.erros[0]
+                    : undefined
+                }
+                placeholder="mínimo 8 caracteres, letra + número"
+              />
+              <Campo
+                label="Confirmar nova senha"
+                name="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmarSenha}
+                onChange={(e) => setConfirmarSenha(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && void redefinir()}
+                erro={
+                  confirmarSenha.length > 0 && novaSenha !== confirmarSenha
+                    ? 'Senhas não conferem'
+                    : undefined
+                }
+                placeholder="repita a nova senha"
+              />
+              {erro && (
+                <div style={{ marginBottom: 'var(--space-3)' }}>
+                  <Feedback tom="erro">{erro}</Feedback>
+                </div>
+              )}
+              <Botao onClick={redefinir} disabled={carregando}>
+                {carregando ? 'Salvando…' : 'Salvar nova senha'}
+              </Botao>
+            </form>
+          )}
+        </Cartao>
+      )}
+
+      {/* ── Links de navegação entre modos ── */}
+      <div
         style={{
           marginTop: 'var(--space-3)',
-          minHeight: 44,
-          background: 'none',
-          border: 'none',
-          color: 'var(--color-accent)',
-          cursor: 'pointer',
-          font: '500 14px var(--font-body)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-1)',
         }}
       >
-        {modo === 'login'
-          ? 'Primeiro acesso? Cadastre-se com o código do RH'
-          : 'Já tenho conta — fazer login'}
-      </button>
+        {(modo === 'login' || modo === 'primeiro-acesso') && (
+          <button
+            type="button"
+            onClick={() => trocarModo(modo === 'login' ? 'primeiro-acesso' : 'login')}
+            style={{
+              minHeight: 44,
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-accent)',
+              cursor: 'pointer',
+              font: '500 14px var(--font-body)',
+            }}
+          >
+            {modo === 'login'
+              ? 'Primeiro acesso? Cadastre-se com o código do RH'
+              : 'Já tenho conta — fazer login'}
+          </button>
+        )}
+        {(modo === 'recuperar' || modo === 'redefinir') && (
+          <button
+            type="button"
+            onClick={() => trocarModo('login')}
+            style={{
+              minHeight: 44,
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-accent)',
+              cursor: 'pointer',
+              font: '500 14px var(--font-body)',
+            }}
+          >
+            ← Voltar para o login
+          </button>
+        )}
+      </div>
     </div>
   );
 }

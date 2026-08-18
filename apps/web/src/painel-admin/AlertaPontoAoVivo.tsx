@@ -105,118 +105,112 @@ export function AlertaPontoAoVivo({ onVer }: { onVer: () => void }) {
     new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div
-      aria-live="assertive"
-      style={{
-        position: 'fixed',
-        top: 'var(--space-4)',
-        right: 'var(--space-4)',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-3)',
-        width: 'min(360px, calc(100vw - 32px))',
-        pointerEvents: 'none',
-      }}
-    >
-      {/* Controle de som: sempre visivel, para o RH silenciar/religar quando quiser. */}
+    <>
+      {/* Botao de silenciar — renderizado inline na topbar (via acoes em App.tsx). */}
       <button
         onClick={alternarMudo}
-        aria-label={mudo ? 'Ativar som dos alertas' : 'Silenciar som dos alertas'}
-        style={{
-          alignSelf: 'flex-end',
-          pointerEvents: 'auto',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          padding: '6px 12px',
-          borderRadius: 'var(--radius-full)',
-          border: '1px solid var(--color-border)',
-          background: 'var(--color-surface)',
-          color: 'var(--color-text-muted)',
-          font: '500 var(--text-xs) var(--font-body)',
-          cursor: 'pointer',
-          boxShadow: 'var(--shadow-xs)',
-        }}
+        aria-label={mudo ? 'Ativar som dos alertas' : 'Silenciar alertas'}
+        title={mudo ? 'Ativar som dos alertas' : 'Silenciar alertas'}
+        className="g-btn g-btn--sm g-btn--ghost"
       >
-        <Icone nome={mudo ? 'sino-off' : 'sino'} tamanho={15} />
-        {mudo ? 'Alertas silenciados' : 'Alertas com som'}
+        <Icone nome={mudo ? 'sino-off' : 'sino'} tamanho={16} />
       </button>
 
-      {alertas.map((a) => (
+      {/* Toasts de alerta — flutuam abaixo da topbar, sem sobrepor. */}
+      {alertas.length > 0 && (
         <div
-          key={a.id}
-          role="alert"
+          aria-live="assertive"
           style={{
-            pointerEvents: 'auto',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-danger)',
-            borderLeft: '5px solid var(--color-danger)',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: 'var(--shadow-md)',
-            padding: 'var(--space-4)',
+            position: 'fixed',
+            top: 'calc(var(--topbar-h) + var(--space-2))',
+            right: 'var(--space-4)',
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-3)',
+            width: 'min(360px, calc(100vw - 32px))',
+            pointerEvents: 'none',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span
+          {alertas.map((a) => (
+            <div
+              key={a.id}
+              role="alert"
               style={{
-                font: '700 var(--text-xs) var(--font-body)',
-                color: 'var(--color-danger)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
+                pointerEvents: 'auto',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-danger)',
+                borderLeft: '5px solid var(--color-danger)',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: 'var(--shadow-md)',
+                padding: 'var(--space-4)',
               }}
             >
-              Ponto para verificar
-            </span>
-            <span
-              style={{
-                marginLeft: 'auto',
-                font: 'var(--text-xs) var(--font-mono)',
-                color: 'var(--color-text-faint)',
-              }}
-            >
-              {hora(a.registradoEm)}
-            </span>
-            <button
-              onClick={() => dispensar(a.id)}
-              aria-label="Dispensar"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-text-faint)',
-                padding: 0,
-              }}
-            >
-              <Icone nome="fechar" tamanho={15} />
-            </button>
-          </div>
-          <div
-            style={{ font: '600 var(--text-base) var(--font-body)', marginTop: 'var(--space-2)' }}
-          >
-            {a.motivo}
-          </div>
-          <div
-            style={{
-              font: 'var(--text-sm) var(--font-body)',
-              color: 'var(--color-text-muted)',
-              marginTop: '2px',
-            }}
-          >
-            {a.funcionario} · {a.obra}
-          </div>
-          <button
-            onClick={() => {
-              onVer();
-              dispensar(a.id);
-            }}
-            className="g-btn g-btn--sm g-btn--primary"
-            style={{ marginTop: 'var(--space-3)' }}
-          >
-            Verificar na gestão de ponto
-          </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <span
+                  style={{
+                    font: '700 var(--text-xs) var(--font-body)',
+                    color: 'var(--color-danger)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Ponto para verificar
+                </span>
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    font: 'var(--text-xs) var(--font-mono)',
+                    color: 'var(--color-text-faint)',
+                  }}
+                >
+                  {hora(a.registradoEm)}
+                </span>
+                <button
+                  onClick={() => dispensar(a.id)}
+                  aria-label="Dispensar"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-faint)',
+                    padding: 0,
+                  }}
+                >
+                  <Icone nome="fechar" tamanho={15} />
+                </button>
+              </div>
+              <div
+                style={{
+                  font: '600 var(--text-base) var(--font-body)',
+                  marginTop: 'var(--space-2)',
+                }}
+              >
+                {a.motivo}
+              </div>
+              <div
+                style={{
+                  font: 'var(--text-sm) var(--font-body)',
+                  color: 'var(--color-text-muted)',
+                  marginTop: '2px',
+                }}
+              >
+                {a.funcionario} · {a.obra}
+              </div>
+              <button
+                onClick={() => {
+                  onVer();
+                  dispensar(a.id);
+                }}
+                className="g-btn g-btn--sm g-btn--primary"
+                style={{ marginTop: 'var(--space-3)' }}
+              >
+                Verificar na gestão de ponto
+              </button>
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }

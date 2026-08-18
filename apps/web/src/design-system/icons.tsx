@@ -25,7 +25,8 @@ export type NomeIcone =
   | 'sino-off'
   | 'fechar'
   | 'olho'
-  | 'olho-off';
+  | 'olho-off'
+  | 'perfil';
 
 const PATHS: Record<NomeIcone, JSX.Element> = {
   dashboard: (
@@ -151,6 +152,12 @@ const PATHS: Record<NomeIcone, JSX.Element> = {
     </>
   ),
   fechar: <path d="M6 6l12 12M18 6L6 18" />,
+  perfil: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </>
+  ),
   olho: (
     <>
       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />

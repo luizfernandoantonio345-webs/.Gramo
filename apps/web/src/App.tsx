@@ -4,6 +4,7 @@ import { Comunicados } from './app-funcionario/Comunicados';
 import { Documentos } from './app-funcionario/Documentos';
 import { Ferias } from './app-funcionario/Ferias';
 import { Folha } from './app-funcionario/Folha';
+import { Perfil } from './app-funcionario/Perfil';
 import { TelaLogin } from './app-funcionario/TelaLogin';
 import { AdmLogin } from './painel-admin/AdmLogin';
 import { GestaoFuncionarios } from './painel-admin/GestaoFuncionarios';
@@ -74,6 +75,7 @@ const GRUPOS_FUNCIONARIO: GrupoNav[] = [
       { id: 'documentos', rotulo: 'Documentos', icone: 'documentos' },
       { id: 'ferias', rotulo: 'Férias', icone: 'ferias' },
       { id: 'comunicados', rotulo: 'Comunicados', icone: 'comunicados' },
+      { id: 'perfil', rotulo: 'Meu perfil', icone: 'perfil' },
     ],
   },
 ];
@@ -94,6 +96,7 @@ const TITULOS: Record<string, string> = {
   folha: 'Folha de ponto',
   documentos: 'Documentos',
   ferias: 'Férias e afastamentos',
+  perfil: 'Meu perfil',
 };
 
 /**
@@ -154,10 +157,12 @@ export function App(): JSX.Element {
           documentos: <Documentos />,
           ferias: <Ferias />,
           comunicados: <Comunicados />,
+          perfil: <Perfil />,
         };
 
     const acoes = (
       <>
+        {ehAdmin && <AlertaPontoAoVivo onVer={() => setSecao('principal')} />}
         {ehAdmin && (
           <a
             href="?modo=presenca"
@@ -175,21 +180,18 @@ export function App(): JSX.Element {
     );
 
     return (
-      <>
-        {ehAdmin && <AlertaPontoAoVivo onVer={() => setSecao('principal')} />}
-        <AppShell
-          subtitulo={ehAdmin ? 'Administração' : 'Portal do colaborador'}
-          grupos={ehAdmin ? GRUPOS_ADMIN : GRUPOS_FUNCIONARIO}
-          ativo={secao}
-          aoNavegar={setSecao}
-          tituloPagina={TITULOS[secao] ?? ''}
-          acoes={acoes}
-        >
-          <ErrorBoundary key={secao}>
-            {telas[secao] ?? telas.principal ?? telas.dashboard}
-          </ErrorBoundary>
-        </AppShell>
-      </>
+      <AppShell
+        subtitulo={ehAdmin ? 'Administração' : 'Portal do colaborador'}
+        grupos={ehAdmin ? GRUPOS_ADMIN : GRUPOS_FUNCIONARIO}
+        ativo={secao}
+        aoNavegar={setSecao}
+        tituloPagina={TITULOS[secao] ?? ''}
+        acoes={acoes}
+      >
+        <ErrorBoundary key={secao}>
+          {telas[secao] ?? telas.principal ?? telas.dashboard}
+        </ErrorBoundary>
+      </AppShell>
     );
   }
 

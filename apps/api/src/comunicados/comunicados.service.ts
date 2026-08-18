@@ -22,6 +22,7 @@ export class ComunicadosService {
           mensagem: dto.mensagem,
           publicoTipo: dto.publicoTipo,
           publicoValor: dto.publicoValor,
+          imagem: dto.imagem,
           criadoPorAdminId: autor.sub,
         },
         select: { id: true },
@@ -81,6 +82,7 @@ export class ComunicadosService {
           id: true,
           titulo: true,
           mensagem: true,
+          imagem: true,
           criadoEm: true,
           leituras: { where: { funcionarioId }, select: { id: true } },
         },
@@ -89,6 +91,7 @@ export class ComunicadosService {
         id: c.id,
         titulo: c.titulo,
         mensagem: c.mensagem,
+        imagem: c.imagem ?? undefined,
         criadoEm: c.criadoEm.toISOString(),
         lido: c.leituras.length > 0,
       }));

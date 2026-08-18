@@ -226,11 +226,11 @@ export class FuncionarioAuthService {
         },
       }),
     );
-    // Envia o token ao e-mail cadastrado pelo RH (SMTP em prod; log em dev).
+    const appUrl = process.env.APP_URL ?? 'https://gramoengenharia.online';
     await this.notificacao.enviarEmail(
       funcionario.email,
       'REP-P - Recuperacao de senha',
-      `Use este codigo para redefinir sua senha (valido por ${RECUPERACAO_VALIDADE_MIN} min): ${token}`,
+      `Voce solicitou a redefinicao de senha do REP-P.\n\nToque no link abaixo para criar uma nova senha (valido por ${RECUPERACAO_VALIDADE_MIN} min):\n${appUrl}/?token=${token}\n\nCaso prefira, insira o codigo diretamente no app: ${token}\n\nSe nao foi voce, ignore este e-mail.`,
     );
   }
 

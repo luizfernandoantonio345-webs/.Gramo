@@ -984,6 +984,8 @@ model Comunicado {
   publicoTipo     PublicoComunicado @map("publico_tipo")
   /// Valor do publico (filialId, cargo ou funcionarioId) quando aplicavel.
   publicoValor    String?           @map("publico_valor")
+  /// Imagem opcional do comunicado (base64 data-URL, p.ex. arte de DDS).
+  imagem          String?
   criadoPorAdminId String           @map("criado_por_admin_id") @db.Uuid
   criadoEm        DateTime          @default(now()) @map("criado_em")
 

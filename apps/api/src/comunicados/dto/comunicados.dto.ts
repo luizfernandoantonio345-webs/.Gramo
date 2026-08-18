@@ -20,4 +20,10 @@ export class CriarComunicadoDto {
   @IsString()
   @MaxLength(200)
   publicoValor?: string;
+
+  /** Imagem base64 data-URL opcional (arte de DDS, banner, etc). Max ~500 KB. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(700000)
+  imagem?: string;
 }
