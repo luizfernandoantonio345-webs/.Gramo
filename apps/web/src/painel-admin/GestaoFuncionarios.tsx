@@ -11,7 +11,7 @@ import {
   Selecao,
   TituloSecao,
 } from '../design-system/components';
-import { apiGet, apiPost } from '../lib/api';
+import { apiGet, apiPatch, apiPost } from '../lib/api';
 
 interface OpcaoRef {
   id: string;
@@ -23,6 +23,7 @@ interface Funcionario {
   nome: string;
   cpf: string;
   cargo: string | null;
+  salarioBase: number | null;
   status: string;
   fotoAprovada: boolean;
   fotoPendente?: boolean;
@@ -234,6 +235,8 @@ export function GestaoFuncionarios() {
                     </div>
                   </div>
                 </div>
+
+                <EditarFolha key={sel.id} funcionario={sel} onSalvo={(f) => setSel(f)} />
 
                 <div>
                   <TituloSecao>Documentos</TituloSecao>
@@ -449,6 +452,64 @@ const btnLink = {
   padding: 0,
   font: '500 var(--text-sm) var(--font-body)',
 } as const;
+
+function EditarFolha({
+  funcionario,
+  onSalvo,
+}: {
+  funcionario: Funcionario;
+  onSalvo: (f: Funcionario) => void;
+}) {
+  const [cargo, setCargo] = useState(funcionario.cargo ?? '');
+  const [salario, setSalario] = useState(
+    funcionario.salarioBase != null ? String(funcionario.salarioBase) : '',
+  );
+  const [salvando, setSalvando] = useState(false);
+  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  async function salvar() {
+    setSalvando(true);
+    setFeedback(null);
+    try {
+      const salarioNum = salario ? parseFloat(salario.replace(',', '.')) : undefined;
+      if (salario && (isNaN(salarioNum!) || salarioNum! <= 0)) {
+        setFeedback({ ok: false, msg: 'Salário deve ser um número positivo.' });
+        return;
+      }
+      await apiPatch(`/admin/funcionarios/${funcionario.id}`, {
+        cargo: cargo || undefined,
+        salarioBase: salarioNum,
+      });
+      onSalvo({ ...funcionario, cargo: cargo || null, salarioBase: salarioNum ?? null });
+      setFeedback({ ok: true, msg: 'Dados de folha atualizados.' });
+    } catch (e) {
+      setFeedback({ ok: false, msg: e instanceof Error ? e.message : 'Falha ao salvar.' });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div>
+      <TituloSecao>Dados de folha</TituloSecao>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <Campo label="Cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} />
+        <Campo
+          label="Salário base (R$)"
+          inputMode="decimal"
+          value={salario}
+          onChange={(e) => setSalario(e.target.value)}
+          placeholder="ex.: 3380.00"
+          dica="usado na apuração de horas quando não há valor-hora padrão"
+        />
+        {feedback && <Feedback tom={feedback.ok ? 'sucesso' : 'erro'}>{feedback.msg}</Feedback>}
+        <Botao tamanho="sm" bloco={false} onClick={() => void salvar()} disabled={salvando}>
+          {salvando ? 'Salvando…' : 'Salvar dados de folha'}
+        </Botao>
+      </div>
+    </div>
+  );
+}
 
 function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
   const [nome, setNome] = useState('');
