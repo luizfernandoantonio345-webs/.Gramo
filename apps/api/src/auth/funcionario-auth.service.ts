@@ -14,6 +14,7 @@ import {
   validarSenha,
 } from '@repp/shared';
 import { hashSenha, verificarSenha } from '../common/crypto/password';
+import { StorageService } from '../storage/storage.service';
 import { gerarCodigoConvite, gerarTokenOpaco, hashToken } from '../common/crypto/tokens';
 import type { JwtPayload, UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { NotificacaoService } from '../common/notificacoes/notificacao.service';
@@ -37,6 +38,7 @@ export class FuncionarioAuthService {
     private readonly tokens: TokensService,
     private readonly log: AccessLogService,
     private readonly notificacao: NotificacaoService,
+    private readonly storage: StorageService,
   ) {}
 
   /**
@@ -335,6 +337,29 @@ export class FuncionarioAuthService {
       `Voce foi convidado a acessar o REP-P. Seu codigo de primeiro acesso: ${codigo} (valido por ${CONVITE_VALIDADE_DIAS} dias).`,
     );
     return { codigo, expiraEm };
+  }
+
+  /** Preview de identidade pre-autenticacao: retorna primeiro nome + foto aprovada.
+   *  Resposta vazia quando o CPF nao existe (nao revela enumeracao). */
+  async avatar(cpf: string): Promise<{ nome?: string; fotoBase64?: string }> {
+    const cpfNorm = normalizarCpf(cpf);
+    if (!isCpfValido(cpfNorm)) return {};
+    try {
+      const func = await this.prisma.forTenant((tx) =>
+        tx.funcionario.findFirst({
+          where: { cpf: cpfNorm, fotoAprovada: true },
+          select: { nome: true, fotoReferenciaRef: true },
+        }),
+      );
+      if (!func) return {};
+      const primeiroNome = func.nome.split(' ')[0];
+      if (!func.fotoReferenciaRef) return { nome: primeiroNome };
+      const bytes = await this.storage.lerImagem(func.fotoReferenciaRef);
+      const b64 = Buffer.from(bytes).toString('base64');
+      return { nome: primeiroNome, fotoBase64: `data:image/jpeg;base64,${b64}` };
+    } catch {
+      return {};
+    }
   }
 
   private montarPayload(id: string): JwtPayload {

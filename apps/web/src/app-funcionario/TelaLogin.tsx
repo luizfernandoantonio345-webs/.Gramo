@@ -1,5 +1,5 @@
 import { formatarCpf, isCpfValido, normalizarCpf, validarSenha } from '@repp/shared';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ambienteDemo,
   Botao,
@@ -9,9 +9,14 @@ import {
   Feedback,
   MarcaRepp,
 } from '../design-system/components';
-import { apiPost, type ParTokens } from '../lib/api';
+import { apiGet, apiPost, type ParTokens } from '../lib/api';
 
 type Modo = 'login' | 'primeiro-acesso';
+
+interface AvatarInfo {
+  nome?: string;
+  fotoBase64?: string;
+}
 
 /**
  * Tela 1 -- Login / Cadastrar (funcionario). Login com CPF+senha; primeiro
@@ -25,16 +30,35 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
   const [aceite, setAceite] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [avatar, setAvatar] = useState<AvatarInfo | null>(null);
+  const timerAvatar = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cpfValido = isCpfValido(cpf);
   const senhaCheck = validarSenha(senha);
 
+  // Busca avatar com debounce ao completar 11 dígitos válidos.
+  useEffect(() => {
+    if (timerAvatar.current) clearTimeout(timerAvatar.current);
+    if (cpf.length === 11 && cpfValido && modo === 'login') {
+      timerAvatar.current = setTimeout(() => {
+        apiGet<AvatarInfo>(`/auth/funcionario/avatar?cpf=${normalizarCpf(cpf)}`)
+          .then((r) => setAvatar(r.nome ? r : null))
+          .catch(() => setAvatar(null));
+      }, 300);
+    } else {
+      setAvatar(null);
+    }
+    return () => {
+      if (timerAvatar.current) clearTimeout(timerAvatar.current);
+    };
+  }, [cpf, cpfValido, modo]);
+
   async function enviar() {
     setErro(null);
-    if (!cpfValido) return setErro('CPF invalido.');
+    if (!cpfValido) return setErro('CPF inválido.');
     if (modo === 'primeiro-acesso') {
       if (!senhaCheck.valido) return setErro(senhaCheck.erros.join(' '));
-      if (!aceite) return setErro('E preciso aceitar o termo de consentimento LGPD.');
+      if (!aceite) return setErro('É preciso aceitar o termo de consentimento LGPD.');
     }
     setCarregando(true);
     try {
@@ -65,14 +89,87 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
       <div style={{ marginBottom: 'var(--space-3)' }}>
         <MarcaRepp subtitulo="Ponto Eletrônico" />
       </div>
-      <p style={{ color: 'var(--color-text-muted)', marginTop: 0, marginBottom: 'var(--space-3)' }}>
-        {modo === 'login' ? 'Acesse sua conta' : 'Primeiro acesso com código do RH'}
-      </p>
+
+      {/* Avatar de boas-vindas — aparece quando o CPF é reconhecido */}
+      {avatar && modo === 'login' && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            marginBottom: 'var(--space-3)',
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'var(--color-surface-2)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          {avatar.fotoBase64 ? (
+            <img
+              src={avatar.fotoBase64}
+              alt={`Foto de ${avatar.nome}`}
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '2px solid var(--color-accent)',
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: '50%',
+                background: 'var(--color-accent)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                font: '700 22px var(--font-display)',
+                color: '#fff',
+                flexShrink: 0,
+              }}
+            >
+              {avatar.nome?.[0]?.toUpperCase()}
+            </div>
+          )}
+          <div>
+            <p
+              style={{
+                margin: 0,
+                font: '600 15px var(--font-display)',
+                color: 'var(--color-text)',
+              }}
+            >
+              Olá, {avatar.nome}!
+            </p>
+            <p
+              style={{
+                margin: 0,
+                font: '400 12px var(--font-body)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              Digite sua senha para entrar.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!avatar && (
+        <p
+          style={{ color: 'var(--color-text-muted)', marginTop: 0, marginBottom: 'var(--space-3)' }}
+        >
+          {modo === 'login' ? 'Acesse sua conta' : 'Primeiro acesso com código do RH'}
+        </p>
+      )}
 
       <Cartao>
         {modo === 'primeiro-acesso' && (
           <Campo
-            label="Codigo de convite"
+            label="Código de convite"
             value={codigo}
             onChange={(e) => setCodigo(e.target.value.toUpperCase())}
             placeholder="8 caracteres"
@@ -148,6 +245,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         onClick={() => {
           setModo(modo === 'login' ? 'primeiro-acesso' : 'login');
           setErro(null);
+          setAvatar(null);
         }}
         style={{
           marginTop: 'var(--space-3)',

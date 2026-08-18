@@ -16,7 +16,6 @@
     "db:setup": "npm run db:migrate && npm run db:rls",
     "migration:gen": "node scripts/gen-migration.mjs",
     "test:e2e": "node test/e2e/run-e2e.mjs",
-    "test:e2e:http": "node test/e2e/run-e2e-http.mjs",
     "test:e2e:fluxo": "node test/e2e/run-e2e-fluxo.mjs",
     "test:e2e:authz": "node test/e2e/run-e2e-authz.mjs"
   },

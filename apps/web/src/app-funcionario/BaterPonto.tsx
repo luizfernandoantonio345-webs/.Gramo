@@ -53,6 +53,15 @@ export function BaterPonto() {
   // LGPD: consentimento de biometria facial (exigido antes de cadastrar o rosto).
   const [pedirConsent, setPedirConsent] = useState(false);
 
+  // Verifica se o funcionario tem foto de referencia aprovada (sem carregar modelos).
+  useEffect(() => {
+    apiGet<{ disponivel: boolean }>('/pontos/minha-referencia')
+      .then((r) => {
+        if (!r.disponivel) setStatusRosto('indisponivel');
+      })
+      .catch(() => {});
+  }, []);
+
   const carregarEspelho = useCallback(async () => {
     try {
       setEspelho(await apiGet<PontoResumo[]>('/pontos/hoje'));
@@ -413,9 +422,44 @@ export function BaterPonto() {
       {cameraLigada && (statusRosto === 'indisponivel' || statusRosto === 'pronto') && (
         <div style={{ marginTop: 'var(--space-2)' }}>
           <Botao variante="secundario" onClick={cadastrarMeuRosto}>
-            {statusRosto === 'pronto'
-              ? 'Atualizar meu rosto'
-              : 'Cadastrar meu rosto (reconhecimento facial)'}
+            {statusRosto === 'pronto' ? 'Atualizar meu rosto' : 'Cadastrar meu rosto'}
+          </Botao>
+        </div>
+      )}
+
+      {/* Card de cadastro de rosto quando ainda nao ha foto aprovada e camera esta desligada */}
+      {statusRosto === 'indisponivel' && !cameraLigada && (
+        <div
+          style={{
+            marginTop: 'var(--space-3)',
+            padding: 'var(--space-4)',
+            background: 'var(--color-surface-2)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          <p
+            style={{
+              margin: '0 0 var(--space-2)',
+              font: '600 14px var(--font-display)',
+              color: 'var(--color-text)',
+            }}
+          >
+            Cadastre seu rosto
+          </p>
+          <p
+            style={{
+              margin: '0 0 var(--space-3)',
+              font: '400 13px var(--font-body)',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.5,
+            }}
+          >
+            Sem foto de referência aprovada. Ligue a câmera e registre seu rosto para o
+            reconhecimento automático nas próximas marcações.
+          </p>
+          <Botao tamanho="sm" bloco={false} variante="secundario" onClick={ligarCamera}>
+            Ligar câmera e cadastrar
           </Botao>
         </div>
       )}

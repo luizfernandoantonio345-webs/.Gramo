@@ -36,6 +36,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 
 # PWA / uploads locais (dados sensiveis nunca no repo)
 apps/web/dev-dist/

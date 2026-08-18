@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { PapelAdmin } from '@prisma/client';
@@ -27,6 +27,14 @@ import { FuncionarioAuthService } from './funcionario-auth.service';
 @Controller({ path: 'auth/funcionario', version: '1' })
 export class FuncionarioAuthController {
   constructor(private readonly service: FuncionarioAuthService) {}
+
+  @Get('avatar')
+  @ApiOperation({
+    summary: 'Preview de identidade pre-login: retorna primeiro nome + foto aprovada por CPF.',
+  })
+  avatar(@Query('cpf') cpf: string) {
+    return this.service.avatar(cpf ?? '');
+  }
 
   @Post('primeiro-acesso')
   @HttpCode(200)
