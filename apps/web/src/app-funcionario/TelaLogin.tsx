@@ -84,7 +84,8 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
           inputMode="numeric"
           value={cpf.length ? formatarCpf(cpf) : ''}
           onChange={(e) => setCpf(normalizarCpf(e.target.value))}
-          erro={cpf.length >= 11 && !cpfValido ? 'Digito verificador invalido' : undefined}
+          onKeyDown={(e) => e.key === 'Enter' && void enviar()}
+          erro={cpf.length >= 11 && !cpfValido ? 'Dígito verificador inválido' : undefined}
           placeholder="000.000.000-00"
         />
         <Campo
@@ -92,12 +93,13 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
           type="password"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && void enviar()}
           erro={
             modo === 'primeiro-acesso' && senha.length > 0 && !senhaCheck.valido
               ? senhaCheck.erros[0]
               : undefined
           }
-          placeholder="minimo 8 caracteres, letra + numero"
+          placeholder="mínimo 8 caracteres, letra + número"
         />
 
         {modo === 'primeiro-acesso' && (

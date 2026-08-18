@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import QRCode from 'qrcode';
+import { useEffect, useState } from 'react';
 import {
   ambienteDemo,
   Botao,
@@ -11,6 +12,32 @@ import {
 import { apiPost, type ParTokens } from '../lib/api';
 
 type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa' | 'cadastro';
+
+function QrCode({ url }: { url: string }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    void QRCode.toDataURL(url, {
+      width: 200,
+      margin: 1,
+      color: { dark: '#000', light: '#fff' },
+    }).then(setSrc);
+  }, [url]);
+  if (!src)
+    return <p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>Gerando QR…</p>;
+  return (
+    <img
+      src={src}
+      alt="QR Code para configurar o 2FA"
+      width={200}
+      height={200}
+      style={{
+        display: 'block',
+        margin: '0 auto var(--space-3)',
+        borderRadius: 'var(--radius-sm)',
+      }}
+    />
+  );
+}
 
 /**
  * ADM 1 -- Login e Gestao de Acesso. 2FA obrigatorio: apos e-mail+senha, o
@@ -60,14 +87,17 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
     }
   }
 
-  async function verificar() {
+  async function verificar(codigoAtual = codigo) {
     setErro(null);
     setCarregando(true);
     try {
-      const t = await apiPost<ParTokens>('/auth/admin/2fa/verify', { desafioToken, codigo });
+      const t = await apiPost<ParTokens>('/auth/admin/2fa/verify', {
+        desafioToken,
+        codigo: codigoAtual,
+      });
       onAutenticado(t);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Codigo invalido.');
+      setErro(e instanceof Error ? e.message : 'Código inválido.');
     } finally {
       setCarregando(false);
     }
@@ -87,15 +117,17 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void login()}
             />
             <Campo
               label="Senha"
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void login()}
             />
             <Botao onClick={login} disabled={carregando || !email || !senha}>
-              {carregando ? 'Aguarde...' : 'Continuar'}
+              {carregando ? 'Aguarde…' : 'Continuar'}
             </Botao>
             {ehDemo && (
               <BotaoDemo
@@ -128,32 +160,35 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
 
         {etapa === 'setup-2fa' && (
           <>
-            <p style={{ font: '400 14px var(--font-body)' }}>
-              <strong>Primeiro acesso:</strong> configure o 2FA no seu app autenticador com a chave
-              abaixo (otpauth):
+            <p style={{ font: '500 14px var(--font-body)', marginBottom: 'var(--space-2)' }}>
+              <strong>Primeiro acesso:</strong> escaneie o QR code com o Google Authenticator ou
+              Authy.
             </p>
-            <code
+            <QrCode url={otpauth} />
+            <p
               style={{
-                display: 'block',
-                wordBreak: 'break-all',
-                background: 'var(--color-neutral-bg)',
-                padding: 'var(--space-2)',
-                borderRadius: 'var(--radius-sm)',
-                font: '12px var(--font-mono)',
+                font: '400 12px var(--font-body)',
+                color: 'var(--color-text-muted)',
+                textAlign: 'center',
                 marginBottom: 'var(--space-3)',
               }}
             >
-              {otpauth}
-            </code>
+              Depois de escanear, digite o código de 6 dígitos gerado pelo app:
+            </p>
             <Campo
-              label="Codigo do autenticador"
+              label="Código do autenticador"
               inputMode="numeric"
               maxLength={6}
               value={codigo}
-              onChange={(e) => setCodigo(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                setCodigo(v);
+                if (v.length === 6) void verificar(v);
+              }}
+              autoFocus
             />
-            <Botao onClick={verificar} disabled={carregando || codigo.length !== 6}>
-              Ativar e entrar
+            <Botao onClick={() => void verificar()} disabled={carregando || codigo.length !== 6}>
+              {carregando ? 'Verificando…' : 'Ativar e entrar'}
             </Botao>
           </>
         )}
@@ -161,17 +196,22 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
         {etapa === 'verificar-2fa' && (
           <>
             <p style={{ font: '400 14px var(--font-body)' }}>
-              Informe o codigo do seu autenticador.
+              Informe o código do seu autenticador.
             </p>
             <Campo
-              label="Codigo 2FA"
+              label="Código 2FA"
               inputMode="numeric"
               maxLength={6}
               value={codigo}
-              onChange={(e) => setCodigo(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, '').slice(0, 6);
+                setCodigo(v);
+                if (v.length === 6) void verificar(v);
+              }}
+              autoFocus
             />
-            <Botao onClick={verificar} disabled={carregando || codigo.length !== 6}>
-              Entrar
+            <Botao onClick={() => void verificar()} disabled={carregando || codigo.length !== 6}>
+              {carregando ? 'Verificando…' : 'Entrar'}
             </Botao>
           </>
         )}

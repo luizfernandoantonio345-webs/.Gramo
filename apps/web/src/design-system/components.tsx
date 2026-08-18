@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type {
   ButtonHTMLAttributes,
   CSSProperties,
@@ -6,6 +7,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react';
+import { Icone } from './icons';
 
 /**
  * Design System .GRAMO -- tema claro corporativo. Componentes consomem as
@@ -294,12 +296,46 @@ export function Campo({
   label,
   erro,
   dica,
+  type,
+  style,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & { label: string; erro?: string; dica?: string }) {
+  const [mostrar, setMostrar] = useState(false);
+  const ehSenha = type === 'password';
   return (
     <label style={{ display: 'block', marginBottom: 'var(--space-5)' }}>
       <Rotulo>{label}</Rotulo>
-      <input {...props} className={`g-input${erro ? ' g-input--erro' : ''}`} />
+      <div style={{ position: 'relative' }}>
+        <input
+          {...props}
+          type={ehSenha ? (mostrar ? 'text' : 'password') : type}
+          className={`g-input${erro ? ' g-input--erro' : ''}`}
+          style={{ paddingRight: ehSenha ? 40 : undefined, ...style }}
+        />
+        {ehSenha && (
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={mostrar ? 'Ocultar senha' : 'Mostrar senha'}
+            onClick={() => setMostrar((v) => !v)}
+            style={{
+              position: 'absolute',
+              right: 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 4,
+              color: 'var(--color-text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Icone nome={mostrar ? 'olho-off' : 'olho'} tamanho={18} />
+          </button>
+        )}
+      </div>
       {dica && !erro && (
         <span
           style={{
