@@ -58,6 +58,11 @@ docker compose run --rm api npm run db:migrate -w @repp/api   # prisma migrate d
   retenção 14 dias, log em `/root/backups`.
 - `*/15 * * * * bash /root/REP-P/scripts/monitor-prod.sh` — checa site, API,
   banco, disco, cert TLS e frescor do backup; grava em `/root/monitor.log`.
+  Alerta Telegram na mudança de estado (CRIT/WARN/recuperado): adicione
+  `TELEGRAM_BOT_TOKEN=…` e `TELEGRAM_CHAT_ID=…` em `/root/monitor.env`.
+- `0 2 1 * * bash /root/REP-P/scripts/restore-test-prod.sh` — drill mensal:
+  restaura o backup em banco descartável, confere ≥ 20 tabelas e apaga.
+  Log em `/root/restore-test.log`. Validado manualmente em 2026-08-18 (36 tabelas).
 
 > Os crons chamam via `bash` de propósito: assim não dependem do bit +x, que o
 > `git checkout` pode resetar.
