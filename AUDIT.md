@@ -79,8 +79,10 @@ quebrados, ou migration quebrada. Os domínios críticos passam com evidência.
   Cobre IDOR multi-filial, LGPD (consentimento p/ biometria) e integridade AFD,
   mas **exige o stack de dev** e **não roda no CI** — regressão de authz pode
   passar. Solução: torná-lo autossuficiente (reusar `boot-stack.mjs`, como o
-  `run-e2e-fluxo`) e plugar no CI. Status: **corrigível — recomendado como
-  próxima ação desta auditoria**.
+  `run-e2e-fluxo`) e plugar no CI. Status: **✅ CORRIGIDO** —
+  `apps/api/test/e2e/run-e2e-authz.mjs` (autossuficiente, no CI): gestor lê a
+  própria obra (200), é bloqueado em outra (403) e sem token (401). Verificado
+  local (EXIT=0) — commit `265489c`.
 
 ### MEDIUM
 
