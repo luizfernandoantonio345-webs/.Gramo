@@ -24,13 +24,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Inicializar CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           # Consultas de seguranca + qualidade (mais abrangente que o default).
           queries: security-and-quality
 
       - name: Analisar
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: '/language:${{ matrix.language }}'
