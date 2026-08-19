@@ -323,6 +323,8 @@ model Funcionario {
   filialId           String?           @map("filial_id") @db.Uuid
   nome               String
   cpf                String // apenas digitos; validado por @repp/shared antes de gravar
+  /// NIS (PIS/PASEP) -- 11 digitos. Identificador do empregado no AFD (Portaria 671 Tipo 7).
+  pis                String?
   email              String? // contato cadastrado pelo RH (recuperacao/notificacao)
   telefone           String?
   cargo              String?

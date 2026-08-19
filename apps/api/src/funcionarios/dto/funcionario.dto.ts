@@ -25,6 +25,12 @@ export class CriarFuncionarioDto {
   @MaxLength(14)
   cpf!: string;
 
+  /** NIS/PIS/PASEP (11 digitos). Identificador do empregado no AFD (Portaria 671 Tipo 7). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(11)
+  pis?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(120)
@@ -59,6 +65,12 @@ export class CriarFuncionarioDto {
 }
 
 export class AtualizarFuncionarioDto {
+  /** NIS/PIS/PASEP (11 digitos). Identificador do empregado no AFD (Portaria 671 Tipo 7). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(11)
+  pis?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(120)

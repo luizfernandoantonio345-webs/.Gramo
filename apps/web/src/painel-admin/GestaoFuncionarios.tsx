@@ -1,4 +1,11 @@
-import { formatarCpf, isCpfValido, normalizarCpf } from '@repp/shared';
+import {
+  formatarCpf,
+  formatarNis,
+  isCpfValido,
+  isNisValido,
+  normalizarCpf,
+  soDigitosNis,
+} from '@repp/shared';
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import {
   Badge,
@@ -22,6 +29,7 @@ interface Funcionario {
   id: string;
   nome: string;
   cpf: string;
+  pis: string | null;
   cargo: string | null;
   salarioBase: number | null;
   status: string;
@@ -464,23 +472,37 @@ function EditarFolha({
   const [salario, setSalario] = useState(
     funcionario.salarioBase != null ? String(funcionario.salarioBase) : '',
   );
+  const [pis, setPis] = useState(funcionario.pis ? formatarNis(funcionario.pis) : '');
   const [salvando, setSalvando] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const pisDigitos = soDigitosNis(pis);
+  const pisValido = pisDigitos.length === 0 || isNisValido(pisDigitos);
 
   async function salvar() {
     setSalvando(true);
     setFeedback(null);
     try {
+      if (pisDigitos.length > 0 && !pisValido) {
+        setFeedback({ ok: false, msg: 'PIS/PASEP inválido (dígito verificador).' });
+        return;
+      }
       const salarioNum = salario ? parseFloat(salario.replace(',', '.')) : undefined;
       if (salario && (isNaN(salarioNum!) || salarioNum! <= 0)) {
         setFeedback({ ok: false, msg: 'Salário deve ser um número positivo.' });
         return;
       }
       await apiPatch(`/admin/funcionarios/${funcionario.id}`, {
+        pis: pisDigitos || undefined,
         cargo: cargo || undefined,
         salarioBase: salarioNum,
       });
-      onSalvo({ ...funcionario, cargo: cargo || null, salarioBase: salarioNum ?? null });
+      onSalvo({
+        ...funcionario,
+        pis: pisDigitos || null,
+        cargo: cargo || null,
+        salarioBase: salarioNum ?? null,
+      });
       setFeedback({ ok: true, msg: 'Dados de folha atualizados.' });
     } catch (e) {
       setFeedback({ ok: false, msg: e instanceof Error ? e.message : 'Falha ao salvar.' });
@@ -491,8 +513,17 @@ function EditarFolha({
 
   return (
     <div>
-      <TituloSecao>Dados de folha</TituloSecao>
+      <TituloSecao>Dados de folha e compliance</TituloSecao>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <Campo
+          label="PIS / PASEP (NIS)"
+          inputMode="numeric"
+          value={pisDigitos.length ? formatarNis(pis) : ''}
+          onChange={(e) => setPis(e.target.value)}
+          erro={pisDigitos.length >= 11 && !pisValido ? 'Dígito verificador inválido' : undefined}
+          placeholder="000.00.000.00-0"
+          dica="Obrigatório para geração do AFD (Portaria 671). Carteira de trabalho ou holerite."
+        />
         <Campo label="Cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} />
         <Campo
           label="Salário base (R$)"
@@ -504,7 +535,7 @@ function EditarFolha({
         />
         {feedback && <Feedback tom={feedback.ok ? 'sucesso' : 'erro'}>{feedback.msg}</Feedback>}
         <Botao tamanho="sm" bloco={false} onClick={() => void salvar()} disabled={salvando}>
-          {salvando ? 'Salvando…' : 'Salvar dados de folha'}
+          {salvando ? 'Salvando…' : 'Salvar'}
         </Botao>
       </div>
     </div>
@@ -514,6 +545,7 @@ function EditarFolha({
 function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
+  const [pis, setPis] = useState('');
   const [cargo, setCargo] = useState('');
   const [email, setEmail] = useState('');
   const [filialId, setFilialId] = useState('');
@@ -535,11 +567,15 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
   }, []);
 
   const cpfValido = isCpfValido(cpf);
+  const pisDigitos = soDigitosNis(pis);
+  const pisValido = pisDigitos.length === 0 || isNisValido(pisDigitos);
 
   async function criar() {
     setErro(null);
     setCodigo(null);
     if (!cpfValido) return setErro('CPF inválido (dígito verificador).');
+    if (pisDigitos.length > 0 && !pisValido)
+      return setErro('PIS/PASEP inválido (dígito verificador).');
     if (!filialId)
       return setErro('Selecione a filial (obrigatório para o funcionário bater ponto).');
     try {
@@ -548,6 +584,7 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
         {
           nome,
           cpf: normalizarCpf(cpf),
+          pis: pisDigitos || undefined,
           cargo: cargo || undefined,
           email: email || undefined,
           filialId,
@@ -558,6 +595,7 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
       setCodigo(r.codigo);
       setNome('');
       setCpf('');
+      setPis('');
       setCargo('');
       setEmail('');
       setJornadaId('');
@@ -578,6 +616,15 @@ function NovoFuncionario({ onCriado }: { onCriado: () => void }) {
         onChange={(e) => setCpf(normalizarCpf(e.target.value))}
         erro={cpf.length >= 11 && !cpfValido ? 'Dígito verificador inválido' : undefined}
         placeholder="000.000.000-00"
+      />
+      <Campo
+        label="PIS / PASEP (NIS)"
+        inputMode="numeric"
+        value={pisDigitos.length ? formatarNis(pis) : ''}
+        onChange={(e) => setPis(e.target.value)}
+        erro={pisDigitos.length >= 11 && !pisValido ? 'Dígito verificador inválido' : undefined}
+        placeholder="000.00.000.00-0"
+        dica="Obrigatório para geração do AFD (Portaria 671). Carteira de trabalho ou holerite."
       />
       <Campo label="Cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} />
       <Campo

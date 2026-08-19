@@ -6,12 +6,29 @@ import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { JwtAuthGuard } from '../common/auth/jwt-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
+import { ComplianceStatusService } from './compliance-status.service';
 import { ComprovanteService } from './comprovante.service';
 import { PeriodoDto } from './dto/periodo.dto';
 import { ExportacaoService } from './exportacao.service';
 import { FiscalizacaoService } from './fiscalizacao.service';
 
 const COMPLIANCE = [PapelAdmin.RH_MASTER, PapelAdmin.AUDITORIA] as const;
+
+/** ADM 6 -- Status de compliance REP-P (Portaria 671) para o painel de homologacao. */
+@ApiTags('adm-compliance')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller({ path: 'admin/compliance', version: '1' })
+export class ComplianceStatusController {
+  constructor(private readonly service: ComplianceStatusService) {}
+
+  @Get('status')
+  @Roles(...COMPLIANCE)
+  @ApiOperation({ summary: 'Status de compliance REP-P: PIS pendentes, NSR, marcacoes.' })
+  status() {
+    return this.service.status();
+  }
+}
 
 /** ADM 6 -- Exportacoes legais (AFD/AEJ) e fiscalizacao. */
 @ApiTags('adm-exportacoes')

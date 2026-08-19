@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { montarAfd, soNumeros, validarAfd, type MarcacaoAfd } from '@repp/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class AfdService {
+  private readonly logger = new Logger(AfdService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async gerar(
@@ -45,13 +46,23 @@ export class AfdService {
           nsr: true,
           registradoEm: true,
           hashIntegridade: true,
-          funcionario: { select: { cpf: true } },
+          funcionario: { select: { cpf: true, pis: true } },
         },
       });
+
+      // Aviso: funcionarios sem PIS geram AFD com CPF como fallback.
+      // O RH deve preencher o PIS de todos antes da fiscalizacao.
+      const semPis = pontos.filter((p) => !p.funcionario.pis);
+      if (semPis.length > 0) {
+        this.logger.warn(
+          `AFD: ${semPis.length} marcacoes de funcionarios sem PIS cadastrado -- usando CPF como fallback. Preencha o PIS em Funcionarios para conformidade com a Portaria 671.`,
+        );
+      }
+
       const marcacoes: MarcacaoAfd[] = pontos.map((p) => ({
         nsr: p.nsr.toString(),
         dataHora: p.registradoEm,
-        cpf: soNumeros(p.funcionario.cpf),
+        nis: soNumeros(p.funcionario.pis ?? p.funcionario.cpf),
         hash: p.hashIntegridade,
       }));
       const conteudo = montarAfd(

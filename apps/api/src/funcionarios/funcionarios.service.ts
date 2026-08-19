@@ -109,6 +109,7 @@ export class FuncionariosService {
           id: true,
           nome: true,
           cpf: true,
+          pis: true,
           cargo: true,
           status: true,
           fotoAprovada: true,
@@ -140,6 +141,7 @@ export class FuncionariosService {
           empresaId,
           nome: dto.nome,
           cpf,
+          pis: dto.pis ? dto.pis.replace(/\D/g, '').slice(0, 11) : undefined,
           cargo: dto.cargo,
           email: dto.email,
           telefone: dto.telefone,
@@ -170,6 +172,9 @@ export class FuncionariosService {
       const f = await tx.funcionario.update({
         where: { id },
         data: {
+          ...(dto.pis !== undefined
+            ? { pis: dto.pis.replace(/\D/g, '').slice(0, 11) || null }
+            : {}),
           cargo: dto.cargo,
           email: dto.email,
           telefone: dto.telefone,

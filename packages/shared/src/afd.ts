@@ -59,7 +59,11 @@ export interface MarcacaoAfd {
   nsr: number | string;
   /** Momento oficial da marcacao. */
   dataHora: Date;
-  cpf: string;
+  /**
+   * NIS do empregado (PIS/PASEP -- 11 digitos). Portaria 671 Anexo I Tipo 7
+   * campo 5: "Numero de Identificacao Social do Empregado -- 12 posicoes".
+   */
+  nis: string;
   /** Hash de integridade do registro (SHA-256 hex). */
   hash: string;
 }
@@ -92,7 +96,7 @@ export function registroMarcacaoRepP(m: MarcacaoAfd): string {
     '7',
     fmtDataDDMMYYYY(m.dataHora),
     fmtHoraHHMMSS(m.dataHora),
-    padEsq(soNumeros(m.cpf), 12),
+    padEsq(soNumeros(m.nis), 12), // NIS/PIS/PASEP -- 12 posicoes (Portaria 671 Anexo I)
     padDir(m.hash, 64),
   ].join('');
 }
