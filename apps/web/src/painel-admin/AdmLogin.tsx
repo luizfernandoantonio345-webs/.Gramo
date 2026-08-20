@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
+import { validarSenha } from '@repp/shared';
 import {
   ambienteDemo,
   Botao,
@@ -11,7 +12,7 @@ import {
 } from '../design-system/components';
 import { apiPost, type ParTokens } from '../lib/api';
 
-type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa' | 'cadastro';
+type Etapa = 'credenciais' | 'setup-2fa' | 'verificar-2fa' | 'cadastro' | 'trocar-obrigatorio';
 
 function QrCode({ url }: { url: string }) {
   const [src, setSrc] = useState('');
@@ -48,11 +49,15 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [desafioToken, setDesafioToken] = useState('');
+  const [trocaSenhaToken, setTrocaSenhaToken] = useState('');
   const [otpauth, setOtpauth] = useState('');
   const [codigo, setCodigo] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const ehDemo = ambienteDemo();
+  const novaSenhaCheck = validarSenha(novaSenha);
 
   async function login() {
     setErro(null);
@@ -64,7 +69,15 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
         accessToken?: string;
         refreshToken?: string;
         expiresIn?: number;
+        requiresPasswordChange?: true;
+        trocaSenhaToken?: string;
       }>('/auth/admin/login', { email, senha });
+      // Troca de senha obrigatória (protocolo de emergência).
+      if (r.requiresPasswordChange) {
+        setTrocaSenhaToken(r.trocaSenhaToken ?? '');
+        setEtapa('trocar-obrigatorio');
+        return;
+      }
       // Dev: com o bypass de 2FA ligado, o backend ja devolve os tokens.
       if (r.accessToken) {
         onAutenticado(r as ParTokens);
@@ -91,13 +104,35 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
     setErro(null);
     setCarregando(true);
     try {
-      const t = await apiPost<ParTokens>('/auth/admin/2fa/verify', {
-        desafioToken,
-        codigo: codigoAtual,
+      const r = await apiPost<
+        ParTokens | { requiresPasswordChange: true; trocaSenhaToken: string }
+      >('/auth/admin/2fa/verify', { desafioToken, codigo: codigoAtual });
+      if ('requiresPasswordChange' in r) {
+        setTrocaSenhaToken(r.trocaSenhaToken);
+        setEtapa('trocar-obrigatorio');
+        return;
+      }
+      onAutenticado(r);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Código inválido.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function trocarObrigatorio() {
+    setErro(null);
+    if (!novaSenhaCheck.valido) return setErro(novaSenhaCheck.erros.join(' '));
+    if (novaSenha !== confirmarSenha) return setErro('As senhas não conferem.');
+    setCarregando(true);
+    try {
+      const t = await apiPost<ParTokens>('/auth/admin/trocar-senha-obrigatorio', {
+        trocaSenhaToken,
+        novaSenha,
       });
       onAutenticado(t);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Código inválido.');
+      setErro(e instanceof Error ? e.message : 'Falha ao trocar a senha.');
     } finally {
       setCarregando(false);
     }
@@ -213,6 +248,79 @@ export function AdmLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => v
             <Botao onClick={() => void verificar()} disabled={carregando || codigo.length !== 6}>
               {carregando ? 'Verificando…' : 'Entrar'}
             </Botao>
+          </>
+        )}
+
+        {etapa === 'trocar-obrigatorio' && (
+          <>
+            <div
+              style={{
+                padding: 'var(--space-3)',
+                background: 'var(--color-warning-bg, #fff8e1)',
+                border: '1px solid var(--color-warning, #f59e0b)',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: 'var(--space-4)',
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  font: '600 13px var(--font-body)',
+                  color: 'var(--color-warning-text, #92400e)',
+                }}
+              >
+                🔒 Segurança: troca de senha obrigatória
+              </p>
+              <p
+                style={{
+                  margin: '4px 0 0',
+                  font: '400 12px var(--font-body)',
+                  color: 'var(--color-warning-text, #92400e)',
+                }}
+              >
+                Por medida de segurança, crie uma nova senha para continuar. O código tem validade
+                de 10 minutos.
+              </p>
+            </div>
+            <form
+              name="trocar-senha-obrigatorio"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void trocarObrigatorio();
+              }}
+            >
+              <Campo
+                label="Nova senha"
+                type="password"
+                autoComplete="new-password"
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && void trocarObrigatorio()}
+                erro={
+                  novaSenha.length > 0 && !novaSenhaCheck.valido
+                    ? novaSenhaCheck.erros[0]
+                    : undefined
+                }
+                placeholder="mínimo 8 caracteres, letra + número"
+              />
+              <Campo
+                label="Confirmar nova senha"
+                type="password"
+                autoComplete="new-password"
+                value={confirmarSenha}
+                onChange={(e) => setConfirmarSenha(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && void trocarObrigatorio()}
+                erro={
+                  confirmarSenha.length > 0 && novaSenha !== confirmarSenha
+                    ? 'Senhas não conferem'
+                    : undefined
+                }
+                placeholder="repita a nova senha"
+              />
+              <Botao onClick={trocarObrigatorio} disabled={carregando}>
+                {carregando ? 'Salvando…' : 'Salvar nova senha e entrar'}
+              </Botao>
+            </form>
           </>
         )}
 

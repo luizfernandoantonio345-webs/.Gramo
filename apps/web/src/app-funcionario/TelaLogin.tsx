@@ -11,7 +11,7 @@ import {
 } from '../design-system/components';
 import { apiGet, apiPost, type ParTokens } from '../lib/api';
 
-type Modo = 'login' | 'primeiro-acesso' | 'recuperar' | 'redefinir';
+type Modo = 'login' | 'primeiro-acesso' | 'recuperar' | 'redefinir' | 'trocar-obrigatorio';
 
 interface AvatarInfo {
   nome?: string;
@@ -34,6 +34,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [tokenRedefinir, setTokenRedefinir] = useState(tokenUrl);
+  const [trocaSenhaToken, setTrocaSenhaToken] = useState('');
   const [codigo, setCodigo] = useState('');
   const [aceite, setAceite] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -91,11 +92,15 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     setCarregando(true);
     try {
       if (modo === 'login') {
-        const t = await apiPost<ParTokens>('/auth/funcionario/login', {
-          cpf: normalizarCpf(cpf),
-          senha,
-        });
-        onAutenticado(t);
+        const r = await apiPost<
+          ParTokens | { requiresPasswordChange: true; trocaSenhaToken: string }
+        >('/auth/funcionario/login', { cpf: normalizarCpf(cpf), senha });
+        if ('requiresPasswordChange' in r) {
+          setTrocaSenhaToken(r.trocaSenhaToken);
+          trocarModo('trocar-obrigatorio');
+          return;
+        }
+        onAutenticado(r);
       } else {
         const t = await apiPost<ParTokens>('/auth/funcionario/primeiro-acesso', {
           codigo: codigo.toUpperCase(),
@@ -107,6 +112,25 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
       }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao autenticar.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  // ---- Troca de senha obrigatória (protocolo de emergência) ----
+  async function trocarObrigatorio() {
+    setErro(null);
+    if (!novaSenhaCheck.valido) return setErro(novaSenhaCheck.erros.join(' '));
+    if (novaSenha !== confirmarSenha) return setErro('As senhas não conferem.');
+    setCarregando(true);
+    try {
+      const t = await apiPost<ParTokens>('/auth/funcionario/trocar-senha-obrigatorio', {
+        trocaSenhaToken,
+        novaSenha,
+      });
+      onAutenticado(t);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao trocar a senha.');
     } finally {
       setCarregando(false);
     }
@@ -501,6 +525,86 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         </Cartao>
       )}
 
+      {/* ── TROCA DE SENHA OBRIGATÓRIA (emergência) ── */}
+      {modo === 'trocar-obrigatorio' && (
+        <Cartao>
+          <div
+            style={{
+              padding: 'var(--space-3)',
+              background: 'var(--color-warning-bg, #fff8e1)',
+              border: '1px solid var(--color-warning, #f59e0b)',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: 'var(--space-4)',
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                font: '600 13px var(--font-body)',
+                color: 'var(--color-warning-text, #92400e)',
+              }}
+            >
+              🔒 Segurança: troca de senha obrigatória
+            </p>
+            <p
+              style={{
+                margin: '4px 0 0',
+                font: '400 12px var(--font-body)',
+                color: 'var(--color-warning-text, #92400e)',
+              }}
+            >
+              Por medida de segurança, crie uma nova senha para continuar. O código tem validade de
+              10 minutos.
+            </p>
+          </div>
+
+          <form
+            name="trocar-senha-obrigatorio"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void trocarObrigatorio();
+            }}
+          >
+            <Campo
+              label="Nova senha"
+              name="new-password"
+              type="password"
+              autoComplete="new-password"
+              value={novaSenha}
+              onChange={(e) => setNovaSenha(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void trocarObrigatorio()}
+              erro={
+                novaSenha.length > 0 && !novaSenhaCheck.valido ? novaSenhaCheck.erros[0] : undefined
+              }
+              placeholder="mínimo 8 caracteres, letra + número"
+            />
+            <Campo
+              label="Confirmar nova senha"
+              name="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmarSenha}
+              onChange={(e) => setConfirmarSenha(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void trocarObrigatorio()}
+              erro={
+                confirmarSenha.length > 0 && novaSenha !== confirmarSenha
+                  ? 'Senhas não conferem'
+                  : undefined
+              }
+              placeholder="repita a nova senha"
+            />
+            {erro && (
+              <div style={{ marginBottom: 'var(--space-3)' }}>
+                <Feedback tom="erro">{erro}</Feedback>
+              </div>
+            )}
+            <Botao onClick={trocarObrigatorio} disabled={carregando}>
+              {carregando ? 'Salvando…' : 'Salvar nova senha e entrar'}
+            </Botao>
+          </form>
+        </Cartao>
+      )}
+
       {/* ── Links de navegação entre modos ── */}
       <div
         style={{
@@ -544,6 +648,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
             ← Voltar para o login
           </button>
         )}
+        {/* trocar-obrigatorio: sem link de voltar — a troca é mandatória */}
       </div>
     </div>
   );
