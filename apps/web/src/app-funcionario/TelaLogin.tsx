@@ -10,8 +10,17 @@ import {
   MarcaRepp,
 } from '../design-system/components';
 import { apiGet, apiPost, type ParTokens } from '../lib/api';
+import {
+  atualizarRefreshBiometria,
+  autenticarBiometria,
+  biometriaAtiva,
+  desativarBiometria,
+  registrarBiometria,
+  suportaBiometria,
+} from '../lib/biometria';
 
-type Modo = 'login' | 'primeiro-acesso' | 'recuperar' | 'redefinir' | 'trocar-obrigatorio';
+type Modo =
+  'login' | 'primeiro-acesso' | 'recuperar' | 'redefinir' | 'trocar-obrigatorio' | 'prompt-bio';
 
 interface AvatarInfo {
   nome?: string;
@@ -35,13 +44,20 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [tokenRedefinir, setTokenRedefinir] = useState(tokenUrl);
   const [trocaSenhaToken, setTrocaSenhaToken] = useState('');
+  const [tokensPendentes, setTokensPendentes] = useState<ParTokens | null>(null);
   const [codigo, setCodigo] = useState('');
   const [aceite, setAceite] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [avatar, setAvatar] = useState<AvatarInfo | null>(null);
+  const [bioDisponivel, setBioDisponivel] = useState(false);
+  const [bioAtiva, setBioAtiva] = useState(biometriaAtiva);
   const timerAvatar = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    void suportaBiometria().then(setBioDisponivel);
+  }, []);
 
   const cpfValido = isCpfValido(cpf);
   const senhaCheck = validarSenha(senha);
@@ -100,6 +116,14 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
           trocarModo('trocar-obrigatorio');
           return;
         }
+        // Biometria disponível e ainda não ativa: propõe ativar antes de entrar.
+        if (bioDisponivel && !biometriaAtiva()) {
+          setTokensPendentes(r);
+          trocarModo('prompt-bio');
+          return;
+        }
+        // Biometria já ativa: mantém o refresh armazenado atualizado.
+        if (bioAtiva) atualizarRefreshBiometria(r.refreshToken);
         onAutenticado(r);
       } else {
         const t = await apiPost<ParTokens>('/auth/funcionario/primeiro-acesso', {
@@ -115,6 +139,46 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     } finally {
       setCarregando(false);
     }
+  }
+
+  // ---- Biometria ----
+
+  async function loginBiometria() {
+    setErro(null);
+    setCarregando(true);
+    try {
+      const refreshToken = await autenticarBiometria();
+      if (!refreshToken) {
+        setErro('Biometria não confirmada. Use CPF e senha.');
+        return;
+      }
+      const t = await apiPost<ParTokens>('/auth/funcionario/refresh', { refreshToken });
+      atualizarRefreshBiometria(t.refreshToken);
+      onAutenticado(t);
+    } catch {
+      // Refresh token expirado ou revogado.
+      desativarBiometria();
+      setBioAtiva(false);
+      setErro('Sessão expirada. Faça login com CPF e senha.');
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function habilitarBiometria() {
+    if (!tokensPendentes) return;
+    setCarregando(true);
+    try {
+      const ok = await registrarBiometria(normalizarCpf(cpf), tokensPendentes.refreshToken);
+      if (ok) setBioAtiva(true);
+    } finally {
+      setCarregando(false);
+      onAutenticado(tokensPendentes);
+    }
+  }
+
+  function recusarBiometria() {
+    if (tokensPendentes) onAutenticado(tokensPendentes);
   }
 
   // ---- Troca de senha obrigatória (protocolo de emergência) ----
@@ -261,8 +325,144 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         </p>
       )}
 
+      {/* ── BIOMETRIA: botão de acesso rápido (quando registrada) ── */}
+      {bioAtiva && modo === 'login' && (
+        <Cartao>
+          <button
+            type="button"
+            onClick={() => void loginBiometria()}
+            disabled={carregando}
+            style={{
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              padding: 'var(--space-4)',
+              background: 'none',
+              border: 'none',
+              cursor: carregando ? 'wait' : 'pointer',
+              color: 'var(--color-text)',
+            }}
+          >
+            <svg
+              width="52"
+              height="52"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--color-accent)"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 10c-1.1 0-2 .9-2 2v4" />
+              <path d="M12 6a6 6 0 0 1 6 6v2" />
+              <path d="M6.3 8.7A6 6 0 0 0 6 12v2" />
+              <path d="M12 2a10 10 0 0 1 10 10v1" />
+              <path d="M2.1 11A10 10 0 0 1 12 2" />
+            </svg>
+            <span style={{ font: '600 15px var(--font-display)' }}>
+              {carregando ? 'Verificando…' : 'Entrar com biometria'}
+            </span>
+            <span style={{ font: '400 12px var(--font-body)', color: 'var(--color-text-muted)' }}>
+              Face ID · Touch ID · digital
+            </span>
+          </button>
+          <hr
+            style={{
+              border: 'none',
+              borderTop: '1px solid var(--color-border)',
+              margin: '0 0 var(--space-3)',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setBioAtiva(false)}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'center',
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-text-muted)',
+              font: '400 13px var(--font-body)',
+              cursor: 'pointer',
+              padding: 'var(--space-1) 0',
+            }}
+          >
+            Usar CPF e senha
+          </button>
+          {erro && (
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <Feedback tom="erro">{erro}</Feedback>
+            </div>
+          )}
+        </Cartao>
+      )}
+
+      {/* ── PROMPT: ativar biometria após login ── */}
+      {modo === 'prompt-bio' && (
+        <Cartao>
+          <div style={{ textAlign: 'center', padding: 'var(--space-2) 0 var(--space-3)' }}>
+            <svg
+              width="56"
+              height="56"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--color-accent)"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ display: 'block', margin: '0 auto var(--space-3)' }}
+              aria-hidden="true"
+            >
+              <path d="M12 10c-1.1 0-2 .9-2 2v4" />
+              <path d="M12 6a6 6 0 0 1 6 6v2" />
+              <path d="M6.3 8.7A6 6 0 0 0 6 12v2" />
+              <path d="M12 2a10 10 0 0 1 10 10v1" />
+              <path d="M2.1 11A10 10 0 0 1 12 2" />
+            </svg>
+            <p style={{ margin: 0, font: '600 16px var(--font-display)' }}>
+              Ativar acesso por biometria?
+            </p>
+            <p
+              style={{
+                margin: 'var(--space-2) 0 0',
+                font: '400 13px var(--font-body)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              Na próxima vez, entre com Face ID, Touch ID ou digital — sem digitar senha.
+            </p>
+          </div>
+          <Botao onClick={() => void habilitarBiometria()} disabled={carregando}>
+            {carregando ? 'Configurando…' : 'Ativar biometria'}
+          </Botao>
+          <button
+            type="button"
+            onClick={recusarBiometria}
+            style={{
+              marginTop: 'var(--space-2)',
+              display: 'block',
+              width: '100%',
+              textAlign: 'center',
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-text-muted)',
+              font: '400 13px var(--font-body)',
+              cursor: 'pointer',
+              padding: 'var(--space-2) 0',
+              minHeight: 44,
+            }}
+          >
+            Agora não
+          </button>
+        </Cartao>
+      )}
+
       {/* ── LOGIN ── */}
-      {(modo === 'login' || modo === 'primeiro-acesso') && (
+      {(modo === 'login' || modo === 'primeiro-acesso') && !bioAtiva && (
         <Cartao>
           {/* Nome do formulário para o gerenciador de senhas do dispositivo identificar */}
           <form
