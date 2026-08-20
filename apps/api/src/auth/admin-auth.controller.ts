@@ -17,6 +17,7 @@ import {
   RefreshDto,
   Verificar2faDto,
 } from './dto/admin.dto';
+import { TrocarSenhaObrigatorioDto } from './dto/emergencia.dto';
 
 /** ADM 1 -- autenticacao do administrador (2FA obrigatorio). */
 @ApiTags('auth-admin')
@@ -66,6 +67,18 @@ export class AdminAuthController {
     @CurrentUser() user: UsuarioAutenticado,
   ) {
     await this.service.logout(dto.refreshToken, extrairCtx(req), user.sub);
+  }
+
+  @Post('trocar-senha-obrigatorio')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Troca de senha obrigatoria (protocolo de emergencia).',
+    description:
+      'Apresente o trocaSenhaToken recebido no login quando requiresPasswordChange=true. ' +
+      'Apos a troca bem-sucedida, um par completo de tokens e emitido.',
+  })
+  trocarSenhaObrigatorio(@Body() dto: TrocarSenhaObrigatorioDto, @Req() req: Request) {
+    return this.service.trocarSenhaObrigatorio(dto.trocaSenhaToken, dto.novaSenha, extrairCtx(req));
   }
 }
 

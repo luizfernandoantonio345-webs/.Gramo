@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { AccessLogService } from './access-log.service';
 import { AdminAuthController, AdminController } from './admin-auth.controller';
 import { AdminAuthService } from './admin-auth.service';
+import { EmergenciaController } from './emergencia.controller';
+import { EmergenciaService } from './emergencia.service';
 import { ConviteController, FuncionarioAuthController } from './funcionario-auth.controller';
 import { FuncionarioAuthService } from './funcionario-auth.service';
 import { TokensService } from './tokens.service';
@@ -12,8 +14,20 @@ import { TokensService } from './tokens.service';
  * JWT e passado por assinatura/verificacao (secrets distintos access/refresh).
  */
 @Module({
-  controllers: [AdminAuthController, AdminController, FuncionarioAuthController, ConviteController],
-  providers: [AdminAuthService, FuncionarioAuthService, TokensService, AccessLogService],
+  controllers: [
+    AdminAuthController,
+    AdminController,
+    FuncionarioAuthController,
+    ConviteController,
+    EmergenciaController,
+  ],
+  providers: [
+    AdminAuthService,
+    FuncionarioAuthService,
+    TokensService,
+    AccessLogService,
+    EmergenciaService,
+  ],
   exports: [AccessLogService],
 })
 export class AuthModule {}

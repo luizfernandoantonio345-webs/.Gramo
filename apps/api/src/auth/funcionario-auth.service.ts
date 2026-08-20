@@ -81,7 +81,7 @@ export class FuncionarioAuthService {
       const senhaHash = await hashSenha(senha);
       await tx.funcionario.update({
         where: { id: convite.funcionarioId },
-        data: { senhaHash, status: StatusFuncionario.ATIVO },
+        data: { senhaHash, status: StatusFuncionario.ATIVO, forcaTrocaSenha: false },
       });
       await tx.convite.update({ where: { id: convite.id }, data: { usadoEm: new Date() } });
       await tx.consentimentoLgpd.create({
@@ -181,6 +181,14 @@ export class FuncionarioAuthService {
       userAgent: ctx.userAgent,
     });
 
+    if (funcionario.forcaTrocaSenha) {
+      const trocaSenhaToken = await this.tokens.emitirTokenTrocaSenha(
+        funcionario.id,
+        TipoSujeito.FUNCIONARIO,
+      );
+      return { requiresPasswordChange: true as const, trocaSenhaToken } as any;
+    }
+
     const par = await this.tokens.emitirPar(this.montarPayload(funcionario.id), ctx);
     return { ...par, status: funcionario.status };
   }
@@ -248,7 +256,7 @@ export class FuncionarioAuthService {
       const senhaHash = await hashSenha(novaSenha);
       await tx.funcionario.update({
         where: { id: reg.sujeitoId },
-        data: { senhaHash, tentativasFalhas: 0, bloqueadoAte: null },
+        data: { senhaHash, tentativasFalhas: 0, bloqueadoAte: null, forcaTrocaSenha: false },
       });
       await tx.tokenRecuperacao.update({ where: { id: reg.id }, data: { usadoEm: new Date() } });
       await tx.logAcesso.create({
@@ -337,6 +345,43 @@ export class FuncionarioAuthService {
       `Voce foi convidado a acessar o REP-P. Seu codigo de primeiro acesso: ${codigo} (valido por ${CONVITE_VALIDADE_DIAS} dias).`,
     );
     return { codigo, expiraEm };
+  }
+
+  /**
+   * Conclui a troca de senha obrigatoria (protocolo de emergencia).
+   * Valida o `trocaSenhaToken`, atualiza a senha, limpa o flag e emite sessao plena.
+   */
+  async trocarSenhaObrigatorio(
+    trocaSenhaToken: string,
+    novaSenha: string,
+    ctx: Ctx,
+  ): Promise<ParParticipacao> {
+    const { sub } = await this.tokens.validarTokenTrocaSenha(trocaSenhaToken);
+    const politica = validarSenha(novaSenha);
+    if (!politica.valido) throw new BadRequestException(politica.erros.join(' '));
+
+    const empresaId = TenantContext.requireEmpresaId();
+    const senhaHash = await hashSenha(novaSenha);
+
+    await this.prisma.forTenant(async (tx) => {
+      await tx.funcionario.update({
+        where: { id: sub },
+        data: { senhaHash, forcaTrocaSenha: false, tentativasFalhas: 0, bloqueadoAte: null },
+      });
+      await tx.logAcesso.create({
+        data: {
+          empresaId,
+          evento: EventoAcesso.SENHA_REDEFINIDA,
+          sujeitoTipo: TipoSujeito.FUNCIONARIO,
+          sujeitoId: sub,
+          ip: ctx.ip,
+          userAgent: ctx.userAgent,
+        },
+      });
+    });
+
+    await this.tokens.revogarTodasSessoes(sub);
+    return this.tokens.emitirPar(this.montarPayload(sub), ctx);
   }
 
   /** Preview de identidade pre-autenticacao: retorna primeiro nome + foto aprovada.

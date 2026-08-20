@@ -12,6 +12,11 @@ export interface ParParticipacao {
   expiresIn: number;
 }
 
+export interface RespostaTrocaSenhaObrigatoria {
+  requiresPasswordChange: true;
+  trocaSenhaToken: string;
+}
+
 interface ContextoRequisicao {
   ip?: string;
   userAgent?: string;
@@ -129,5 +134,47 @@ export class TokensService {
         data: { revogadoEm: new Date() },
       });
     });
+  }
+
+  /** Protocolo de emergencia: revoga TODOS os refresh tokens ativos da empresa. */
+  async revogarTodasSessoesDaEmpresa(): Promise<number> {
+    return this.prisma.forTenant(async (tx) => {
+      const result = await tx.refreshToken.updateMany({
+        where: { revogadoEm: null },
+        data: { revogadoEm: new Date() },
+      });
+      return result.count;
+    });
+  }
+
+  /**
+   * Emite token de curta duracao (10 min) para troca de senha obrigatoria.
+   * So autoriza o endpoint POST /auth/.../trocar-senha-obrigatorio.
+   */
+  async emitirTokenTrocaSenha(sujeitoId: string, tipo: TipoSujeito): Promise<string> {
+    const empresaId = TenantContext.requireEmpresaId();
+    return this.jwt.signAsync(
+      { sub: sujeitoId, tipo, empresaId, stage: 'troca_senha' },
+      { secret: process.env.JWT_ACCESS_SECRET, expiresIn: 600 },
+    );
+  }
+
+  /** Valida um token de troca de senha obrigatoria. */
+  async validarTokenTrocaSenha(token: string): Promise<{ sub: string; tipo: TipoSujeito }> {
+    const empresaId = TenantContext.requireEmpresaId();
+    try {
+      const p = await this.jwt.verifyAsync<{
+        sub: string;
+        tipo: TipoSujeito;
+        empresaId: string;
+        stage?: string;
+      }>(token, { secret: process.env.JWT_ACCESS_SECRET, algorithms: ['HS256'] });
+      if (p.stage !== 'troca_senha' || p.empresaId !== empresaId) {
+        throw new UnauthorizedException('Token invalido.');
+      }
+      return { sub: p.sub, tipo: p.tipo };
+    } catch {
+      throw new UnauthorizedException('Token de troca de senha invalido ou expirado.');
+    }
   }
 }

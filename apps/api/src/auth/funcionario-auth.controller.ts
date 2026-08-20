@@ -17,6 +17,7 @@ import {
   RecuperarSenhaDto,
   RedefinirSenhaDto,
 } from './dto/funcionario.dto';
+import { TrocarSenhaObrigatorioDto } from './dto/emergencia.dto';
 import { FuncionarioAuthService } from './funcionario-auth.service';
 
 /** Tela 1 -- autenticacao e primeiro acesso do funcionario. */
@@ -76,6 +77,18 @@ export class FuncionarioAuthController {
   @ApiOperation({ summary: 'Redefine a senha com o token de recuperacao.' })
   async redefinir(@Body() dto: RedefinirSenhaDto, @Req() req: Request) {
     await this.service.redefinirSenha(dto.token, dto.novaSenha, extrairCtx(req));
+  }
+
+  @Post('trocar-senha-obrigatorio')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Troca de senha obrigatoria (protocolo de emergencia).',
+    description:
+      'Apresente o trocaSenhaToken recebido no login quando requiresPasswordChange=true. ' +
+      'Apos a troca bem-sucedida, um par completo de tokens e emitido.',
+  })
+  trocarSenhaObrigatorio(@Body() dto: TrocarSenhaObrigatorioDto, @Req() req: Request) {
+    return this.service.trocarSenhaObrigatorio(dto.trocaSenhaToken, dto.novaSenha, extrairCtx(req));
   }
 }
 

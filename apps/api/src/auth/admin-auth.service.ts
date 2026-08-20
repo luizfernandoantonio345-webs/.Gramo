@@ -14,7 +14,11 @@ import type { JwtPayload, UsuarioAutenticado } from '../common/auth/jwt-payload'
 import { TenantContext } from '../common/tenant/tenant-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessLogService } from './access-log.service';
-import { TokensService, type ParParticipacao } from './tokens.service';
+import {
+  TokensService,
+  type ParParticipacao,
+  type RespostaTrocaSenhaObrigatoria,
+} from './tokens.service';
 
 interface Ctx {
   ip?: string;
@@ -40,7 +44,9 @@ export class AdminAuthService {
     email: string,
     senha: string,
     ctx: Ctx,
-  ): Promise<{ desafioToken: string; setup2fa: boolean } | ParParticipacao> {
+  ): Promise<
+    { desafioToken: string; setup2fa: boolean } | ParParticipacao | RespostaTrocaSenhaObrigatoria
+  > {
     const agora = new Date();
     const admin = await this.prisma.forTenant((tx) =>
       tx.usuarioAdmin.findFirst({ where: { email: email.toLowerCase() } }),
@@ -110,6 +116,13 @@ export class AdminAuthService {
         ip: ctx.ip,
         userAgent: ctx.userAgent,
       });
+      if (admin.forcaTrocaSenha) {
+        const trocaSenhaToken = await this.tokens.emitirTokenTrocaSenha(
+          admin.id,
+          TipoSujeito.ADMIN,
+        );
+        return { requiresPasswordChange: true as const, trocaSenhaToken };
+      }
       return this.tokens.emitirPar(this.montarPayload(admin.id, admin.papel), ctx);
     }
 
@@ -151,7 +164,11 @@ export class AdminAuthService {
    * Passo 2b: verifica o codigo TOTP. Conclui o setup (ativa o 2FA) quando for
    * o primeiro acesso e emite o par de tokens da sessao.
    */
-  async verificar2fa(desafioToken: string, codigo: string, ctx: Ctx): Promise<ParParticipacao> {
+  async verificar2fa(
+    desafioToken: string,
+    codigo: string,
+    ctx: Ctx,
+  ): Promise<ParParticipacao | RespostaTrocaSenhaObrigatoria> {
     const { sub } = await this.validarDesafio(desafioToken);
     const admin = await this.prisma.forTenant((tx) =>
       tx.usuarioAdmin.findFirstOrThrow({ where: { id: sub } }),
@@ -185,6 +202,11 @@ export class AdminAuthService {
       ip: ctx.ip,
       userAgent: ctx.userAgent,
     });
+
+    if (admin.forcaTrocaSenha) {
+      const trocaSenhaToken = await this.tokens.emitirTokenTrocaSenha(admin.id, TipoSujeito.ADMIN);
+      return { requiresPasswordChange: true as const, trocaSenhaToken };
+    }
 
     const payload = this.montarPayload(admin.id, admin.papel);
     return this.tokens.emitirPar(payload, ctx);
@@ -311,6 +333,55 @@ export class AdminAuthService {
       sujeitoTipo: TipoSujeito.ADMIN,
       sujeitoId: adminId,
     });
+  }
+
+  /**
+   * Conclui a troca de senha obrigatoria (protocolo de emergencia).
+   * Valida o `trocaSenhaToken`, atualiza a senha, limpa o flag e emite sessao plena.
+   */
+  async trocarSenhaObrigatorio(
+    trocaSenhaToken: string,
+    novaSenha: string,
+    ctx: Ctx,
+  ): Promise<ParParticipacao> {
+    const { sub } = await this.tokens.validarTokenTrocaSenha(trocaSenhaToken);
+    const politica = validarSenha(novaSenha);
+    if (!politica.valido) throw new BadRequestException(politica.erros.join(' '));
+
+    const empresaId = TenantContext.requireEmpresaId();
+    const senhaHash = await hashSenha(novaSenha);
+
+    await this.prisma.forTenant(async (tx) => {
+      await tx.usuarioAdmin.update({
+        where: { id: sub },
+        data: { senhaHash, forcaTrocaSenha: false, tentativasFalhas: 0, bloqueadoAte: null },
+      });
+      await tx.logAuditoria.create({
+        data: {
+          empresaId,
+          usuarioId: sub,
+          usuarioTipo: 'admin',
+          acao: 'admin.trocar_senha_obrigatorio',
+          entidadeAfetada: 'usuarios_admin',
+          entidadeId: sub,
+          valorNovo: { forcaTrocaSenha: false },
+        },
+      });
+    });
+
+    await this.tokens.revogarTodasSessoes(sub);
+    await this.log.registrar({
+      evento: EventoAcesso.SENHA_REDEFINIDA,
+      sujeitoTipo: TipoSujeito.ADMIN,
+      sujeitoId: sub,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
+
+    const admin = await this.prisma.forTenant((tx) =>
+      tx.usuarioAdmin.findFirstOrThrow({ where: { id: sub } }),
+    );
+    return this.tokens.emitirPar(this.montarPayload(admin.id, admin.papel), ctx);
   }
 
   // ---- helpers ----
