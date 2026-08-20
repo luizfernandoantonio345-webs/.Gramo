@@ -18,6 +18,7 @@ import { PainelDashboard } from './painel-admin/PainelDashboard';
 import { PainelIntegracoes } from './painel-admin/PainelIntegracoes';
 import { PainelQuiosque } from './painel-admin/PainelQuiosque';
 import { PainelHomologacao } from './painel-admin/PainelHomologacao';
+import { VerificadorAfd } from './painel-admin/VerificadorAfd';
 import { PainelRelatorios } from './painel-admin/PainelRelatorios';
 import { AlertaPontoAoVivo } from './painel-admin/AlertaPontoAoVivo';
 import { PainelApuracao } from './painel-admin/PainelApuracao';
@@ -56,6 +57,7 @@ const GRUPOS_ADMIN: GrupoNav[] = [
       { id: 'assinaturas', rotulo: 'Assinaturas', icone: 'assinaturas' },
       { id: 'relatorios', rotulo: 'Relatórios', icone: 'relatorios' },
       { id: 'homologacao', rotulo: 'Homologação', icone: 'homologacao' },
+      { id: 'verificador-afd', rotulo: 'Verificador AFD', icone: 'verificador-afd' },
     ],
   },
   {
@@ -92,6 +94,7 @@ const TITULOS: Record<string, string> = {
   assinaturas: 'Assinaturas',
   relatorios: 'Relatórios',
   homologacao: 'Homologação REP-P',
+  'verificador-afd': 'Verificador AFD',
   auditoria: 'Auditoria',
   config: 'Configurações',
   integracoes: 'Integrações',
@@ -150,6 +153,7 @@ export function App(): JSX.Element {
           comunicados: <PainelComunicados />,
           relatorios: <PainelRelatorios />,
           homologacao: <PainelHomologacao />,
+          'verificador-afd': <VerificadorAfd />,
           auditoria: <PainelAuditoria />,
           config: <PainelConfiguracoes />,
           integracoes: <PainelIntegracoes />,

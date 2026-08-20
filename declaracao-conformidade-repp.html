@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Declaração de Conformidade REP-P — Gramo</title>
+  <style>
+    @page { size: A4; margin: 3cm 2.5cm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; line-height: 1.6; background: #fff; }
+    .cabecalho { text-align: center; border-bottom: 2px solid #000; padding-bottom: 16px; margin-bottom: 24px; }
+    .cabecalho h1 { font-size: 14pt; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .cabecalho p { font-size: 10pt; }
+    h2 { font-size: 12pt; text-transform: uppercase; margin: 24px 0 8px; }
+    p { margin-bottom: 12px; text-align: justify; }
+    .destaque { font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    td { padding: 6px 8px; border: 1px solid #000; font-size: 11pt; vertical-align: top; }
+    td:first-child { font-weight: bold; width: 40%; background: #f5f5f5; }
+    .assinatura { margin-top: 60px; }
+    .linha-assinatura { border-top: 1px solid #000; width: 340px; margin: 0 auto 6px; }
+    .assinatura-centro { text-align: center; }
+    .rodape { margin-top: 40px; font-size: 9pt; color: #444; border-top: 1px solid #ccc; padding-top: 10px; text-align: center; }
+    .checklist { margin: 12px 0; padding-left: 20px; }
+    .checklist li { margin-bottom: 6px; }
+    .campo-preenchivel { background: #fffbe6; border-bottom: 1px solid #999; padding: 0 4px; min-width: 200px; display: inline-block; }
+
+    @media print {
+      .instrucoes { display: none; }
+      body { font-size: 12pt; }
+    }
+    .instrucoes {
+      background: #e8f4fd;
+      border: 2px solid #2563eb;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 32px;
+      font-family: Arial, sans-serif;
+      font-size: 11pt;
+    }
+    .instrucoes h3 { margin-bottom: 8px; color: #1e40af; }
+    .instrucoes ol { padding-left: 20px; }
+    .instrucoes li { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="instrucoes">
+  <h3>📋 Instruções (não aparece na impressão)</h3>
+  <ol>
+    <li>Preencha os campos destacados em amarelo</li>
+    <li>Imprima ou salve como PDF: <strong>Ctrl+P → Salvar como PDF</strong></li>
+    <li>O responsável assina com caneta (ou assinatura eletrônica gov.br)</li>
+    <li>Enviar por e-mail para <strong>srte.mg@mte.gov.br</strong> com assunto: <em>"Declaração de Conformidade REP-P — [nome da empresa]"</em></li>
+    <li>Guardar cópia assinada — fiscal do trabalho pode solicitar a qualquer momento</li>
+  </ol>
+</div>
+
+<div class="cabecalho">
+  <h1>Declaração de Conformidade REP-P</h1>
+  <p>Portaria MTP nº 671, de 8 de novembro de 2021 — Registrador Eletrônico de Ponto na Modalidade Programa</p>
+</div>
+
+<h2>I — Identificação da Empresa</h2>
+<table>
+  <tr><td>Razão Social</td><td>Gramo Empreendimentos e Construções Ltda.</td></tr>
+  <tr><td>CNPJ</td><td>21.096.672/0001-12</td></tr>
+  <tr><td>Endereço</td><td><span class="campo-preenchivel" contenteditable="true">[ENDEREÇO COMPLETO]</span></td></tr>
+  <tr><td>Município / UF</td><td><span class="campo-preenchivel" contenteditable="true">[CIDADE] / MG</span></td></tr>
+  <tr><td>Atividade econômica (CNAE)</td><td><span class="campo-preenchivel" contenteditable="true">[CNAE]</span></td></tr>
+  <tr><td>Número de empregados</td><td><span class="campo-preenchivel" contenteditable="true">[QTD]</span></td></tr>
+</table>
+
+<h2>II — Identificação do Sistema REP-P</h2>
+<table>
+  <tr><td>Nome do Sistema</td><td>REP-P GRAMO</td></tr>
+  <tr><td>Versão</td><td>1.0</td></tr>
+  <tr><td>Modalidade</td><td>Programa (REP-P) — Art. 74, §1º, III da Portaria 671/2021</td></tr>
+  <tr><td>Número de Registro INPI</td><td><span class="campo-preenchivel" contenteditable="true">[NÚMERO INPI — preencher após obter o certificado]</span></td></tr>
+  <tr><td>Data de implantação</td><td><span class="campo-preenchivel" contenteditable="true">[DD/MM/AAAA]</span></td></tr>
+  <tr><td>Ambiente de operação</td><td>Servidor VPS Linux (Hostinger) — IP 179.198.121.42</td></tr>
+</table>
+
+<h2>III — Declaração</h2>
+
+<p>
+  Eu, <span class="campo-preenchivel" contenteditable="true">[NOME COMPLETO DO SIGNATÁRIO]</span>,
+  CPF <span class="campo-preenchivel" contenteditable="true">[000.000.000-00]</span>,
+  na qualidade de <span class="campo-preenchivel" contenteditable="true">[CARGO: desenvolvedor responsável / contador / sócio / diretor]</span>
+  da empresa <strong>Gramo Empreendimentos e Construções Ltda.</strong>, CNPJ 21.096.672/0001-12,
+  declaro, para os fins do Art. 89 e seguintes da Portaria MTP nº 671/2021, que o sistema
+  <strong>REP-P GRAMO</strong>, em uso nesta empresa para o controle eletrônico da jornada de trabalho
+  de seus empregados, atende integralmente aos seguintes requisitos técnicos e legais:
+</p>
+
+<ul class="checklist">
+  <li><strong>Imutabilidade dos registros:</strong> As marcações de ponto são armazenadas em banco de dados append-only, sendo vedada qualquer alteração ou exclusão posterior dos dados gravados. Correções geram registros de ajuste separados (PontoAjuste), preservando o registro original. (Art. 74, §1º)</li>
+  <li><strong>NSR sequencial:</strong> O Número Sequencial de Registro (NSR) é gerado de forma atômica e sequencial por estabelecimento (filial), sem furos ou repetições. (Art. 75, §3º)</li>
+  <li><strong>Hash de integridade:</strong> Cada marcação possui um hash SHA-256 do seu conteúdo canônico, permitindo a detecção de qualquer adulteração. (Art. 74, §1º)</li>
+  <li><strong>AFD (Arquivo Fonte de Dados):</strong> O sistema gera o AFD no leiaute definido no Anexo I da Portaria 671/2021, com registros tipo 1 (cabeçalho), tipo 7 (marcação REP-P com NIS/PIS do empregado) e tipo 9 (trailer com contadores). O arquivo é auto-validado antes da exportação. (Art. 81)</li>
+  <li><strong>AEJ (Arquivo Eletrônico de Jornada):</strong> O sistema gera o AEJ com todos os dados de jornada conforme definido no Art. 83 da Portaria 671/2021.</li>
+  <li><strong>Comprovante de ponto:</strong> Cada marcação gera comprovante digital em PDF com assinatura eletrônica no padrão PAdES-B e hash SHA-256, garantindo autenticidade e inviolabilidade. (Art. 86)</li>
+  <li><strong>Consentimento LGPD:</strong> O consentimento para uso de biometria facial é registrado separadamente nos termos do Art. 11 da LGPD. As imagens biométricas são armazenadas cifradas (AES-256). (Art. 80, §2º)</li>
+  <li><strong>Trilha de auditoria:</strong> Toda operação relevante é registrada em log de auditoria imutável (append-only), com identificação do autor, data/hora e dados alterados.</li>
+  <li><strong>Sincronização de horário:</strong> O servidor utiliza sincronização NTP com servidores de referência, em conformidade com a Hora Legal Brasileira.</li>
+  <li><strong>Exclusividade de finalidade:</strong> O sistema é utilizado exclusivamente para o controle eletrônico de jornada dos empregados da empresa, vedado qualquer uso diverso.</li>
+  <li><strong>Registro no INPI:</strong> O programa de computador está registrado no Instituto Nacional da Propriedade Industrial (INPI) sob o número <span class="campo-preenchivel" contenteditable="true">[NÚMERO INPI]</span>, em nome do desenvolvedor. (Art. 89)</li>
+</ul>
+
+<p>
+  Declaro ainda estar ciente de que a falsidade nesta declaração sujeitará o declarante às sanções
+  previstas no Art. 299 do Código Penal, além das penalidades administrativas cabíveis, nos termos
+  do Art. 47 e seguintes da Consolidação das Leis do Trabalho (CLT).
+</p>
+
+<h2>IV — Assinatura</h2>
+
+<p>
+  <span class="campo-preenchivel" contenteditable="true">[CIDADE]</span>,
+  <span class="campo-preenchivel" contenteditable="true">[DD]</span> de
+  <span class="campo-preenchivel" contenteditable="true">[MÊS]</span> de
+  <span class="campo-preenchivel" contenteditable="true">[ANO]</span>.
+</p>
+
+<div class="assinatura">
+  <div class="assinatura-centro">
+    <div class="linha-assinatura"></div>
+    <p><span class="campo-preenchivel" contenteditable="true">[NOME COMPLETO]</span></p>
+    <p>CPF: <span class="campo-preenchivel" contenteditable="true">[000.000.000-00]</span></p>
+    <p><span class="campo-preenchivel" contenteditable="true">[CARGO]</span></p>
+    <p><strong>Gramo Empreendimentos e Construções Ltda.</strong></p>
+    <p>CNPJ: 21.096.672/0001-12</p>
+  </div>
+</div>
+
+<div class="rodape">
+  Este documento deve ser mantido pela empresa e apresentado ao fiscal do trabalho quando solicitado.<br/>
+  Enviar cópia assinada para: <strong>srte.mg@mte.gov.br</strong> — Assunto: "Declaração de Conformidade REP-P — Gramo Empreendimentos e Construções Ltda."
+</div>
+
+</body>
+</html>

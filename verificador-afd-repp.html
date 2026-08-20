@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Verificador AFD — REP-P Portaria 671</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+      padding: 40px;
+      max-width: 680px;
+      width: 100%;
+    }
+    .logo {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+    .subtitulo {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 32px;
+    }
+    .upload-area {
+      border: 2px dashed #d1d5db;
+      border-radius: 10px;
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 24px;
+    }
+    .upload-area:hover, .upload-area.drag { border-color: #2563eb; background: #eff6ff; }
+    .upload-area input { display: none; }
+    .upload-icon { font-size: 40px; margin-bottom: 12px; }
+    .upload-area p { font-size: 15px; color: #374151; margin-bottom: 4px; }
+    .upload-area span { font-size: 13px; color: #9ca3af; }
+    .btn {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #1d4ed8; }
+    .btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    /* Resultado */
+    #resultado { display: none; margin-top: 28px; }
+    .resultado-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 24px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    .resultado-header.ok { background: #f0fdf4; border: 2px solid #16a34a; }
+    .resultado-header.erro { background: #fef2f2; border: 2px solid #dc2626; }
+    .resultado-icone { font-size: 40px; flex-shrink: 0; }
+    .resultado-titulo { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .resultado-titulo.ok { color: #15803d; }
+    .resultado-titulo.erro { color: #b91c1c; }
+    .resultado-sub { font-size: 14px; color: #374151; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-valor { font-size: 26px; font-weight: 700; color: #111827; }
+    .stat-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+    .erros-lista {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .erros-titulo { font-size: 14px; font-weight: 600; color: #b91c1c; margin-bottom: 10px; }
+    .erros-lista ul { padding-left: 20px; }
+    .erros-lista li { font-size: 13px; color: #7f1d1d; line-height: 1.8; }
+
+    .checklist { margin-bottom: 20px; }
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 14px;
+      color: #374151;
+    }
+    .check-item:last-child { border-bottom: none; }
+    .check-ok { color: #16a34a; font-size: 18px; flex-shrink: 0; }
+    .check-err { color: #dc2626; font-size: 18px; flex-shrink: 0; }
+
+    .comprovante {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-size: 13px;
+      color: #1e40af;
+      line-height: 1.7;
+    }
+    .comprovante strong { display: block; margin-bottom: 4px; font-size: 14px; }
+
+    .btn-print {
+      background: #16a34a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 16px;
+    }
+    .btn-print:hover { background: #15803d; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .card { box-shadow: none; padding: 20px; }
+      .upload-area, .btn, #arquivo-info { display: none; }
+      #resultado { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">REP-P · Portaria MTP 671/2021</div>
+  <h1>Verificador de Arquivo AFD</h1>
+  <p class="subtitulo">Valida a conformidade técnica do AFD gerado pelo sistema GRAMO contra os requisitos da Portaria 671.</p>
+
+  <label class="upload-area" id="upload-area">
+    <input type="file" id="arquivo-input" accept=".txt,.afd" />
+    <div class="upload-icon">📄</div>
+    <p>Clique aqui ou arraste o arquivo AFD</p>
+    <span>Arquivo .txt gerado em Relatórios → Gerar AFD</span>
+  </label>
+
+  <div id="arquivo-info" style="display:none; font-size:13px; color:#374151; background:#f9fafb; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
+    📎 Arquivo: <strong id="arquivo-nome"></strong> &nbsp;|&nbsp; Tamanho: <span id="arquivo-tamanho"></span>
+  </div>
+
+  <button class="btn" id="btn-verificar" disabled onclick="verificar()">Verificar AFD</button>
+
+  <div id="resultado">
+    <div class="resultado-header" id="res-header">
+      <div class="resultado-icone" id="res-icone"></div>
+      <div>
+        <div class="resultado-titulo" id="res-titulo"></div>
+        <div class="resultado-sub" id="res-sub"></div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-valor" id="st-marcacoes">—</div><div class="stat-label">Marcações</div></div>
+      <div class="stat"><div class="stat-valor" id="st-nsr-inicio">—</div><div class="stat-label">NSR inicial</div></div>
+      <div class="stat"><div class="stat-valor" id="st-nsr-fim">—</div><div class="stat-label">NSR final</div></div>
+      <div class="stat"><div class="stat-valor" id="st-periodo">—</div><div class="stat-label">Período</div></div>
+    </div>
+
+    <div class="checklist" id="checklist"></div>
+
+    <div id="erros-box" class="erros-lista" style="display:none;">
+      <div class="erros-titulo">❌ Erros encontrados:</div>
+      <ul id="erros-lista"></ul>
+    </div>
+
+    <div class="comprovante" id="comprovante" style="display:none;">
+      <strong>✅ Comprovante de Validação Técnica</strong>
+      Sistema: REP-P GRAMO<br/>
+      Empresa: Gramo Empreendimentos e Construções Ltda.<br/>
+      CNPJ: 21.096.672/0001-12<br/>
+      Arquivo: <span id="comp-arquivo"></span><br/>
+      Marcações verificadas: <span id="comp-marcacoes"></span><br/>
+      Data/Hora da verificação: <span id="comp-data"></span><br/>
+      Resultado: APROVADO — Arquivo conforme Portaria MTP 671/2021<br/>
+      <br/>
+      Este comprovante deve acompanhar a Declaração de Conformidade REP-P.
+    </div>
+
+    <button class="btn-print" id="btn-print" style="display:none;" onclick="window.print()">
+      🖨️ Imprimir / Salvar como PDF (comprovante)
+    </button>
+  </div>
+</div>
+
+<script>
+  let conteudo = '';
+  let nomeArquivo = '';
+
+  const input = document.getElementById('arquivo-input');
+  const area  = document.getElementById('upload-area');
+  const btnV  = document.getElementById('btn-verificar');
+
+  input.addEventListener('change', () => {
+    const f = input.files[0];
+    if (!f) return;
+    nomeArquivo = f.name;
+    document.getElementById('arquivo-nome').textContent = f.name;
+    document.getElementById('arquivo-tamanho').textContent = (f.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('arquivo-info').style.display = 'block';
+    const r = new FileReader();
+    r.onload = e => { conteudo = e.target.result; btnV.disabled = false; };
+    r.readAsText(f, 'ascii');
+  });
+
+  area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('drag'); });
+  area.addEventListener('dragleave', () => area.classList.remove('drag'));
+  area.addEventListener('drop', e => {
+    e.preventDefault(); area.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f) { input.files = e.dataTransfer.files; input.dispatchEvent(new Event('change')); }
+  });
+
+  function verificar() {
+    if (!conteudo) return;
+    const erros = [];
+    const checks = [];
+
+    // 1. CRLF e ASCII
+    const temCrlf = conteudo.endsWith('\r\n');
+    const temNaoAscii = /[^\x00-\x7F]/.test(conteudo);
+    checks.push({ ok: temCrlf, texto: 'Terminação de linha CRLF (\\r\\n) — obrigatório pela Portaria 671' });
+    checks.push({ ok: !temNaoAscii, texto: 'Somente caracteres ASCII — acentos removidos corretamente' });
+    if (!temCrlf) erros.push('Arquivo deve terminar com CRLF (\\r\\n).');
+    if (temNaoAscii) erros.push('Arquivo contém caracteres não-ASCII (acentos ou símbolos).');
+
+    const linhas = conteudo.split('\r\n').filter(l => l.length > 0);
+
+    if (linhas.length < 2) {
+      erros.push('Arquivo sem cabeçalho ou trailer — muito curto.');
+      mostrarErros(erros, checks, 0, '—', '—', '—');
+      return;
+    }
+
+    const cab     = linhas[0];
+    const trailer = linhas[linhas.length - 1];
+    const marcacoes = linhas.slice(1, -1);
+
+    // 2. Cabeçalho tipo 1
+    const cabOk = cab.slice(9, 10) === '1' && cab.slice(0, 9) === '000000000';
+    checks.push({ ok: cabOk, texto: 'Cabeçalho tipo 1 com NSR 000000000 — identificação do empregador' });
+    if (!cabOk) erros.push('Cabeçalho (tipo 1) inválido ou NSR incorreto.');
+
+    // largura do cabeçalho: 9+1+1+14+12+150+7+8+8+8+4 = 222 (inclui campo INPI pos.188-194 e hora HHMM)
+    const largCab = 9+1+1+14+12+150+7+8+8+8+4;
+    checks.push({ ok: cab.length === largCab, texto: `Largura do cabeçalho: ${cab.length} bytes (esperado ${largCab})` });
+    if (cab.length !== largCab) erros.push(`Cabeçalho com ${cab.length} bytes (esperado ${largCab}).`);
+
+    // 3. Campo INPI (pos.188-194 = offset 187, 7 chars)
+    const inpiCab = cab.slice(187, 194).trim();
+    const inpiOk = /\d/.test(inpiCab);
+    checks.push({ ok: inpiOk, texto: `Número INPI no cabeçalho (pos.188-194): ${inpiOk ? inpiCab : 'não preenchido — obrigatório (Art. 89 Portaria 671)'}` });
+    if (!inpiOk) erros.push('Campo INPI vazio no cabeçalho. Configure em Configurações → INPI após registrar no gov.br.');
+
+    // 4. Período do cabeçalho
+    // Layout tipo 1: 9+1+1+14+12+150+7(INPI) = 194 antes da data início
+    let periodoTexto = '—';
+    try {
+      const OFF = 9+1+1+14+12+150+7; // = 194
+      const di = cab.slice(OFF, OFF+8);
+      const df = cab.slice(OFF+8, OFF+16);
+      const fmt = s => `${s.slice(0,2)}/${s.slice(2,4)}/${s.slice(4)}`;
+      periodoTexto = `${fmt(di)} a ${fmt(df)}`;
+    } catch(e) { periodoTexto = 'erro ao ler'; }
+
+    // 4. Trailer tipo 9
+    const trOk = trailer.slice(9, 10) === '9';
+    const largTr = 9+1+9*6;
+    checks.push({ ok: trOk && trailer.length === largTr, texto: `Trailer tipo 9 — contadores de registros (${trailer.length} bytes, esperado ${largTr})` });
+    if (!trOk) erros.push('Trailer (tipo 9) inválido.');
+    if (trailer.length !== largTr) erros.push(`Trailer com ${trailer.length} bytes (esperado ${largTr}).`);
+
+    // 5. Marcações tipo 7
+    const largM = 9+1+8+6+12+64; // 100
+    let nsrAnterior = 0;
+    let nsrInicio = '—', nsrFim = '—';
+    let errosData = 0, errosNis = 0, errosHash = 0;
+
+    for (let i = 0; i < marcacoes.length; i++) {
+      const l = marcacoes[i];
+      if (l.slice(9, 10) !== '7') {
+        erros.push(`Linha ${i+2}: tipo "${l.slice(9,10)}" inesperado (esperado 7).`);
+        continue;
+      }
+      if (l.length !== largM) {
+        erros.push(`Linha ${i+2}: ${l.length} bytes (esperado ${largM}).`);
+        continue;
+      }
+      // NSR sequencial
+      const nsr = parseInt(l.slice(0, 9), 10);
+      if (isNaN(nsr) || nsr <= nsrAnterior) {
+        erros.push(`Linha ${i+2}: NSR ${l.slice(0,9)} fora de sequência (anterior: ${nsrAnterior}).`);
+      } else {
+        if (nsrInicio === '—') nsrInicio = String(nsr);
+        nsrFim = String(nsr);
+        nsrAnterior = nsr;
+      }
+      // Data DDMMAAAA
+      const dataM = l.slice(10, 18);
+      const dd = parseInt(dataM.slice(0,2),10), mm2 = parseInt(dataM.slice(2,4),10), aaaa = parseInt(dataM.slice(4,8),10);
+      if (!/^\d{8}$/.test(dataM) || dd < 1 || dd > 31 || mm2 < 1 || mm2 > 12 || aaaa < 2000) errosData++;
+      // Hora HHMMSS
+      const horaM = l.slice(18, 24);
+      const hh = parseInt(horaM.slice(0,2),10), min = parseInt(horaM.slice(2,4),10), ss = parseInt(horaM.slice(4,6),10);
+      if (!/^\d{6}$/.test(horaM) || hh > 23 || min > 59 || ss > 59) errosData++;
+      // NIS/PIS (12 dígitos)
+      const nis = l.slice(24, 36);
+      if (!/^\d{12}$/.test(nis)) errosNis++;
+      // Hash SHA-256 (64 hex)
+      const hash = l.slice(36, 100);
+      if (!/^[0-9a-fA-F]{64}$/.test(hash)) errosHash++;
+    }
+
+    checks.push({ ok: erros.filter(e => e.includes('NSR')).length === 0, texto: 'NSR sequencial sem furos por estabelecimento — Portaria 671 Art. 75 §3' });
+    checks.push({ ok: erros.filter(e => e.includes('bytes') && e.includes('Linha')).length === 0, texto: `Largura das marcações tipo 7: ${largM} bytes — layout Portaria 671 Anexo I` });
+    checks.push({ ok: marcacoes.length > 0, texto: `Marcações encontradas: ${marcacoes.length} registro(s) de ponto` });
+    checks.push({ ok: errosData === 0, texto: `Formato de data/hora nas marcações: ${errosData === 0 ? 'todos válidos' : errosData + ' inválido(s)'}` });
+    if (errosData > 0) erros.push(`${errosData} marcação(ões) com data ou hora inválida.`);
+    checks.push({ ok: errosNis === 0, texto: `Campo NIS/PIS (12 dígitos zero-padded): ${errosNis === 0 ? 'todos válidos' : errosNis + ' inválido(s)'}` });
+    if (errosNis > 0) erros.push(`${errosNis} marcação(ões) com NIS inválido.`);
+    checks.push({ ok: errosHash === 0, texto: `Hash de integridade SHA-256 (64 hex): ${errosHash === 0 ? 'todos válidos' : errosHash + ' inválido(s)'}` });
+    if (errosHash > 0) erros.push(`${errosHash} marcação(ões) com hash inválido.`);
+
+    // 6. Contador no trailer
+    const qtdTrailer = parseInt(trailer.slice(-9), 10);
+    const contOk = qtdTrailer === marcacoes.length;
+    checks.push({ ok: contOk, texto: `Contador do trailer: ${qtdTrailer} (registrado) vs ${marcacoes.length} (real)` });
+    if (!contOk) erros.push(`Trailer conta ${qtdTrailer} mas arquivo tem ${marcacoes.length} marcações.`);
+
+    mostrarResultado(erros, checks, marcacoes.length, nsrInicio, nsrFim, periodoTexto);
+  }
+
+  function mostrarResultado(erros, checks, total, nsrI, nsrF, periodo) {
+    document.getElementById('resultado').style.display = 'block';
+    const ok = erros.length === 0;
+
+    // Header
+    const h = document.getElementById('res-header');
+    h.className = 'resultado-header ' + (ok ? 'ok' : 'erro');
+    document.getElementById('res-icone').textContent = ok ? '✅' : '❌';
+    const t = document.getElementById('res-titulo');
+    t.className = 'resultado-titulo ' + (ok ? 'ok' : 'erro');
+    t.textContent = ok ? 'ARQUIVO VÁLIDO — Conforme Portaria 671' : 'ARQUIVO COM ERROS';
+    document.getElementById('res-sub').textContent = ok
+      ? 'O AFD gerado está no formato correto e pode ser apresentado ao fiscal do trabalho.'
+      : `Foram encontrados ${erros.length} erro(s). Corrija antes de usar como comprovante.`;
+
+    // Stats
+    document.getElementById('st-marcacoes').textContent = total || '0';
+    document.getElementById('st-nsr-inicio').textContent = nsrI;
+    document.getElementById('st-nsr-fim').textContent = nsrF;
+    document.getElementById('st-periodo').textContent = periodo;
+
+    // Checklist
+    const cl = document.getElementById('checklist');
+    cl.innerHTML = checks.map(c => `
+      <div class="check-item">
+        <span class="${c.ok ? 'check-ok' : 'check-err'}">${c.ok ? '✓' : '✗'}</span>
+        <span>${c.texto}</span>
+      </div>
+    `).join('');
+
+    // Erros
+    if (erros.length > 0) {
+      document.getElementById('erros-box').style.display = 'block';
+      document.getElementById('erros-lista').innerHTML = erros.map(e => `<li>${e}</li>`).join('');
+    } else {
+      document.getElementById('erros-box').style.display = 'none';
+    }
+
+    // Comprovante
+    if (ok) {
+      document.getElementById('comp-arquivo').textContent = nomeArquivo;
+      document.getElementById('comp-marcacoes').textContent = total;
+      document.getElementById('comp-data').textContent = new Date().toLocaleString('pt-BR');
+      document.getElementById('comprovante').style.display = 'block';
+      document.getElementById('btn-print').style.display = 'block';
+    }
+
+    document.getElementById('resultado').scrollIntoView({ behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

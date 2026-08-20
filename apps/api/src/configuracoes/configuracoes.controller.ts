@@ -8,6 +8,7 @@ import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { ConfiguracoesService } from './configuracoes.service';
 import {
+  AtualizarEmpresaDto,
   AtualizarJornadaDto,
   CriarFeriadoDto,
   CriarFilialDto,
@@ -28,6 +29,13 @@ export class ConfiguracoesController {
   @Roles(...LEITURA)
   dadosEmpresa() {
     return this.service.dadosEmpresa();
+  }
+
+  @Patch('empresa')
+  @Roles(PapelAdmin.RH_MASTER)
+  @ApiOperation({ summary: 'Atualiza dados da empresa (ex: numero INPI para REP-P).' })
+  atualizarEmpresa(@Body() dto: AtualizarEmpresaDto, @CurrentUser() user: UsuarioAutenticado) {
+    return this.service.atualizarEmpresa(dto, user);
   }
 
   @Get('filiais')

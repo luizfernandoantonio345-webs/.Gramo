@@ -27,7 +27,8 @@ export type NomeIcone =
   | 'olho'
   | 'olho-off'
   | 'perfil'
-  | 'homologacao';
+  | 'homologacao'
+  | 'verificador-afd';
 
 const PATHS: Record<NomeIcone, JSX.Element> = {
   dashboard: (
@@ -164,6 +165,13 @@ const PATHS: Record<NomeIcone, JSX.Element> = {
       <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" />
       <path d="M9 12l2 2 4-4" />
       <circle cx="12" cy="12" r="2.5" opacity="0" />
+    </>
+  ),
+  'verificador-afd': (
+    <>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <path d="M9 13l2 2 4-4" />
     </>
   ),
   olho: (

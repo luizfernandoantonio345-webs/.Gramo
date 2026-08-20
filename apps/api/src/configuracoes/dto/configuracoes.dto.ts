@@ -19,6 +19,13 @@ import {
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+export class AtualizarEmpresaDto {
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{1,7}$/, { message: 'numeroInpi deve conter apenas digitos (max 7).' })
+  numeroInpi?: string;
+}
+
 export class CriarFilialDto {
   @IsString()
   @MinLength(2)

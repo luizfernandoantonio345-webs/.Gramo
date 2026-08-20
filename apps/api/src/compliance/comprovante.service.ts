@@ -27,7 +27,7 @@ export class ComprovanteService {
       });
       if (!ponto) throw new NotFoundException('Ponto nao encontrado.');
       const empresa = await tx.empresa.findFirstOrThrow({
-        select: { razaoSocial: true, cnpj: true },
+        select: { razaoSocial: true, cnpj: true, numeroInpi: true },
       });
       return { ponto, empresa };
     });
@@ -50,7 +50,7 @@ export class ComprovanteService {
       hashIntegridade: string;
       funcionario: { nome: string; cpf: string };
     };
-    empresa: { razaoSocial: string; cnpj: string };
+    empresa: { razaoSocial: string; cnpj: string; numeroInpi: string | null };
   }): Promise<Uint8Array> {
     const pdf = await PDFDocument.create();
     const page = pdf.addPage([595, 420]); // A5 paisagem aprox.
@@ -72,6 +72,7 @@ export class ComprovanteService {
 
     linha('COMPROVANTE DE REGISTRO DE PONTO', { bold: true, size: 15 });
     linha('Portaria MTP 671/2021 - REP-P', { size: 9 });
+    if (d.empresa.numeroInpi) linha(`Registro INPI: ${d.empresa.numeroInpi}`, { size: 9 });
     y -= 8;
     linha(`Empregador: ${d.empresa.razaoSocial}`, { bold: true });
     linha(`CNPJ: ${d.empresa.cnpj}`);

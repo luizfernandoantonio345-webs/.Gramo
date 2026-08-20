@@ -3,6 +3,7 @@ import type { UsuarioAutenticado } from '../common/auth/jwt-payload';
 import { TenantContext } from '../common/tenant/tenant-context';
 import { PrismaService } from '../prisma/prisma.service';
 import type {
+  AtualizarEmpresaDto,
   AtualizarJornadaDto,
   CriarFeriadoDto,
   CriarFilialDto,
@@ -124,9 +125,38 @@ export class ConfiguracoesService {
   async dadosEmpresa() {
     return this.prisma.forTenant((tx) =>
       tx.empresa.findFirstOrThrow({
-        select: { id: true, razaoSocial: true, cnpj: true, subdominio: true, status: true },
+        select: {
+          id: true,
+          razaoSocial: true,
+          cnpj: true,
+          subdominio: true,
+          status: true,
+          numeroInpi: true,
+        },
       }),
     );
+  }
+
+  async atualizarEmpresa(dto: AtualizarEmpresaDto, autor: UsuarioAutenticado) {
+    const empresaId = TenantContext.requireEmpresaId();
+    return this.prisma.forTenant(async (tx) => {
+      const empresa = await tx.empresa.update({
+        where: { id: empresaId },
+        data: { numeroInpi: dto.numeroInpi ?? null },
+        select: {
+          id: true,
+          razaoSocial: true,
+          cnpj: true,
+          subdominio: true,
+          status: true,
+          numeroInpi: true,
+        },
+      });
+      await this.audit(tx, empresaId, autor, 'empresa.atualizar', 'empresas', empresaId, {
+        numeroInpi: dto.numeroInpi,
+      });
+      return empresa;
+    });
   }
 
   private async audit(

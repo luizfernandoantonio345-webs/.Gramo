@@ -8,8 +8,9 @@ import {
   EstadoVazio,
   Feedback,
   Selecao,
+  TituloSecao,
 } from '../design-system/components';
-import { apiGet, apiPost } from '../lib/api';
+import { apiGet, apiPatch, apiPost } from '../lib/api';
 
 interface Jornada {
   id: string;
@@ -25,6 +26,12 @@ interface Feriado {
   nome: string;
   tipo: string;
 }
+interface Empresa {
+  id: string;
+  razaoSocial: string;
+  cnpj: string;
+  numeroInpi: string | null;
+}
 interface Filial {
   id: string;
   nome: string;
@@ -36,6 +43,10 @@ const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
 /** ADM 7 -- Configuracoes da Empresa: filiais, jornadas e feriados. */
 export function PainelConfiguracoes() {
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [inpiInput, setInpiInput] = useState('');
+  const [salvandoInpi, setSalvandoInpi] = useState(false);
+  const [inpiSalvo, setInpiSalvo] = useState(false);
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [jornadas, setJornadas] = useState<Jornada[]>([]);
   const [feriados, setFeriados] = useState<Feriado[]>([]);
@@ -43,11 +54,14 @@ export function PainelConfiguracoes() {
 
   const carregar = useCallback(async () => {
     try {
-      const [fi, j, f] = await Promise.all([
+      const [emp, fi, j, f] = await Promise.all([
+        apiGet<Empresa>('/admin/configuracoes/empresa'),
         apiGet<Filial[]>('/admin/configuracoes/filiais'),
         apiGet<Jornada[]>('/admin/configuracoes/jornadas'),
         apiGet<Feriado[]>('/admin/configuracoes/feriados'),
       ]);
+      setEmpresa(emp);
+      setInpiInput(emp.numeroInpi ?? '');
       setFiliais(fi);
       setJornadas(j);
       setFeriados(f);
@@ -56,6 +70,24 @@ export function PainelConfiguracoes() {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar.');
     }
   }, []);
+
+  async function salvarInpi() {
+    const digits = inpiInput.replace(/\D/g, '').slice(0, 7);
+    setSalvandoInpi(true);
+    try {
+      const emp = await apiPatch<Empresa>('/admin/configuracoes/empresa', {
+        numeroInpi: digits || undefined,
+      });
+      setEmpresa(emp);
+      setInpiInput(emp.numeroInpi ?? '');
+      setInpiSalvo(true);
+      setTimeout(() => setInpiSalvo(false), 3000);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar INPI.');
+    } finally {
+      setSalvandoInpi(false);
+    }
+  }
 
   useEffect(() => {
     void carregar();
@@ -78,6 +110,81 @@ export function PainelConfiguracoes() {
           <Feedback tom="erro">{erro}</Feedback>
         </div>
       )}
+
+      {/* ── Dados REP-P / INPI ── */}
+      <Cartao style={{ marginBottom: 'var(--space-4)' }}>
+        <TituloSecao>Registro INPI — REP-P (Portaria 671 Art. 89)</TituloSecao>
+        <p
+          style={{
+            font: 'var(--text-sm) var(--font-body)',
+            color: 'var(--color-text-muted)',
+            margin: '0 0 var(--space-4)',
+            lineHeight: 1.6,
+          }}
+        >
+          O número de registro do software no INPI é obrigatório para uso legal como REP-P. Ele
+          aparece no cabeçalho do AFD (posição 188–194) e em cada comprovante de ponto do
+          funcionário. Registre em <strong>gov.br → INPI → e-Software</strong> (código GRU 730).
+        </p>
+        <div
+          style={{
+            display: 'flex',
+            gap: 'var(--space-3)',
+            alignItems: 'flex-end',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ flex: '1 1 200px' }}>
+            <Campo
+              label="Número INPI (somente dígitos, máx. 7)"
+              value={inpiInput}
+              onChange={(e) => setInpiInput(e.target.value)}
+              placeholder={empresa?.numeroInpi ? empresa.numeroInpi : 'Ex: 0012345'}
+              dica={
+                empresa?.numeroInpi
+                  ? `Atual: ${empresa.numeroInpi}`
+                  : 'Ainda não cadastrado — ver instruções em Homologação'
+              }
+            />
+          </div>
+          <Botao
+            bloco={false}
+            onClick={salvarInpi}
+            disabled={salvandoInpi || !inpiInput.replace(/\D/g, '')}
+          >
+            {inpiSalvo ? '✓ Salvo' : salvandoInpi ? 'Salvando…' : 'Salvar INPI'}
+          </Botao>
+        </div>
+        {!empresa?.numeroInpi && (
+          <div
+            style={{
+              marginTop: 'var(--space-3)',
+              padding: 'var(--space-3)',
+              background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)',
+              borderRadius: 'var(--radius-sm)',
+              font: 'var(--text-sm) var(--font-body)',
+              color: 'var(--color-text)',
+            }}
+          >
+            ⚠️ INPI não cadastrado. O AFD está sendo gerado sem o número INPI — isso precisa ser
+            corrigido antes da fiscalização.
+          </div>
+        )}
+        {empresa?.numeroInpi && (
+          <div
+            style={{
+              marginTop: 'var(--space-3)',
+              padding: 'var(--space-3)',
+              background: 'color-mix(in srgb, var(--color-teal-success) 10%, transparent)',
+              borderRadius: 'var(--radius-sm)',
+              font: 'var(--text-sm) var(--font-body)',
+              color: 'var(--color-text)',
+            }}
+          >
+            ✅ INPI {empresa.numeroInpi} configurado — consta no AFD e nos comprovantes.
+          </div>
+        )}
+      </Cartao>
 
       <div style={{ ...grid2, marginBottom: 'var(--space-4)' }}>
         <NovaFilial onCriada={carregar} />

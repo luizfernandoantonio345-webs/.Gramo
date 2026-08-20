@@ -42,9 +42,14 @@ export function fmtDataDDMMYYYY(d: Date): string {
   return `${dd}${mm}${yyyy}`;
 }
 
-/** Hora no formato HHMMSS (UTC). */
+/** Hora no formato HHMMSS (UTC) -- usado nas marcacoes tipo 7. */
 export function fmtHoraHHMMSS(d: Date): string {
   return `${padEsq(d.getUTCHours(), 2)}${padEsq(d.getUTCMinutes(), 2)}${padEsq(d.getUTCSeconds(), 2)}`;
+}
+
+/** Hora no formato HHMM (UTC) -- usado no cabecalho tipo 1 (Portaria 671 Anexo I pos. 219-222). */
+export function fmtHoraHHMM(d: Date): string {
+  return `${padEsq(d.getUTCHours(), 2)}${padEsq(d.getUTCMinutes(), 2)}`;
 }
 
 export interface EmpregadorAfd {
@@ -53,6 +58,12 @@ export interface EmpregadorAfd {
   cpfCnpj: string;
   cno: string | null; // obra (CNO/CEI), opcional
   razaoSocial: string;
+  /**
+   * Numero de registro do programa no INPI (apenas digitos, max 7).
+   * Portaria 671 Anexo I Tipo 1 campo 7 -- posicoes 188-194.
+   * Obrigatorio para REP-P (Art. 89). Preencher apos obter o certificado INPI.
+   */
+  numeroInpi?: string;
 }
 
 export interface MarcacaoAfd {
@@ -77,15 +88,16 @@ export function registroCabecalho(
 ): string {
   return [
     padEsq(0, 9), // NSR do cabecalho = 0
-    '1',
-    String(emp.tipoIdentificador),
-    padEsq(soNumeros(emp.cpfCnpj), 14),
-    padDir(emp.cno ?? '', 12),
-    padDir(emp.razaoSocial, 150),
-    fmtDataDDMMYYYY(dataInicial),
-    fmtDataDDMMYYYY(dataFinal),
-    fmtDataDDMMYYYY(geradoEm),
-    fmtHoraHHMMSS(geradoEm),
+    '1', // tipo
+    String(emp.tipoIdentificador), // 1=CNPJ 2=CPF
+    padEsq(soNumeros(emp.cpfCnpj), 14), // CNPJ/CPF
+    padDir(emp.cno ?? '', 12), // CEI/CNO
+    padDir(emp.razaoSocial, 150), // razao social
+    padEsq(soNumeros(emp.numeroInpi ?? ''), 7), // pos.188-194: num.INPI (Portaria 671 Art.89)
+    fmtDataDDMMYYYY(dataInicial), // pos.195-202: data inicio
+    fmtDataDDMMYYYY(dataFinal), // pos.203-210: data fim
+    fmtDataDDMMYYYY(geradoEm), // pos.211-218: data geracao
+    fmtHoraHHMM(geradoEm), // pos.219-222: hora geracao (HHMM)
   ].join('');
 }
 
@@ -121,7 +133,8 @@ export function registroTrailer(qtdMarcacoes: number): string {
  * da Portaria 671; confirme no "Programa de Verificacao" do MTE antes do go-live.
  */
 export const LARGURA_AFD = {
-  cabecalho: 9 + 1 + 1 + 14 + 12 + 150 + 8 + 8 + 8 + 6, // 217
+  // 9+1+1+14+12+150+7+8+8+8+4 = 222 (Portaria 671 Anexo I: inclui num.INPI pos.188-194, hora HHMM pos.219-222)
+  cabecalho: 9 + 1 + 1 + 14 + 12 + 150 + 7 + 8 + 8 + 8 + 4, // 222
   marcacaoRepP: 9 + 1 + 8 + 6 + 12 + 64, // 100
   trailer: 9 + 1 + 9 * 6, // 64
 } as const;

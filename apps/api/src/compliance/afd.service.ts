@@ -20,7 +20,7 @@ export class AfdService {
   ): Promise<{ conteudo: string; total: number }> {
     return this.prisma.forTenant(async (tx) => {
       const empresa = await tx.empresa.findFirstOrThrow({
-        select: { cnpj: true, razaoSocial: true },
+        select: { cnpj: true, razaoSocial: true, numeroInpi: true },
       });
 
       // AFD e por estabelecimento: resolve a filial (obrigatoria se houver >1).
@@ -65,12 +65,18 @@ export class AfdService {
         nis: soNumeros(p.funcionario.pis ?? p.funcionario.cpf),
         hash: p.hashIntegridade,
       }));
+      if (!empresa.numeroInpi) {
+        this.logger.warn(
+          'AFD: numero INPI nao configurado. Preencha em Configuracoes > Dados da Empresa para conformidade com Portaria 671 Art. 89.',
+        );
+      }
       const conteudo = montarAfd(
         {
           tipoIdentificador: 1,
           cpfCnpj: filial?.cnpj ?? empresa.cnpj,
           cno: null,
           razaoSocial: empresa.razaoSocial,
+          numeroInpi: empresa.numeroInpi ?? undefined,
         },
         marcacoes,
         { inicio, fim },
