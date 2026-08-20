@@ -19,8 +19,7 @@ import {
   suportaBiometria,
 } from '../lib/biometria';
 
-type Modo =
-  'login' | 'primeiro-acesso' | 'recuperar' | 'redefinir' | 'trocar-obrigatorio' | 'prompt-bio';
+type Modo = 'login' | 'primeiro-acesso' | 'recuperar' | 'redefinir' | 'prompt-bio';
 
 interface AvatarInfo {
   nome?: string;
@@ -29,12 +28,10 @@ interface AvatarInfo {
 
 /**
  * Tela 1 -- Login / Cadastrar / Recuperar senha (funcionario).
- * - autoComplete attributes para o gerenciador de senhas do dispositivo salvar as credenciais.
- * - Fluxo "Esqueceu a senha?": envia token ao e-mail → funcionario digita token + nova senha.
- * - Token de redefinicao pre-preenchido se ?token= estiver na URL (link do e-mail).
+ * Modelo banco: CPF+senha como credencial base; Face ID / digital como opcao de
+ * acesso rapido — o funcionario escolhe ativar, igual ao app do banco.
  */
 export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => void }) {
-  // Detecta token de redefinicao na URL (link enviado por email).
   const tokenUrl = new URLSearchParams(window.location.search).get('token') ?? '';
 
   const [modo, setModo] = useState<Modo>(tokenUrl ? 'redefinir' : 'login');
@@ -43,10 +40,9 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [tokenRedefinir, setTokenRedefinir] = useState(tokenUrl);
-  const [trocaSenhaToken, setTrocaSenhaToken] = useState('');
-  const [tokensPendentes, setTokensPendentes] = useState<ParTokens | null>(null);
   const [codigo, setCodigo] = useState('');
   const [aceite, setAceite] = useState(false);
+  const [tokensPendentes, setTokensPendentes] = useState<ParTokens | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -55,16 +51,11 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
   const [bioAtiva, setBioAtiva] = useState(biometriaAtiva);
   const timerAvatar = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    void suportaBiometria().then(setBioDisponivel);
-  }, []);
-
   const cpfValido = isCpfValido(cpf);
   const senhaCheck = validarSenha(senha);
   const novaSenhaCheck = validarSenha(novaSenha);
 
-  // Limpa o ?token= da URL sem recarregar; tokenUrl e constante derivada do
-  // href no momento da montagem — nao muda apos isso, ref e o padrao correto.
+  // Limpa o ?token= da URL sem recarregar.
   const tokenLimpoRef = useRef(false);
   if (!tokenLimpoRef.current && tokenUrl) {
     tokenLimpoRef.current = true;
@@ -73,7 +64,11 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     window.history.replaceState({}, '', url.toString());
   }
 
-  // Busca avatar com debounce ao completar 11 dígitos válidos.
+  useEffect(() => {
+    void suportaBiometria().then(setBioDisponivel);
+  }, []);
+
+  // Avatar com debounce ao completar CPF valido no login.
   useEffect(() => {
     if (timerAvatar.current) clearTimeout(timerAvatar.current);
     if (cpf.length === 11 && cpfValido && modo === 'login') {
@@ -97,7 +92,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     setAvatar(null);
   }
 
-  // ---- Login / Primeiro acesso ----
+  // ── Login / Primeiro acesso ───────────────────────────────────────
   async function enviar() {
     setErro(null);
     if (!cpfValido) return setErro('CPF inválido.');
@@ -111,18 +106,18 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         const r = await apiPost<
           ParTokens | { requiresPasswordChange: true; trocaSenhaToken: string }
         >('/auth/funcionario/login', { cpf: normalizarCpf(cpf), senha });
+
         if ('requiresPasswordChange' in r) {
-          setTrocaSenhaToken(r.trocaSenhaToken);
-          trocarModo('trocar-obrigatorio');
+          // Bloqueio de segurança ativado pelo RH — nao expor fluxo de troca aqui.
+          setErro('Seu acesso foi bloqueado por segurança. Contate o RH.');
           return;
         }
-        // Biometria disponível e ainda não ativa: propõe ativar antes de entrar.
+        // Biometria disponivel e ainda nao ativa: propoe ativar (modelo banco).
         if (bioDisponivel && !biometriaAtiva()) {
           setTokensPendentes(r);
           trocarModo('prompt-bio');
           return;
         }
-        // Biometria já ativa: mantém o refresh armazenado atualizado.
         if (bioAtiva) atualizarRefreshBiometria(r.refreshToken);
         onAutenticado(r);
       } else {
@@ -132,6 +127,12 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
           senha,
           aceiteTermos: aceite,
         });
+        // Apos primeiro acesso, mesma oferta de biometria.
+        if (bioDisponivel && !biometriaAtiva()) {
+          setTokensPendentes(t);
+          trocarModo('prompt-bio');
+          return;
+        }
         onAutenticado(t);
       }
     } catch (e) {
@@ -141,8 +142,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     }
   }
 
-  // ---- Biometria ----
-
+  // ── Biometria ────────────────────────────────────────────────────
   async function loginBiometria() {
     setErro(null);
     setCarregando(true);
@@ -156,7 +156,6 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
       atualizarRefreshBiometria(t.refreshToken);
       onAutenticado(t);
     } catch {
-      // Refresh token expirado ou revogado.
       desativarBiometria();
       setBioAtiva(false);
       setErro('Sessão expirada. Faça login com CPF e senha.');
@@ -181,26 +180,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     if (tokensPendentes) onAutenticado(tokensPendentes);
   }
 
-  // ---- Troca de senha obrigatória (protocolo de emergência) ----
-  async function trocarObrigatorio() {
-    setErro(null);
-    if (!novaSenhaCheck.valido) return setErro(novaSenhaCheck.erros.join(' '));
-    if (novaSenha !== confirmarSenha) return setErro('As senhas não conferem.');
-    setCarregando(true);
-    try {
-      const t = await apiPost<ParTokens>('/auth/funcionario/trocar-senha-obrigatorio', {
-        trocaSenhaToken,
-        novaSenha,
-      });
-      onAutenticado(t);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao trocar a senha.');
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  // ---- Recuperar senha: envia e-mail com link de redefinição ----
+  // ── Recuperar senha ──────────────────────────────────────────────
   async function recuperar() {
     setErro(null);
     if (!cpfValido) return setErro('CPF inválido.');
@@ -211,7 +191,6 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         'Se o CPF estiver cadastrado, enviaremos um link de redefinição para o e-mail do cadastro. Verifique a caixa de entrada.',
       );
     } catch {
-      // Sempre exibe a mensagem neutra — não revela se o CPF existe.
       setSucesso(
         'Se o CPF estiver cadastrado, enviaremos um link de redefinição para o e-mail do cadastro. Verifique a caixa de entrada.',
       );
@@ -220,7 +199,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     }
   }
 
-  // ---- Redefinir senha: token + nova senha ----
+  // ── Redefinir senha ──────────────────────────────────────────────
   async function redefinir() {
     setErro(null);
     if (!tokenRedefinir) return setErro('Informe o código recebido por e-mail.');
@@ -241,7 +220,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
     }
   }
 
-  // ──────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ maxWidth: 420, margin: '0 auto' }}>
@@ -317,7 +296,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         </div>
       )}
 
-      {!avatar && modo !== 'recuperar' && modo !== 'redefinir' && (
+      {!avatar && modo !== 'recuperar' && modo !== 'redefinir' && modo !== 'prompt-bio' && (
         <p
           style={{ color: 'var(--color-text-muted)', marginTop: 0, marginBottom: 'var(--space-3)' }}
         >
@@ -401,7 +380,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         </Cartao>
       )}
 
-      {/* ── PROMPT: ativar biometria após login ── */}
+      {/* ── PROMPT: ativar biometria após login (modelo banco) ── */}
       {modo === 'prompt-bio' && (
         <Cartao>
           <div style={{ textAlign: 'center', padding: 'var(--space-2) 0 var(--space-3)' }}>
@@ -461,10 +440,9 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         </Cartao>
       )}
 
-      {/* ── LOGIN ── */}
+      {/* ── LOGIN / PRIMEIRO ACESSO ── */}
       {(modo === 'login' || modo === 'primeiro-acesso') && !bioAtiva && (
         <Cartao>
-          {/* Nome do formulário para o gerenciador de senhas do dispositivo identificar */}
           <form
             name={modo === 'login' ? 'login' : 'cadastro'}
             onSubmit={(e) => {
@@ -555,7 +533,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
             )}
           </form>
 
-          {/* Esqueceu a senha — só aparece no login */}
+          {/* Esqueceu a senha */}
           {modo === 'login' && (
             <button
               type="button"
@@ -624,7 +602,6 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
             </form>
           )}
 
-          {/* Link para digitar o código manualmente (caso o e-mail não chegue com link) */}
           {sucesso && (
             <button
               type="button"
@@ -725,86 +702,6 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
         </Cartao>
       )}
 
-      {/* ── TROCA DE SENHA OBRIGATÓRIA (emergência) ── */}
-      {modo === 'trocar-obrigatorio' && (
-        <Cartao>
-          <div
-            style={{
-              padding: 'var(--space-3)',
-              background: 'var(--color-warning-bg, #fff8e1)',
-              border: '1px solid var(--color-warning, #f59e0b)',
-              borderRadius: 'var(--radius-sm)',
-              marginBottom: 'var(--space-4)',
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                font: '600 13px var(--font-body)',
-                color: 'var(--color-warning-text, #92400e)',
-              }}
-            >
-              🔒 Segurança: troca de senha obrigatória
-            </p>
-            <p
-              style={{
-                margin: '4px 0 0',
-                font: '400 12px var(--font-body)',
-                color: 'var(--color-warning-text, #92400e)',
-              }}
-            >
-              Por medida de segurança, crie uma nova senha para continuar. O código tem validade de
-              10 minutos.
-            </p>
-          </div>
-
-          <form
-            name="trocar-senha-obrigatorio"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void trocarObrigatorio();
-            }}
-          >
-            <Campo
-              label="Nova senha"
-              name="new-password"
-              type="password"
-              autoComplete="new-password"
-              value={novaSenha}
-              onChange={(e) => setNovaSenha(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void trocarObrigatorio()}
-              erro={
-                novaSenha.length > 0 && !novaSenhaCheck.valido ? novaSenhaCheck.erros[0] : undefined
-              }
-              placeholder="mínimo 8 caracteres, letra + número"
-            />
-            <Campo
-              label="Confirmar nova senha"
-              name="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              value={confirmarSenha}
-              onChange={(e) => setConfirmarSenha(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void trocarObrigatorio()}
-              erro={
-                confirmarSenha.length > 0 && novaSenha !== confirmarSenha
-                  ? 'Senhas não conferem'
-                  : undefined
-              }
-              placeholder="repita a nova senha"
-            />
-            {erro && (
-              <div style={{ marginBottom: 'var(--space-3)' }}>
-                <Feedback tom="erro">{erro}</Feedback>
-              </div>
-            )}
-            <Botao onClick={trocarObrigatorio} disabled={carregando}>
-              {carregando ? 'Salvando…' : 'Salvar nova senha e entrar'}
-            </Botao>
-          </form>
-        </Cartao>
-      )}
-
       {/* ── Links de navegação entre modos ── */}
       <div
         style={{
@@ -814,7 +711,7 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
           gap: 'var(--space-1)',
         }}
       >
-        {(modo === 'login' || modo === 'primeiro-acesso') && (
+        {(modo === 'login' || modo === 'primeiro-acesso') && !bioAtiva && (
           <button
             type="button"
             onClick={() => trocarModo(modo === 'login' ? 'primeiro-acesso' : 'login')}
@@ -848,7 +745,6 @@ export function TelaLogin({ onAutenticado }: { onAutenticado: (t: ParTokens) => 
             ← Voltar para o login
           </button>
         )}
-        {/* trocar-obrigatorio: sem link de voltar — a troca é mandatória */}
       </div>
     </div>
   );
