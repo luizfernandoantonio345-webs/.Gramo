@@ -14,7 +14,7 @@
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@repp/shared": "*",
     "@vladmandic/face-api": "^1.7.15",
-    "dexie": "^4.0.9",
+    "dexie": "^4.4.5",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
